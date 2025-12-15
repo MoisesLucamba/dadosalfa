@@ -1,8 +1,27 @@
 import { motion } from "framer-motion";
-import { Bell, Search, User, ChevronDown } from "lucide-react";
+import { Bell, Search, User, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 export function Header() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Sessão terminada");
+    navigate("/auth");
+  };
+
   return (
     <motion.header
       initial={{ y: -10, opacity: 0 }}
@@ -37,16 +56,32 @@ export function Header() {
         </Button>
 
         {/* User Menu */}
-        <button className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <User className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div className="text-left hidden md:block">
-            <p className="text-sm font-medium text-foreground">Sonangol EP</p>
-            <p className="text-xs text-muted-foreground">Administrador</p>
-          </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <User className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <div className="text-left hidden md:block">
+                <p className="text-sm font-medium text-foreground truncate max-w-[120px]">
+                  {user?.email?.split("@")[0] || "Utilizador"}
+                </p>
+                <p className="text-xs text-muted-foreground">Conta Ativa</p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem className="text-muted-foreground text-xs">
+              {user?.email}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
+              Terminar Sessão
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </motion.header>
   );
