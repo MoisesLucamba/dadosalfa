@@ -7,6 +7,9 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Production from "./pages/Production";
+import Exports from "./pages/Exports";
+import Predictions from "./pages/Predictions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +47,30 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/production"
+                element={
+                  <ProtectedRoute>
+                    <Production />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exports"
+                element={
+                  <ProtectedRoute>
+                    <Exports />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/predictions"
+                element={
+                  <ProtectedRoute>
+                    <Predictions />
                   </ProtectedRoute>
                 }
               />
