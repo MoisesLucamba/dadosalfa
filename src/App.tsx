@@ -10,6 +10,9 @@ import Auth from "./pages/Auth";
 import Production from "./pages/Production";
 import Exports from "./pages/Exports";
 import Predictions from "./pages/Predictions";
+import Prices from "./pages/Prices";
+import Risk from "./pages/Risk";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +74,30 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Predictions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/prices"
+                element={
+                  <ProtectedRoute>
+                    <Prices />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/risk"
+                element={
+                  <ProtectedRoute>
+                    <Risk />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <Reports />
                   </ProtectedRoute>
                 }
               />
