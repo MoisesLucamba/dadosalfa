@@ -15,6 +15,9 @@ import Prices from "./pages/Prices";
 import Risk from "./pages/Risk";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Alerts from "./pages/Alerts";
+import Search from "./pages/Search";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -109,6 +112,30 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/alerts"
+                  element={
+                    <ProtectedRoute>
+                      <Alerts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/search"
+                  element={
+                    <ProtectedRoute>
+                      <Search />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pricing"
+                  element={
+                    <ProtectedRoute>
+                      <Pricing />
                     </ProtectedRoute>
                   }
                 />
