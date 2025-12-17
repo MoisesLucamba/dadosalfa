@@ -12,6 +12,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Search,
+  CreditCard,
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { cn } from "@/lib/utils";
@@ -31,10 +33,12 @@ const navItems: NavItem[] = [
   { icon: Brain, label: "Previsões IA", href: "/predictions", badge: "AI" },
   { icon: AlertTriangle, label: "Risco", href: "/risk" },
   { icon: FileText, label: "Relatórios", href: "/reports" },
+  { icon: Search, label: "Pesquisa", href: "/search" },
 ];
 
 const bottomNavItems: NavItem[] = [
   { icon: Bell, label: "Alertas", href: "/alerts", badge: "3" },
+  { icon: CreditCard, label: "Planos", href: "/pricing" },
   { icon: Settings, label: "Configurações", href: "/settings" },
 ];
 
