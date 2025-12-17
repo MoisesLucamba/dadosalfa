@@ -51,7 +51,7 @@ export function Sidebar({ activeItem = "/" }: SidebarProps) {
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "h-screen flex flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl transition-all duration-300",
+        "h-screen flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl transition-all duration-300 hidden lg:flex",
         isCollapsed ? "w-20" : "w-64"
       )}
     >

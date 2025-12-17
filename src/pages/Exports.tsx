@@ -113,9 +113,9 @@ const Exports = () => {
         <Sidebar activeItem="/exports" />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header activeItem="/exports" />
 
-          <main className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Page Header */}
               <motion.div
