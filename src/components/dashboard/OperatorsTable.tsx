@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProductionData } from "@/hooks/useData";
+import { useMemo } from "react";
 
 interface Operator {
   name: string;
@@ -10,7 +12,7 @@ interface Operator {
   share: number;
 }
 
-const operators: Operator[] = [
+const fallbackOperators: Operator[] = [
   { name: "TotalEnergies", blocks: "17, 32", production: 385, change: -2.4, share: 34.2 },
   { name: "ExxonMobil", blocks: "15", production: 245, change: 1.8, share: 21.8 },
   { name: "Chevron", blocks: "0, 14", production: 198, change: -0.5, share: 17.6 },
@@ -19,6 +21,43 @@ const operators: Operator[] = [
 ];
 
 export function OperatorsTable() {
+  const { data: productionData, isLoading } = useProductionData();
+
+  const operators = useMemo(() => {
+    if (!productionData || productionData.length === 0) return fallbackOperators;
+
+    // Group by operator and calculate totals
+    const operatorMap = new Map<string, { blocks: Set<string>; totalProduction: number; declineRate: number }>();
+    
+    productionData.forEach(item => {
+      const existing = operatorMap.get(item.operator);
+      if (existing) {
+        existing.blocks.add(item.block);
+        existing.totalProduction += Number(item.daily_production) / 1000; // Convert to kbd
+        existing.declineRate = Number(item.decline_rate) || 0;
+      } else {
+        operatorMap.set(item.operator, {
+          blocks: new Set([item.block]),
+          totalProduction: Number(item.daily_production) / 1000,
+          declineRate: Number(item.decline_rate) || 0,
+        });
+      }
+    });
+
+    const totalProduction = Array.from(operatorMap.values()).reduce((sum, op) => sum + op.totalProduction, 0);
+
+    return Array.from(operatorMap.entries())
+      .map(([name, data]) => ({
+        name,
+        blocks: Array.from(data.blocks).join(", "),
+        production: Math.round(data.totalProduction),
+        change: -data.declineRate,
+        share: totalProduction > 0 ? (data.totalProduction / totalProduction) * 100 : 0,
+      }))
+      .sort((a, b) => b.production - a.production)
+      .slice(0, 5);
+  }, [productionData]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -60,46 +99,54 @@ export function OperatorsTable() {
             </tr>
           </thead>
           <tbody>
-            {operators.map((operator, index) => (
-              <motion.tr
-                key={operator.name}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 + index * 0.05 }}
-                className="border-b border-border/30 hover:bg-secondary/30 transition-colors"
-              >
-                <td className="px-6 py-4">
-                  <span className="font-medium text-foreground">{operator.name}</span>
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                  Carregando dados...
                 </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-muted-foreground">Bloco {operator.blocks}</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className="font-semibold text-foreground">{operator.production}</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                      operator.change >= 0
-                        ? "bg-success/10 text-success"
-                        : "bg-destructive/10 text-destructive"
-                    )}
-                  >
-                    {operator.change >= 0 ? (
-                      <TrendingUp className="w-3 h-3" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3" />
-                    )}
-                    {operator.change >= 0 ? "+" : ""}
-                    {operator.change}%
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className="text-sm text-muted-foreground">{operator.share}%</span>
-                </td>
-              </motion.tr>
-            ))}
+              </tr>
+            ) : (
+              operators.map((operator, index) => (
+                <motion.tr
+                  key={operator.name}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 + index * 0.05 }}
+                  className="border-b border-border/30 hover:bg-secondary/30 transition-colors"
+                >
+                  <td className="px-6 py-4">
+                    <span className="font-medium text-foreground">{operator.name}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-muted-foreground">Bloco {operator.blocks}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="font-semibold text-foreground">{operator.production}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                        operator.change >= 0
+                          ? "bg-success/10 text-success"
+                          : "bg-destructive/10 text-destructive"
+                      )}
+                    >
+                      {operator.change >= 0 ? (
+                        <TrendingUp className="w-3 h-3" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3" />
+                      )}
+                      {operator.change >= 0 ? "+" : ""}
+                      {operator.change.toFixed(1)}%
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="text-sm text-muted-foreground">{operator.share.toFixed(1)}%</span>
+                  </td>
+                </motion.tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

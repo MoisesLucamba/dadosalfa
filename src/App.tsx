@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Alerts from "./pages/Alerts";
 import Search from "./pages/Search";
 import Pricing from "./pages/Pricing";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -136,6 +137,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Pricing />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <Admin />
                     </ProtectedRoute>
                   }
                 />

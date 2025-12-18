@@ -14,15 +14,18 @@ import {
   ChevronRight,
   Search,
   CreditCard,
+  Shield,
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { cn } from "@/lib/utils";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
   badge?: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -34,6 +37,7 @@ const navItems: NavItem[] = [
   { icon: AlertTriangle, label: "Risco", href: "/risk" },
   { icon: FileText, label: "Relatórios", href: "/reports" },
   { icon: Search, label: "Pesquisa", href: "/search" },
+  { icon: Shield, label: "Admin", href: "/admin", badge: "Admin", adminOnly: true },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -48,6 +52,9 @@ interface SidebarProps {
 
 export function Sidebar({ activeItem = "/" }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { data: isAdmin } = useIsAdmin();
+
+  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <motion.aside
@@ -75,7 +82,7 @@ export function Sidebar({ activeItem = "/" }: SidebarProps) {
 
       {/* Main Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
-        {navItems.map((item, index) => (
+        {filteredNavItems.map((item, index) => (
           <motion.a
             key={item.href}
             href={item.href}

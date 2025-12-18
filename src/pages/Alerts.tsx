@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,25 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, AlertTriangle, TrendingUp, TrendingDown, Ship, Globe, Plus, Settings, Trash2, Check, X } from "lucide-react";
+import { Bell, AlertTriangle, TrendingUp, TrendingDown, Ship, Globe, Plus, Settings, Trash2, Check } from "lucide-react";
+import { useNotifications, useUserAlerts, useAddUserAlert, useUpdateUserAlert, useDeleteUserAlert, useMarkNotificationRead } from "@/hooks/useData";
+import { format } from "date-fns";
 
 const Alerts = () => {
+  const { data: notifications, isLoading: loadingNotifications } = useNotifications();
+  const { data: userAlerts, isLoading: loadingAlerts } = useUserAlerts();
+  const addAlert = useAddUserAlert();
+  const updateAlert = useUpdateUserAlert();
+  const deleteAlert = useDeleteUserAlert();
+  const markRead = useMarkNotificationRead();
 
-  const notifications = [
-    { id: 1, type: "price", title: "Brent abaixo de $70", message: "O preço do Brent caiu para $69.45, abaixo do limite configurado de $70.", time: "Há 2 horas", read: false, severity: "high" },
-    { id: 2, type: "production", title: "Queda na produção do Bloco 17", message: "Produção do Bloco 17 reduziu 15% em relação ao mês anterior.", time: "Há 5 horas", read: false, severity: "medium" },
-    { id: 3, type: "export", title: "Atraso no embarque", message: "Navio MT Angola Star com atraso de 48h no Terminal de Soyo.", time: "Há 1 dia", read: true, severity: "low" },
-    { id: 4, type: "geopolitical", title: "Decisão OPEP+", message: "OPEP+ anuncia corte adicional de 500k barris/dia a partir de janeiro.", time: "Há 2 dias", read: true, severity: "high" },
-    { id: 5, type: "price", title: "Spread Cabinda-Brent", message: "Spread atingiu $2.50, maior valor em 6 meses.", time: "Há 3 dias", read: true, severity: "medium" },
-  ];
-
-  const alertTriggers = [
-    { id: 1, name: "Preço Brent < $70", type: "price", condition: "menor que", value: "70", unit: "USD", enabled: true, channel: ["email", "app"] },
-    { id: 2, name: "Preço Brent > $85", type: "price", condition: "maior que", value: "85", unit: "USD", enabled: true, channel: ["email"] },
-    { id: 3, name: "Variação Produção > 10%", type: "production", condition: "variação maior que", value: "10", unit: "%", enabled: true, channel: ["app"] },
-    { id: 4, name: "Atraso Embarque > 24h", type: "export", condition: "atraso maior que", value: "24", unit: "horas", enabled: false, channel: ["email", "whatsapp"] },
-    { id: 5, name: "Novo comunicado OPEP+", type: "geopolitical", condition: "qualquer", value: "-", unit: "-", enabled: true, channel: ["email", "app", "whatsapp"] },
-  ];
+  const [newTrigger, setNewTrigger] = useState({
+    alert_type: "",
+    threshold_value: "",
+    notify_email: true,
+    notify_app: true,
+  });
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -36,11 +36,11 @@ const Alerts = () => {
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "high": return "bg-red-500/20 text-red-400 border-red-500/30";
-      case "medium": return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-      case "low": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+  const getSeverityColor = (type: string) => {
+    switch (type) {
+      case "alert": return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "warning": return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+      case "info": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -54,6 +54,20 @@ const Alerts = () => {
       default: return "bg-muted text-muted-foreground";
     }
   };
+
+  const handleCreateTrigger = () => {
+    if (!newTrigger.alert_type) return;
+    addAlert.mutate({
+      alert_type: newTrigger.alert_type,
+      threshold_value: parseFloat(newTrigger.threshold_value) || undefined,
+      notify_email: newTrigger.notify_email,
+      notify_app: newTrigger.notify_app,
+    });
+    setNewTrigger({ alert_type: "", threshold_value: "", notify_email: true, notify_app: true });
+  };
+
+  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const activeTriggersCount = userAlerts?.filter(a => a.is_enabled).length || 0;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -77,7 +91,7 @@ const Alerts = () => {
                     <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground">12</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{unreadCount}</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Não lidas</p>
                   </div>
                 </div>
@@ -90,7 +104,9 @@ const Alerts = () => {
                     <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
                   </div>
                   <div>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground">3</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">
+                      {notifications?.filter(n => n.type === "alert").length || 0}
+                    </p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Alta prioridade</p>
                   </div>
                 </div>
@@ -103,7 +119,7 @@ const Alerts = () => {
                     <Check className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground">5</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{activeTriggersCount}</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Gatilhos ativos</p>
                   </div>
                 </div>
@@ -116,7 +132,7 @@ const Alerts = () => {
                     <Settings className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground">8</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{userAlerts?.length || 0}</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Total gatilhos</p>
                   </div>
                 </div>
@@ -133,41 +149,47 @@ const Alerts = () => {
                     <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     Notificações Recentes
                   </CardTitle>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Marcar todas como lidas
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 sm:p-4 rounded-lg border transition-all ${
-                      notification.read 
-                        ? "bg-muted/30 border-border" 
-                        : "bg-primary/5 border-primary/30"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${getTypeColor(notification.type)}`}>
-                        {getIcon(notification.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                          <h4 className="font-medium text-sm text-foreground truncate">{notification.title}</h4>
-                          <Badge className={`text-[10px] w-fit ${getSeverityColor(notification.severity)}`}>
-                            {notification.severity === "high" ? "Alta" : notification.severity === "medium" ? "Média" : "Baixa"}
-                          </Badge>
+                {loadingNotifications ? (
+                  <p className="text-center text-muted-foreground py-8">Carregando...</p>
+                ) : notifications && notifications.length > 0 ? (
+                  notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3 sm:p-4 rounded-lg border transition-all cursor-pointer ${
+                        notification.is_read 
+                          ? "bg-muted/30 border-border" 
+                          : "bg-primary/5 border-primary/30"
+                      }`}
+                      onClick={() => !notification.is_read && markRead.mutate(notification.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${getSeverityColor(notification.type || "info")}`}>
+                          <Bell className="h-4 w-4" />
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                        <p className="text-[10px] text-muted-foreground mt-2">{notification.time}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                            <h4 className="font-medium text-sm text-foreground truncate">{notification.title}</h4>
+                            <Badge className={`text-[10px] w-fit ${getSeverityColor(notification.type || "info")}`}>
+                              {notification.type === "alert" ? "Alta" : notification.type === "warning" ? "Média" : "Info"}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                          <p className="text-[10px] text-muted-foreground mt-2">
+                            {format(new Date(notification.created_at), "dd/MM/yyyy HH:mm")}
+                          </p>
+                        </div>
+                        {!notification.is_read && (
+                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                        )}
                       </div>
-                      {!notification.read && (
-                        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">Nenhuma notificação</p>
+                )}
               </CardContent>
             </Card>
 
@@ -179,46 +201,57 @@ const Alerts = () => {
                     <Settings className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     Gatilhos de Alerta
                   </CardTitle>
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-xs">
-                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                    Novo Gatilho
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-                {alertTriggers.map((trigger) => (
-                  <div
-                    key={trigger.id}
-                    className="p-3 sm:p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className={`p-2 rounded-lg ${getTypeColor(trigger.type)}`}>
-                          {getIcon(trigger.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-foreground truncate">{trigger.name}</h4>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {trigger.condition} {trigger.value !== "-" && `${trigger.value} ${trigger.unit}`}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {trigger.channel.map((ch) => (
-                              <Badge key={ch} variant="outline" className="text-[10px] capitalize">
-                                {ch}
-                              </Badge>
-                            ))}
+                {loadingAlerts ? (
+                  <p className="text-center text-muted-foreground py-8">Carregando...</p>
+                ) : userAlerts && userAlerts.length > 0 ? (
+                  userAlerts.map((trigger) => (
+                    <div
+                      key={trigger.id}
+                      className="p-3 sm:p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className={`p-2 rounded-lg ${getTypeColor(trigger.alert_type)}`}>
+                            {getIcon(trigger.alert_type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm text-foreground truncate capitalize">{trigger.alert_type}</h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {trigger.threshold_value ? `Valor: ${trigger.threshold_value}` : "Qualquer alteração"}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {trigger.notify_email && (
+                                <Badge variant="outline" className="text-[10px] capitalize">email</Badge>
+                              )}
+                              {trigger.notify_app && (
+                                <Badge variant="outline" className="text-[10px] capitalize">app</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={trigger.enabled} />
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Switch 
+                            checked={trigger.is_enabled || false}
+                            onCheckedChange={(checked) => updateAlert.mutate({ id: trigger.id, is_enabled: checked })}
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                            onClick={() => deleteAlert.mutate(trigger.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">Nenhum gatilho configurado</p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -232,7 +265,10 @@ const Alerts = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">Tipo de Alerta</label>
-                  <Select>
+                  <Select 
+                    value={newTrigger.alert_type} 
+                    onValueChange={(value) => setNewTrigger({...newTrigger, alert_type: value})}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
@@ -245,41 +281,44 @@ const Alerts = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">Condição</label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a condição" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="greater">Maior que</SelectItem>
-                      <SelectItem value="less">Menor que</SelectItem>
-                      <SelectItem value="change">Variação maior que</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium text-muted-foreground">Valor Limite</label>
+                  <Input 
+                    type="number" 
+                    placeholder="Ex: 70" 
+                    value={newTrigger.threshold_value}
+                    onChange={(e) => setNewTrigger({...newTrigger, threshold_value: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">Valor</label>
-                  <Input type="number" placeholder="Ex: 70" />
+                  <label className="text-xs font-medium text-muted-foreground">Notificar por</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2">
+                      <Switch 
+                        checked={newTrigger.notify_email}
+                        onCheckedChange={(checked) => setNewTrigger({...newTrigger, notify_email: checked})}
+                      />
+                      <span className="text-sm">Email</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <Switch 
+                        checked={newTrigger.notify_app}
+                        onCheckedChange={(checked) => setNewTrigger({...newTrigger, notify_app: checked})}
+                      />
+                      <span className="text-sm">App</span>
+                    </label>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">Canal de Notificação</label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o canal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="app">App</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="all">Todos</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleCreateTrigger} 
+                    className="bg-primary hover:bg-primary/90 w-full"
+                    disabled={!newTrigger.alert_type || addAlert.isPending}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Gatilho
+                  </Button>
                 </div>
               </div>
-              <Button className="mt-4 bg-primary hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Gatilho
-              </Button>
             </CardContent>
           </Card>
         </main>
