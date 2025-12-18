@@ -14,6 +14,186 @@ export type Database = {
   }
   public: {
     Tables: {
+      data_updates: {
+        Row: {
+          created_at: string
+          data_type: string
+          id: string
+          notes: string | null
+          records_updated: number | null
+          source: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_type: string
+          id?: string
+          notes?: string | null
+          records_updated?: number | null
+          source: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_type?: string
+          id?: string
+          notes?: string | null
+          records_updated?: number | null
+          source?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      export_data: {
+        Row: {
+          arrival_date: string | null
+          created_at: string
+          data_date: string
+          departure_date: string | null
+          destination: string
+          id: string
+          status: string | null
+          tanker_name: string | null
+          updated_at: string
+          value_usd: number | null
+          volume: number
+        }
+        Insert: {
+          arrival_date?: string | null
+          created_at?: string
+          data_date?: string
+          departure_date?: string | null
+          destination: string
+          id?: string
+          status?: string | null
+          tanker_name?: string | null
+          updated_at?: string
+          value_usd?: number | null
+          volume: number
+        }
+        Update: {
+          arrival_date?: string | null
+          created_at?: string
+          data_date?: string
+          departure_date?: string | null
+          destination?: string
+          id?: string
+          status?: string | null
+          tanker_name?: string | null
+          updated_at?: string
+          value_usd?: number | null
+          volume?: number
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_global: boolean | null
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_global?: boolean | null
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_global?: boolean | null
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      price_data: {
+        Row: {
+          change_percent: number | null
+          created_at: string
+          crude_type: string
+          data_date: string
+          id: string
+          price: number
+          updated_at: string
+          volume: number | null
+        }
+        Insert: {
+          change_percent?: number | null
+          created_at?: string
+          crude_type: string
+          data_date?: string
+          id?: string
+          price: number
+          updated_at?: string
+          volume?: number | null
+        }
+        Update: {
+          change_percent?: number | null
+          created_at?: string
+          crude_type?: string
+          data_date?: string
+          id?: string
+          price?: number
+          updated_at?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
+      production_data: {
+        Row: {
+          block: string
+          created_at: string
+          daily_production: number
+          data_date: string
+          decline_rate: number | null
+          field: string | null
+          id: string
+          monthly_production: number
+          operator: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          block: string
+          created_at?: string
+          daily_production?: number
+          data_date?: string
+          decline_rate?: number | null
+          field?: string | null
+          id?: string
+          monthly_production?: number
+          operator: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          block?: string
+          created_at?: string
+          daily_production?: number
+          data_date?: string
+          decline_rate?: number | null
+          field?: string | null
+          id?: string
+          monthly_production?: number
+          operator?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           accepted_nda: boolean
@@ -59,6 +239,81 @@ export type Database = {
           is_approved?: boolean
           nif?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          notify_app: boolean | null
+          notify_email: boolean | null
+          threshold_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          notify_app?: boolean | null
+          notify_email?: boolean | null
+          threshold_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          notify_app?: boolean | null
+          notify_email?: boolean | null
+          threshold_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_requests: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          id: string
+          message: string
+          priority: string | null
+          responded_by: string | null
+          status: string | null
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          priority?: string | null
+          responded_by?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: string | null
+          responded_by?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
