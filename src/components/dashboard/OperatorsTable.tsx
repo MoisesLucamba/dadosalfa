@@ -1,8 +1,17 @@
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, MoreHorizontal } from "lucide-react";
+import { TrendingUp, TrendingDown, MoreHorizontal, Zap, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProductionData } from "@/hooks/useData";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Operator {
   name: string;
@@ -21,7 +30,34 @@ const fallbackOperators: Operator[] = [
 ];
 
 export function OperatorsTable() {
-  const { data: productionData, isLoading } = useProductionData();
+  const { data: productionData, isLoading, refetch } = useProductionData();
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const verifyWithAI = async () => {
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-market-data", {
+        body: { type: "operators" }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.data?.operators) {
+        toast.success("Dados verificados pela IA", {
+          description: `${data.data.operators.length} operadores confirmados. ${data.data.source || ""}`
+        });
+      } else {
+        throw new Error(data?.error || "Falha na verificação");
+      }
+    } catch (error: any) {
+      console.error("Error verifying operators:", error);
+      toast.error("Erro ao verificar dados", {
+        description: error.message || "Tente novamente mais tarde"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const operators = useMemo(() => {
     if (!productionData || productionData.length === 0) return fallbackOperators;
@@ -71,9 +107,23 @@ export function OperatorsTable() {
             <h3 className="text-lg font-semibold text-foreground">Top Operadores</h3>
             <p className="text-sm text-muted-foreground">Produção por operadora</p>
           </div>
-          <button className="p-2 rounded-lg hover:bg-secondary/50 transition-colors">
-            <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 rounded-lg hover:bg-secondary/50 transition-colors">
+                <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => refetch()} disabled={isLoading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Atualizar dados
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={verifyWithAI} disabled={isVerifying}>
+                <Zap className={`w-4 h-4 mr-2 ${isVerifying ? 'animate-pulse' : ''}`} />
+                Verificar com IA
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
