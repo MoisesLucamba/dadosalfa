@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,26 +10,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { 
-  Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, 
-  RefreshCw, Send, Eye, Edit, Trash2, Shield, Clock, TrendingUp
-} from "lucide-react";
+import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail } from "lucide-react";
 import { useIsAdmin, useAllUsers, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest } from "@/hooks/useAdmin";
-import { useProductionData, usePriceData, useExportData, useAddProductionData, useAddPriceData, useAddExportData, useDeleteProductionData, useDeletePriceData, useDeleteExportData, useLogDataUpdate } from "@/hooks/useData";
+import { useProductionData, usePriceData, useExportData, useAddProductionData, useAddPriceData, useAddExportData, useDeleteProductionData, useDeletePriceData, useDeleteExportData, useUpdateProductionData, useUpdatePriceData, useUpdateExportData, useLogDataUpdate } from "@/hooks/useData";
+import { useRiskData, useRiskAlerts, useCountryRisk, useRegulatoryEvents, useAddRiskData, useAddRiskAlert, useAddCountryRisk, useAddRegulatoryEvent, useDeleteRiskData, useDeleteRiskAlert, useDeleteCountryRisk, useDeleteRegulatoryEvent, useUpdateRiskData, useUpdateRiskAlert } from "@/hooks/useRiskData";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 const Admin = () => {
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: checkingAdmin } = useIsAdmin();
   
-  const { data: users, isLoading: loadingUsers } = useAllUsers();
-  const { data: requests, isLoading: loadingRequests } = useUserRequests();
+  const { data: users } = useAllUsers();
+  const { data: requests } = useUserRequests();
   const { data: dataUpdates } = useDataUpdates();
   const { data: productionData } = useProductionData();
   const { data: priceData } = usePriceData();
   const { data: exportData } = useExportData();
+  const { data: riskData } = useRiskData();
+  const { data: riskAlerts } = useRiskAlerts();
+  const { data: countryRisk } = useCountryRisk();
+  const { data: regulatoryEvents } = useRegulatoryEvents();
   
   const updateApproval = useUpdateUserApproval();
   const sendNotification = useSendNotification();
@@ -40,14 +42,31 @@ const Admin = () => {
   const deleteProduction = useDeleteProductionData();
   const deletePrice = useDeletePriceData();
   const deleteExport = useDeleteExportData();
+  const updateProduction = useUpdateProductionData();
+  const updatePrice = useUpdatePriceData();
+  const updateExport = useUpdateExportData();
   const logUpdate = useLogDataUpdate();
+  const addRisk = useAddRiskData();
+  const addRiskAlert = useAddRiskAlert();
+  const addCountry = useAddCountryRisk();
+  const addRegulatory = useAddRegulatoryEvent();
+  const deleteRisk = useDeleteRiskData();
+  const deleteRiskAlertMutation = useDeleteRiskAlert();
+  const deleteCountry = useDeleteCountryRisk();
+  const deleteRegulatory = useDeleteRegulatoryEvent();
   
   // Form states
-  const [notificationForm, setNotificationForm] = useState({ title: "", message: "", type: "info", isGlobal: true });
+  const [notificationForm, setNotificationForm] = useState({ title: "", message: "", type: "info", isGlobal: true, userId: "" });
   const [productionForm, setProductionForm] = useState({ operator: "", block: "", field: "", daily_production: "", monthly_production: "", decline_rate: "", data_date: new Date().toISOString().split("T")[0] });
   const [priceForm, setPriceForm] = useState({ crude_type: "", price: "", change_percent: "", data_date: new Date().toISOString().split("T")[0] });
   const [exportForm, setExportForm] = useState({ destination: "", volume: "", value_usd: "", tanker_name: "", status: "in_transit", data_date: new Date().toISOString().split("T")[0] });
+  const [riskForm, setRiskForm] = useState({ category: "", score: "", trend: "stable", description: "", source: "", data_date: new Date().toISOString().split("T")[0] });
+  const [alertForm, setAlertForm] = useState({ title: "", description: "", alert_type: "geopolitical", region: "", impact: "medium" });
+  const [countryForm, setCountryForm] = useState({ country: "", score: "", trend: "stable", data_date: new Date().toISOString().split("T")[0] });
+  const [regulatoryForm, setRegulatoryForm] = useState({ title: "", description: "", event_date: "", status: "upcoming", impact_level: "medium" });
   const [responseForm, setResponseForm] = useState({ requestId: "", response: "", status: "resolved" });
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editDialog, setEditDialog] = useState(false);
   
   useEffect(() => {
     if (!checkingAdmin && !isAdmin) {
@@ -72,8 +91,9 @@ const Admin = () => {
       message: notificationForm.message,
       type: notificationForm.type,
       isGlobal: notificationForm.isGlobal,
+      userId: notificationForm.isGlobal ? undefined : notificationForm.userId,
     });
-    setNotificationForm({ title: "", message: "", type: "info", isGlobal: true });
+    setNotificationForm({ title: "", message: "", type: "info", isGlobal: true, userId: "" });
   };
 
   const handleAddProduction = () => {
@@ -117,6 +137,43 @@ const Admin = () => {
     setExportForm({ destination: "", volume: "", value_usd: "", tanker_name: "", status: "in_transit", data_date: new Date().toISOString().split("T")[0] });
   };
 
+  const handleAddRisk = () => {
+    if (!riskForm.category || !riskForm.score) return;
+    addRisk.mutate({
+      category: riskForm.category,
+      score: parseInt(riskForm.score),
+      trend: riskForm.trend,
+      description: riskForm.description,
+      source: riskForm.source,
+      data_date: riskForm.data_date,
+    });
+    logUpdate.mutate({ data_type: "risk", source: "Admin Manual Entry", records_updated: 1 });
+    setRiskForm({ category: "", score: "", trend: "stable", description: "", source: "", data_date: new Date().toISOString().split("T")[0] });
+  };
+
+  const handleAddAlert = () => {
+    if (!alertForm.title || !alertForm.description) return;
+    addRiskAlert.mutate(alertForm);
+    setAlertForm({ title: "", description: "", alert_type: "geopolitical", region: "", impact: "medium" });
+  };
+
+  const handleAddCountry = () => {
+    if (!countryForm.country || !countryForm.score) return;
+    addCountry.mutate({
+      country: countryForm.country,
+      score: parseInt(countryForm.score),
+      trend: countryForm.trend,
+      data_date: countryForm.data_date,
+    });
+    setCountryForm({ country: "", score: "", trend: "stable", data_date: new Date().toISOString().split("T")[0] });
+  };
+
+  const handleAddRegulatory = () => {
+    if (!regulatoryForm.title) return;
+    addRegulatory.mutate(regulatoryForm);
+    setRegulatoryForm({ title: "", description: "", event_date: "", status: "upcoming", impact_level: "medium" });
+  };
+
   const handleRespondToRequest = () => {
     if (!responseForm.requestId || !responseForm.response) return;
     respondToRequest.mutate({
@@ -125,6 +182,16 @@ const Admin = () => {
       status: responseForm.status,
     });
     setResponseForm({ requestId: "", response: "", status: "resolved" });
+  };
+
+  const handleSendUserAlert = (userId: string, userName: string) => {
+    sendNotification.mutate({
+      userId,
+      title: "Alerta do Administrador",
+      message: `Prezado(a) ${userName}, o administrador enviou um alerta para sua conta.`,
+      type: "warning",
+      isGlobal: false,
+    });
   };
 
   return (
@@ -140,11 +207,11 @@ const Admin = () => {
               <Shield className="h-6 w-6 text-primary" />
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">Painel Administrativo</h1>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">Gerencie dados, usuários e notificações da plataforma AlphaData</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Gerencie dados, usuários, riscos e notificações da plataforma</p>
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <Card className="bg-card border-border">
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -174,25 +241,12 @@ const Admin = () => {
             <Card className="bg-card border-border">
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/20">
-                    <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground">{requests?.filter(r => r.status === "pending").length || 0}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Solicitações</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="p-2 rounded-lg bg-emerald-500/20">
                     <Database className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
                   </div>
                   <div>
                     <p className="text-lg sm:text-2xl font-bold text-foreground">{productionData?.length || 0}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Prod. Registros</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Produção</p>
                   </div>
                 </div>
               </CardContent>
@@ -205,7 +259,33 @@ const Admin = () => {
                   </div>
                   <div>
                     <p className="text-lg sm:text-2xl font-bold text-foreground">{priceData?.length || 0}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Preço Registros</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Preços</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 rounded-lg bg-red-500/20">
+                    <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{riskAlerts?.filter(a => a.is_active).length || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Alertas</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/20">
+                    <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{countryRisk?.length || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Países</p>
                   </div>
                 </div>
               </CardContent>
@@ -214,11 +294,14 @@ const Admin = () => {
 
           <Tabs defaultValue="users" className="space-y-4">
             <TabsList className="bg-muted/50 flex-wrap h-auto p-1">
-              <TabsTrigger value="users" className="text-xs sm:text-sm"><Users className="h-4 w-4 mr-1 sm:mr-2" />Usuários</TabsTrigger>
-              <TabsTrigger value="data" className="text-xs sm:text-sm"><Database className="h-4 w-4 mr-1 sm:mr-2" />Dados</TabsTrigger>
-              <TabsTrigger value="notifications" className="text-xs sm:text-sm"><Bell className="h-4 w-4 mr-1 sm:mr-2" />Notificações</TabsTrigger>
-              <TabsTrigger value="requests" className="text-xs sm:text-sm"><MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />Solicitações</TabsTrigger>
-              <TabsTrigger value="logs" className="text-xs sm:text-sm"><BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />Logs</TabsTrigger>
+              <TabsTrigger value="users" className="text-xs sm:text-sm"><Users className="h-4 w-4 mr-1" />Usuários</TabsTrigger>
+              <TabsTrigger value="production" className="text-xs sm:text-sm"><BarChart3 className="h-4 w-4 mr-1" />Produção</TabsTrigger>
+              <TabsTrigger value="prices" className="text-xs sm:text-sm"><TrendingUp className="h-4 w-4 mr-1" />Preços</TabsTrigger>
+              <TabsTrigger value="exports" className="text-xs sm:text-sm"><Globe className="h-4 w-4 mr-1" />Exportações</TabsTrigger>
+              <TabsTrigger value="risks" className="text-xs sm:text-sm"><AlertTriangle className="h-4 w-4 mr-1" />Riscos</TabsTrigger>
+              <TabsTrigger value="notifications" className="text-xs sm:text-sm"><Bell className="h-4 w-4 mr-1" />Notificações</TabsTrigger>
+              <TabsTrigger value="requests" className="text-xs sm:text-sm"><MessageSquare className="h-4 w-4 mr-1" />Solicitações</TabsTrigger>
+              <TabsTrigger value="logs" className="text-xs sm:text-sm"><Database className="h-4 w-4 mr-1" />Logs</TabsTrigger>
             </TabsList>
 
             {/* Users Tab */}
@@ -263,27 +346,22 @@ const Admin = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
-                                {!user.is_approved && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-8"
-                                    onClick={() => updateApproval.mutate({ userId: user.id, isApproved: true })}
-                                  >
+                              <div className="flex gap-1">
+                                {!user.is_approved ? (
+                                  <Button size="sm" variant="outline" className="h-8" onClick={() => updateApproval.mutate({ userId: user.id, isApproved: true })}>
                                     <Check className="h-4 w-4 text-emerald-400" />
                                   </Button>
-                                )}
-                                {user.is_approved && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-8"
-                                    onClick={() => updateApproval.mutate({ userId: user.id, isApproved: false })}
-                                  >
+                                ) : (
+                                  <Button size="sm" variant="outline" className="h-8" onClick={() => updateApproval.mutate({ userId: user.id, isApproved: false })}>
                                     <X className="h-4 w-4 text-red-400" />
                                   </Button>
                                 )}
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => handleSendUserAlert(user.id, user.contact_name)}>
+                                  <Bell className="h-4 w-4 text-amber-400" />
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-8">
+                                  <Eye className="h-4 w-4 text-blue-400" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -295,206 +373,313 @@ const Admin = () => {
               </Card>
             </TabsContent>
 
-            {/* Data Tab */}
-            <TabsContent value="data">
-              <div className="space-y-4">
-                {/* Production Data */}
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Dados de Produção</CardTitle>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" className="bg-primary">
-                            <Plus className="h-4 w-4 mr-1" />Adicionar
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Adicionar Dados de Produção</DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <Input placeholder="Operadora" value={productionForm.operator} onChange={(e) => setProductionForm({...productionForm, operator: e.target.value})} />
-                            <Input placeholder="Bloco" value={productionForm.block} onChange={(e) => setProductionForm({...productionForm, block: e.target.value})} />
-                            <Input placeholder="Campo (opcional)" value={productionForm.field} onChange={(e) => setProductionForm({...productionForm, field: e.target.value})} />
-                            <Input type="number" placeholder="Produção Diária (bpd)" value={productionForm.daily_production} onChange={(e) => setProductionForm({...productionForm, daily_production: e.target.value})} />
-                            <Input type="number" placeholder="Produção Mensal (bbl)" value={productionForm.monthly_production} onChange={(e) => setProductionForm({...productionForm, monthly_production: e.target.value})} />
-                            <Input type="number" placeholder="Taxa de Declínio (%)" value={productionForm.decline_rate} onChange={(e) => setProductionForm({...productionForm, decline_rate: e.target.value})} />
-                            <Input type="date" value={productionForm.data_date} onChange={(e) => setProductionForm({...productionForm, data_date: e.target.value})} />
-                            <Button onClick={handleAddProduction} disabled={addProduction.isPending}>Salvar</Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto max-h-[300px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Operadora</TableHead>
-                            <TableHead>Bloco</TableHead>
-                            <TableHead>Prod. Diária</TableHead>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {productionData?.slice(0, 10).map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>{item.operator}</TableCell>
-                              <TableCell>{item.block}</TableCell>
-                              <TableCell>{Number(item.daily_production).toLocaleString()} bpd</TableCell>
-                              <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
-                              <TableCell>
+            {/* Production Tab */}
+            <TabsContent value="production">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Dados de Produção</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="bg-primary"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Adicionar Dados de Produção</DialogTitle></DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <Input placeholder="Operadora" value={productionForm.operator} onChange={(e) => setProductionForm({...productionForm, operator: e.target.value})} />
+                          <Input placeholder="Bloco" value={productionForm.block} onChange={(e) => setProductionForm({...productionForm, block: e.target.value})} />
+                          <Input placeholder="Campo (opcional)" value={productionForm.field} onChange={(e) => setProductionForm({...productionForm, field: e.target.value})} />
+                          <Input type="number" placeholder="Produção Diária (bpd)" value={productionForm.daily_production} onChange={(e) => setProductionForm({...productionForm, daily_production: e.target.value})} />
+                          <Input type="number" placeholder="Produção Mensal (bbl)" value={productionForm.monthly_production} onChange={(e) => setProductionForm({...productionForm, monthly_production: e.target.value})} />
+                          <Input type="date" value={productionForm.data_date} onChange={(e) => setProductionForm({...productionForm, data_date: e.target.value})} />
+                          <Button onClick={handleAddProduction} disabled={addProduction.isPending}>Salvar</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Operadora</TableHead>
+                          <TableHead>Bloco</TableHead>
+                          <TableHead>Prod. Diária</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productionData?.slice(0, 15).map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.operator}</TableCell>
+                            <TableCell>{item.block}</TableCell>
+                            <TableCell>{Number(item.daily_production).toLocaleString()} bpd</TableCell>
+                            <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
                                 <Button size="sm" variant="ghost" onClick={() => deleteProduction.mutate(item.id)}>
                                   <Trash2 className="h-4 w-4 text-red-400" />
                                 </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                {/* Price Data */}
+            {/* Prices Tab */}
+            <TabsContent value="prices">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Dados de Preço</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="bg-primary"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Adicionar Dados de Preço</DialogTitle></DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <Select value={priceForm.crude_type} onValueChange={(value) => setPriceForm({...priceForm, crude_type: value})}>
+                            <SelectTrigger><SelectValue placeholder="Tipo de Crude" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Brent">Brent</SelectItem>
+                              <SelectItem value="Cabinda">Cabinda</SelectItem>
+                              <SelectItem value="Girassol">Girassol</SelectItem>
+                              <SelectItem value="Dalia">Dalia</SelectItem>
+                              <SelectItem value="Nemba">Nemba</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input type="number" placeholder="Preço (USD)" value={priceForm.price} onChange={(e) => setPriceForm({...priceForm, price: e.target.value})} />
+                          <Input type="number" placeholder="Variação (%)" value={priceForm.change_percent} onChange={(e) => setPriceForm({...priceForm, change_percent: e.target.value})} />
+                          <Input type="date" value={priceForm.data_date} onChange={(e) => setPriceForm({...priceForm, data_date: e.target.value})} />
+                          <Button onClick={handleAddPrice} disabled={addPrice.isPending}>Salvar</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead>Variação</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {priceData?.slice(0, 15).map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.crude_type}</TableCell>
+                            <TableCell>${Number(item.price).toFixed(2)}</TableCell>
+                            <TableCell className={Number(item.change_percent) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                              {Number(item.change_percent) >= 0 ? "+" : ""}{Number(item.change_percent).toFixed(2)}%
+                            </TableCell>
+                            <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="ghost" onClick={() => deletePrice.mutate(item.id)}>
+                                <Trash2 className="h-4 w-4 text-red-400" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Exports Tab */}
+            <TabsContent value="exports">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Dados de Exportação</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="bg-primary"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Adicionar Dados de Exportação</DialogTitle></DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <Input placeholder="Destino" value={exportForm.destination} onChange={(e) => setExportForm({...exportForm, destination: e.target.value})} />
+                          <Input type="number" placeholder="Volume (bbl)" value={exportForm.volume} onChange={(e) => setExportForm({...exportForm, volume: e.target.value})} />
+                          <Input type="number" placeholder="Valor (USD)" value={exportForm.value_usd} onChange={(e) => setExportForm({...exportForm, value_usd: e.target.value})} />
+                          <Input placeholder="Nome do Navio" value={exportForm.tanker_name} onChange={(e) => setExportForm({...exportForm, tanker_name: e.target.value})} />
+                          <Select value={exportForm.status} onValueChange={(value) => setExportForm({...exportForm, status: value})}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="in_transit">Em Trânsito</SelectItem>
+                              <SelectItem value="delivered">Entregue</SelectItem>
+                              <SelectItem value="loading">Carregando</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input type="date" value={exportForm.data_date} onChange={(e) => setExportForm({...exportForm, data_date: e.target.value})} />
+                          <Button onClick={handleAddExport} disabled={addExport.isPending}>Salvar</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Destino</TableHead>
+                          <TableHead>Volume</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {exportData?.slice(0, 15).map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.destination}</TableCell>
+                            <TableCell>{Number(item.volume).toLocaleString()} bbl</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{item.status === "in_transit" ? "Em Trânsito" : item.status === "delivered" ? "Entregue" : "Carregando"}</Badge>
+                            </TableCell>
+                            <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="ghost" onClick={() => deleteExport.mutate(item.id)}>
+                                <Trash2 className="h-4 w-4 text-red-400" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Risks Tab */}
+            <TabsContent value="risks">
+              <div className="grid gap-4">
+                {/* Risk Data */}
                 <Card className="bg-card border-border">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Dados de Preço</CardTitle>
+                      <CardTitle className="text-lg">Índices de Risco</CardTitle>
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button size="sm" className="bg-primary">
-                            <Plus className="h-4 w-4 mr-1" />Adicionar
-                          </Button>
+                          <Button size="sm" className="bg-primary"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
                         </DialogTrigger>
                         <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Adicionar Dados de Preço</DialogTitle>
-                          </DialogHeader>
+                          <DialogHeader><DialogTitle>Adicionar Índice de Risco</DialogTitle></DialogHeader>
                           <div className="grid gap-4 py-4">
-                            <Select value={priceForm.crude_type} onValueChange={(value) => setPriceForm({...priceForm, crude_type: value})}>
-                              <SelectTrigger><SelectValue placeholder="Tipo de Crude" /></SelectTrigger>
+                            <Select value={riskForm.category} onValueChange={(value) => setRiskForm({...riskForm, category: value})}>
+                              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Brent">Brent</SelectItem>
-                                <SelectItem value="Cabinda">Cabinda</SelectItem>
-                                <SelectItem value="Girassol">Girassol</SelectItem>
-                                <SelectItem value="Dalia">Dalia</SelectItem>
-                                <SelectItem value="Nemba">Nemba</SelectItem>
+                                <SelectItem value="geopolitical">Geopolítico</SelectItem>
+                                <SelectItem value="regulatory">Regulatório</SelectItem>
+                                <SelectItem value="fiscal">Fiscal</SelectItem>
+                                <SelectItem value="operational">Operacional</SelectItem>
+                                <SelectItem value="currency">Cambial</SelectItem>
+                                <SelectItem value="environmental">Ambiental</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Input type="number" placeholder="Preço (USD)" value={priceForm.price} onChange={(e) => setPriceForm({...priceForm, price: e.target.value})} />
-                            <Input type="number" placeholder="Variação (%)" value={priceForm.change_percent} onChange={(e) => setPriceForm({...priceForm, change_percent: e.target.value})} />
-                            <Input type="date" value={priceForm.data_date} onChange={(e) => setPriceForm({...priceForm, data_date: e.target.value})} />
-                            <Button onClick={handleAddPrice} disabled={addPrice.isPending}>Salvar</Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto max-h-[300px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Preço</TableHead>
-                            <TableHead>Variação</TableHead>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {priceData?.slice(0, 10).map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>{item.crude_type}</TableCell>
-                              <TableCell>${Number(item.price).toFixed(2)}</TableCell>
-                              <TableCell className={Number(item.change_percent) >= 0 ? "text-emerald-400" : "text-red-400"}>
-                                {Number(item.change_percent) >= 0 ? "+" : ""}{Number(item.change_percent).toFixed(2)}%
-                              </TableCell>
-                              <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
-                              <TableCell>
-                                <Button size="sm" variant="ghost" onClick={() => deletePrice.mutate(item.id)}>
-                                  <Trash2 className="h-4 w-4 text-red-400" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Export Data */}
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Dados de Exportação</CardTitle>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" className="bg-primary">
-                            <Plus className="h-4 w-4 mr-1" />Adicionar
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Adicionar Dados de Exportação</DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <Input placeholder="Destino" value={exportForm.destination} onChange={(e) => setExportForm({...exportForm, destination: e.target.value})} />
-                            <Input type="number" placeholder="Volume (bbl)" value={exportForm.volume} onChange={(e) => setExportForm({...exportForm, volume: e.target.value})} />
-                            <Input type="number" placeholder="Valor (USD)" value={exportForm.value_usd} onChange={(e) => setExportForm({...exportForm, value_usd: e.target.value})} />
-                            <Input placeholder="Nome do Navio" value={exportForm.tanker_name} onChange={(e) => setExportForm({...exportForm, tanker_name: e.target.value})} />
-                            <Select value={exportForm.status} onValueChange={(value) => setExportForm({...exportForm, status: value})}>
+                            <Input type="number" placeholder="Score (0-100)" value={riskForm.score} onChange={(e) => setRiskForm({...riskForm, score: e.target.value})} />
+                            <Select value={riskForm.trend} onValueChange={(value) => setRiskForm({...riskForm, trend: value})}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="in_transit">Em Trânsito</SelectItem>
-                                <SelectItem value="delivered">Entregue</SelectItem>
-                                <SelectItem value="loading">Carregando</SelectItem>
+                                <SelectItem value="up">Subindo</SelectItem>
+                                <SelectItem value="down">Descendo</SelectItem>
+                                <SelectItem value="stable">Estável</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Input type="date" value={exportForm.data_date} onChange={(e) => setExportForm({...exportForm, data_date: e.target.value})} />
-                            <Button onClick={handleAddExport} disabled={addExport.isPending}>Salvar</Button>
+                            <Textarea placeholder="Descrição" value={riskForm.description} onChange={(e) => setRiskForm({...riskForm, description: e.target.value})} />
+                            <Input type="date" value={riskForm.data_date} onChange={(e) => setRiskForm({...riskForm, data_date: e.target.value})} />
+                            <Button onClick={handleAddRisk}>Salvar</Button>
                           </div>
                         </DialogContent>
                       </Dialog>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto max-h-[300px]">
+                    <div className="overflow-x-auto max-h-[250px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Destino</TableHead>
-                            <TableHead>Volume</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead>Score</TableHead>
+                            <TableHead>Tendência</TableHead>
                             <TableHead>Data</TableHead>
                             <TableHead>Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {exportData?.slice(0, 10).map((item) => (
+                          {riskData?.slice(0, 10).map((item) => (
                             <TableRow key={item.id}>
-                              <TableCell>{item.destination}</TableCell>
-                              <TableCell>{Number(item.volume).toLocaleString()} bbl</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="capitalize">
-                                  {item.status === "in_transit" ? "Em Trânsito" : item.status === "delivered" ? "Entregue" : "Carregando"}
-                                </Badge>
-                              </TableCell>
+                              <TableCell className="capitalize">{item.category}</TableCell>
+                              <TableCell><Badge className={item.score > 70 ? "bg-red-500/20 text-red-400" : item.score > 40 ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}>{item.score}/100</Badge></TableCell>
+                              <TableCell>{item.trend === "up" ? "↑" : item.trend === "down" ? "↓" : "→"}</TableCell>
                               <TableCell>{format(new Date(item.data_date), "dd/MM/yyyy")}</TableCell>
                               <TableCell>
-                                <Button size="sm" variant="ghost" onClick={() => deleteExport.mutate(item.id)}>
-                                  <Trash2 className="h-4 w-4 text-red-400" />
-                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => deleteRisk.mutate(item.id)}><Trash2 className="h-4 w-4 text-red-400" /></Button>
                               </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Risk Alerts */}
+                <Card className="bg-card border-border">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Alertas de Risco</CardTitle>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="bg-primary"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>Adicionar Alerta de Risco</DialogTitle></DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <Input placeholder="Título" value={alertForm.title} onChange={(e) => setAlertForm({...alertForm, title: e.target.value})} />
+                            <Textarea placeholder="Descrição" value={alertForm.description} onChange={(e) => setAlertForm({...alertForm, description: e.target.value})} />
+                            <Input placeholder="Região" value={alertForm.region} onChange={(e) => setAlertForm({...alertForm, region: e.target.value})} />
+                            <Select value={alertForm.impact} onValueChange={(value) => setAlertForm({...alertForm, impact: value})}>
+                              <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="high">Alto</SelectItem>
+                                <SelectItem value="medium">Médio</SelectItem>
+                                <SelectItem value="low">Baixo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button onClick={handleAddAlert}>Salvar</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {riskAlerts?.slice(0, 5).map((alert) => (
+                        <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                          <div>
+                            <p className="font-medium text-sm">{alert.title}</p>
+                            <p className="text-xs text-muted-foreground">{alert.region || "Global"} • {alert.impact}</p>
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => deleteRiskAlertMutation.mutate(alert.id)}><Trash2 className="h-4 w-4 text-red-400" /></Button>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -505,24 +690,12 @@ const Admin = () => {
             <TabsContent value="notifications">
               <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-primary" />
-                    Enviar Notificação
-                  </CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><Bell className="h-5 w-5 text-primary" />Enviar Notificação</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4">
-                    <Input 
-                      placeholder="Título da notificação" 
-                      value={notificationForm.title}
-                      onChange={(e) => setNotificationForm({...notificationForm, title: e.target.value})}
-                    />
-                    <Textarea 
-                      placeholder="Mensagem" 
-                      rows={4}
-                      value={notificationForm.message}
-                      onChange={(e) => setNotificationForm({...notificationForm, message: e.target.value})}
-                    />
+                    <Input placeholder="Título da notificação" value={notificationForm.title} onChange={(e) => setNotificationForm({...notificationForm, title: e.target.value})} />
+                    <Textarea placeholder="Mensagem" rows={4} value={notificationForm.message} onChange={(e) => setNotificationForm({...notificationForm, message: e.target.value})} />
                     <div className="grid grid-cols-2 gap-4">
                       <Select value={notificationForm.type} onValueChange={(value) => setNotificationForm({...notificationForm, type: value})}>
                         <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
@@ -541,13 +714,8 @@ const Admin = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button 
-                      onClick={handleSendNotification} 
-                      disabled={sendNotification.isPending}
-                      className="bg-primary"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Enviar Notificação
+                    <Button onClick={handleSendNotification} disabled={sendNotification.isPending} className="bg-primary">
+                      <Send className="h-4 w-4 mr-2" />Enviar Notificação
                     </Button>
                   </div>
                 </CardContent>
@@ -558,10 +726,7 @@ const Admin = () => {
             <TabsContent value="requests">
               <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    Solicitações dos Usuários
-                  </CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" />Solicitações dos Usuários</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -571,15 +736,9 @@ const Admin = () => {
                           <div>
                             <h4 className="font-medium text-foreground">{request.subject}</h4>
                             <p className="text-sm text-muted-foreground mt-1">{request.message}</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {format(new Date(request.created_at), "dd/MM/yyyy HH:mm")}
-                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">{format(new Date(request.created_at), "dd/MM/yyyy HH:mm")}</p>
                           </div>
-                          <Badge className={
-                            request.status === "pending" ? "bg-amber-500/20 text-amber-400" :
-                            request.status === "resolved" ? "bg-emerald-500/20 text-emerald-400" :
-                            "bg-blue-500/20 text-blue-400"
-                          }>
+                          <Badge className={request.status === "pending" ? "bg-amber-500/20 text-amber-400" : request.status === "resolved" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}>
                             {request.status === "pending" ? "Pendente" : request.status === "resolved" ? "Resolvido" : "Em Análise"}
                           </Badge>
                         </div>
@@ -590,26 +749,15 @@ const Admin = () => {
                         )}
                         {request.status === "pending" && (
                           <div className="mt-4 space-y-3">
-                            <Textarea 
-                              placeholder="Digite sua resposta..."
-                              value={responseForm.requestId === request.id ? responseForm.response : ""}
-                              onChange={(e) => setResponseForm({...responseForm, requestId: request.id, response: e.target.value})}
-                            />
-                            <Button 
-                              size="sm" 
-                              onClick={handleRespondToRequest}
-                              disabled={responseForm.requestId !== request.id || !responseForm.response}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Responder
+                            <Textarea placeholder="Digite sua resposta..." value={responseForm.requestId === request.id ? responseForm.response : ""} onChange={(e) => setResponseForm({...responseForm, requestId: request.id, response: e.target.value})} />
+                            <Button size="sm" onClick={handleRespondToRequest} disabled={responseForm.requestId !== request.id || !responseForm.response}>
+                              <Send className="h-4 w-4 mr-1" />Responder
                             </Button>
                           </div>
                         )}
                       </div>
                     ))}
-                    {(!requests || requests.length === 0) && (
-                      <p className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</p>
-                    )}
+                    {(!requests || requests.length === 0) && (<p className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</p>)}
                   </div>
                 </CardContent>
               </Card>
@@ -619,19 +767,14 @@ const Admin = () => {
             <TabsContent value="logs">
               <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    Log de Atualizações de Dados
-                  </CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><Database className="h-5 w-5 text-primary" />Log de Atualizações</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {dataUpdates?.map((update) => (
                       <div key={update.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/20">
-                            <Database className="h-4 w-4 text-primary" />
-                          </div>
+                          <div className="p-2 rounded-lg bg-primary/20"><Database className="h-4 w-4 text-primary" /></div>
                           <div>
                             <p className="font-medium text-foreground capitalize">{update.data_type}</p>
                             <p className="text-xs text-muted-foreground">{update.source}</p>
@@ -639,15 +782,11 @@ const Admin = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-foreground">{update.records_updated} registros</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(update.created_at), "dd/MM/yyyy HH:mm")}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(update.created_at), "dd/MM/yyyy HH:mm")}</p>
                         </div>
                       </div>
                     ))}
-                    {(!dataUpdates || dataUpdates.length === 0) && (
-                      <p className="text-center text-muted-foreground py-8">Nenhum log encontrado</p>
-                    )}
+                    {(!dataUpdates || dataUpdates.length === 0) && (<p className="text-center text-muted-foreground py-8">Nenhum log encontrado</p>)}
                   </div>
                 </CardContent>
               </Card>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -8,26 +9,130 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  Sun,
-  Moon,
-  Bell,
-  Mail,
-  Shield,
-  User,
-  Building2,
-  Key,
-  Smartphone,
-  Globe,
-  Download,
-  Trash2,
-} from "lucide-react";
+import { useUserProfile, useUpdateProfile, useUpdateNotificationSettings, useUserNotificationSettings, useChangePassword, useExportUserData, useDeleteAccount } from "@/hooks/useSettings";
+import { toast } from "sonner";
+import { Loader2, Sun, Moon, Bell, Shield, User, Building2, Key, Smartphone, Globe, Download, Trash2 } from "lucide-react";
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const { data: profile, isLoading: loadingProfile } = useUserProfile();
+  const { data: notificationSettings } = useUserNotificationSettings();
+  const updateProfile = useUpdateProfile();
+  const updateNotifications = useUpdateNotificationSettings();
+  const changePassword = useChangePassword();
+  const exportData = useExportUserData();
+  const deleteAccount = useDeleteAccount();
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    contact_name: "",
+    contact_phone: "",
+    contact_role: "",
+  });
+
+  // Company form state
+  const [companyForm, setCompanyForm] = useState({
+    company_name: "",
+    nif: "",
+    country: "",
+  });
+
+  // Password form state
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+
+  // Notification states
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [priceAlerts, setPriceAlerts] = useState(true);
+  const [weeklyReports, setWeeklyReports] = useState(false);
+  const [whatsappAlerts, setWhatsappAlerts] = useState(false);
+
+  // Load profile data into forms
+  useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        contact_name: profile.contact_name || "",
+        contact_phone: profile.contact_phone || "",
+        contact_role: profile.contact_role || "",
+      });
+      setCompanyForm({
+        company_name: profile.company_name || "",
+        nif: profile.nif || "",
+        country: profile.country || "",
+      });
+    }
+  }, [profile]);
+
+  // Load notification settings
+  useEffect(() => {
+    if (notificationSettings) {
+      const emailSetting = notificationSettings.find(s => s.alert_type === "email_alerts");
+      const priceSetting = notificationSettings.find(s => s.alert_type === "price_alerts");
+      const weeklySetting = notificationSettings.find(s => s.alert_type === "weekly_reports");
+      const whatsappSetting = notificationSettings.find(s => s.alert_type === "whatsapp_alerts");
+      
+      if (emailSetting) setEmailAlerts(emailSetting.is_enabled ?? true);
+      if (priceSetting) setPriceAlerts(priceSetting.is_enabled ?? true);
+      if (weeklySetting) setWeeklyReports(weeklySetting.is_enabled ?? false);
+      if (whatsappSetting) setWhatsappAlerts(whatsappSetting.is_enabled ?? false);
+    }
+  }, [notificationSettings]);
+
+  const handleSaveProfile = () => {
+    updateProfile.mutate(profileForm);
+  };
+
+  const handleSaveCompany = () => {
+    updateProfile.mutate(companyForm);
+  };
+
+  const handleNotificationChange = (alertType: string, isEnabled: boolean) => {
+    updateNotifications.mutate({ 
+      alertType, 
+      settings: { is_enabled: isEnabled } 
+    });
+  };
+
+  const handleChangePassword = () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    changePassword.mutate({ newPassword: passwordForm.newPassword }, {
+      onSuccess: () => {
+        setPasswordDialogOpen(false);
+        setPasswordForm({ newPassword: "", confirmPassword: "" });
+      }
+    });
+  };
+
+  const handleExportData = () => {
+    exportData.mutate();
+  };
+
+  const handleDeleteAccount = () => {
+    deleteAccount.mutate();
+  };
+
+  if (loadingProfile) {
+    return (
+      <div className="flex h-screen bg-background items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -111,7 +216,13 @@ const Settings = () => {
                           Receber notificações importantes por email
                         </p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={emailAlerts} 
+                        onCheckedChange={(checked) => {
+                          setEmailAlerts(checked);
+                          handleNotificationChange("email_alerts", checked);
+                        }}
+                      />
                     </div>
                     <Separator />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -121,7 +232,13 @@ const Settings = () => {
                           Notificar sobre mudanças significativas nos preços
                         </p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={priceAlerts} 
+                        onCheckedChange={(checked) => {
+                          setPriceAlerts(checked);
+                          handleNotificationChange("price_alerts", checked);
+                        }}
+                      />
                     </div>
                     <Separator />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -131,7 +248,13 @@ const Settings = () => {
                           Receber resumo semanal por email
                         </p>
                       </div>
-                      <Switch />
+                      <Switch 
+                        checked={weeklyReports} 
+                        onCheckedChange={(checked) => {
+                          setWeeklyReports(checked);
+                          handleNotificationChange("weekly_reports", checked);
+                        }}
+                      />
                     </div>
                     <Separator />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -141,7 +264,13 @@ const Settings = () => {
                           Receber alertas via WhatsApp
                         </p>
                       </div>
-                      <Switch />
+                      <Switch 
+                        checked={whatsappAlerts} 
+                        onCheckedChange={(checked) => {
+                          setWhatsappAlerts(checked);
+                          handleNotificationChange("whatsapp_alerts", checked);
+                        }}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -176,15 +305,41 @@ const Settings = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">Nome</Label>
-                          <Input id="name" placeholder="Seu nome" />
+                          <Input 
+                            id="name" 
+                            placeholder="Seu nome" 
+                            value={profileForm.contact_name}
+                            onChange={(e) => setProfileForm({ ...profileForm, contact_name: e.target.value })}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone">Telefone</Label>
-                          <Input id="phone" placeholder="+244 XXX XXX XXX" />
+                          <Input 
+                            id="phone" 
+                            placeholder="+244 XXX XXX XXX" 
+                            value={profileForm.contact_phone}
+                            onChange={(e) => setProfileForm({ ...profileForm, contact_phone: e.target.value })}
+                          />
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Cargo</Label>
+                        <Input 
+                          id="role" 
+                          placeholder="Seu cargo" 
+                          value={profileForm.contact_role}
+                          onChange={(e) => setProfileForm({ ...profileForm, contact_role: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <Button className="w-full sm:w-auto">Salvar Alterações</Button>
+                    <Button 
+                      className="w-full sm:w-auto" 
+                      onClick={handleSaveProfile}
+                      disabled={updateProfile.isPending}
+                    >
+                      {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Alterações
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -207,19 +362,41 @@ const Settings = () => {
                     <div className="grid gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="company">Nome da Empresa</Label>
-                        <Input id="company" placeholder="Nome da empresa" />
+                        <Input 
+                          id="company" 
+                          placeholder="Nome da empresa" 
+                          value={companyForm.company_name}
+                          onChange={(e) => setCompanyForm({ ...companyForm, company_name: e.target.value })}
+                        />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="nif">NIF</Label>
-                          <Input id="nif" placeholder="Número de Identificação Fiscal" />
+                          <Input 
+                            id="nif" 
+                            placeholder="Número de Identificação Fiscal" 
+                            value={companyForm.nif}
+                            onChange={(e) => setCompanyForm({ ...companyForm, nif: e.target.value })}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="country">País</Label>
-                          <Input id="country" defaultValue="Angola" />
+                          <Input 
+                            id="country" 
+                            value={companyForm.country}
+                            onChange={(e) => setCompanyForm({ ...companyForm, country: e.target.value })}
+                          />
                         </div>
                       </div>
                     </div>
+                    <Button 
+                      className="w-full sm:w-auto"
+                      onClick={handleSaveCompany}
+                      disabled={updateProfile.isPending}
+                    >
+                      {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Dados da Empresa
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -249,9 +426,48 @@ const Settings = () => {
                           Atualizar sua senha de acesso
                         </p>
                       </div>
-                      <Button variant="outline" size="sm">
-                        Alterar
-                      </Button>
+                      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">Alterar</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Alterar Senha</DialogTitle>
+                            <DialogDescription>
+                              Digite sua nova senha abaixo.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="newPassword">Nova Senha</Label>
+                              <Input 
+                                id="newPassword" 
+                                type="password" 
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                              <Input 
+                                id="confirmPassword" 
+                                type="password" 
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button 
+                              onClick={handleChangePassword}
+                              disabled={changePassword.isPending}
+                            >
+                              {changePassword.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Salvar
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     <Separator />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -264,8 +480,8 @@ const Settings = () => {
                           Adicionar camada extra de segurança
                         </p>
                       </div>
-                      <Button variant="outline" size="sm">
-                        Configurar
+                      <Button variant="outline" size="sm" disabled>
+                        Em breve
                       </Button>
                     </div>
                     <Separator />
@@ -279,8 +495,8 @@ const Settings = () => {
                           Ver e gerenciar dispositivos conectados
                         </p>
                       </div>
-                      <Button variant="outline" size="sm">
-                        Ver Sessões
+                      <Button variant="outline" size="sm" disabled>
+                        Em breve
                       </Button>
                     </div>
                   </CardContent>
@@ -306,11 +522,20 @@ const Settings = () => {
                       <div className="space-y-1">
                         <Label className="text-sm font-medium">Exportar Dados</Label>
                         <p className="text-xs md:text-sm text-muted-foreground">
-                          Baixar todos os seus dados em formato CSV
+                          Baixar todos os seus dados em formato JSON
                         </p>
                       </div>
-                      <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 mr-2" />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleExportData}
+                        disabled={exportData.isPending}
+                      >
+                        {exportData.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4 mr-2" />
+                        )}
                         Exportar
                       </Button>
                     </div>
@@ -325,9 +550,25 @@ const Settings = () => {
                           Remover permanentemente sua conta e dados
                         </p>
                       </div>
-                      <Button variant="destructive" size="sm">
-                        Excluir
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">Excluir</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isso excluirá permanentemente sua conta e removerá seus dados de nossos servidores.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAccount}>
+                              Excluir Conta
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>
