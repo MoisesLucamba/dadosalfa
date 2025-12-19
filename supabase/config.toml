@@ -2,3 +2,9 @@ project_id = "syzjmibbnjswagoonato"
 
 [functions.intelligent-search]
 verify_jwt = false
+
+[functions.fetch-oil-prices]
+verify_jwt = false
+
+[functions.verify-market-data]
+verify_jwt = false

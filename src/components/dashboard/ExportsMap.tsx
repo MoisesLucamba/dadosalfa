@@ -1,15 +1,23 @@
 import { motion } from "framer-motion";
-import { Ship, MapPin, Globe } from "lucide-react";
+import { Ship, MapPin, Globe, MoreHorizontal, Zap, RefreshCw } from "lucide-react";
 import { useExportData } from "@/hooks/useData";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const fallbackDestinations = [
   { country: "China", percentage: 62, volume: "28.5M bbl", color: "bg-primary" },
   { country: "Índia", percentage: 15, volume: "6.9M bbl", color: "bg-accent" },
-  { country: "Europa", percentage: 12, volume: "5.5M bbl", color: "bg-success" },
+  { country: "Europa", percentage: 12, volume: "5.5M bbl", color: "bg-[hsl(var(--success))]" },
   { country: "EUA", percentage: 8, volume: "3.7M bbl", color: "bg-purple-500" },
   { country: "Outros", percentage: 3, volume: "1.4M bbl", color: "bg-muted-foreground" },
 ];
@@ -32,14 +40,46 @@ function formatVolume(volume: number): string {
 }
 
 export function ExportsMap() {
-  const { data: exportData, isLoading } = useExportData();
+  const { data: exportData, isLoading, refetch } = useExportData();
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const verifyWithAI = async () => {
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-market-data", {
+        body: { type: "exports" }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.data?.exports) {
+        const exportInfo = data.data.exports
+          .slice(0, 3)
+          .map((e: any) => `${e.destination}: ${e.percentage}%`)
+          .join(", ");
+        
+        toast.success("Dados de exportação verificados", {
+          description: exportInfo
+        });
+      } else {
+        throw new Error(data?.error || "Falha na verificação");
+      }
+    } catch (error: any) {
+      console.error("Error verifying exports:", error);
+      toast.error("Erro ao verificar dados", {
+        description: error.message || "Tente novamente mais tarde"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const { destinations, totalVolume, currentPeriod } = useMemo(() => {
     if (!exportData || exportData.length === 0) {
       return {
         destinations: fallbackDestinations,
         totalVolume: 46000000,
-        currentPeriod: "Novembro 2024"
+        currentPeriod: "Dezembro 2024"
       };
     }
 
@@ -124,9 +164,28 @@ export function ExportsMap() {
           <h3 className="text-lg font-semibold text-foreground">Destinos de Exportação</h3>
           <p className="text-sm text-muted-foreground">{currentPeriod}</p>
         </div>
-        <div className="flex items-center gap-2 text-primary">
-          <Ship className="w-5 h-5" />
-          <span className="text-sm font-medium">{formatVolume(totalVolume)}</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-primary">
+            <Ship className="w-5 h-5" />
+            <span className="text-sm font-medium">{formatVolume(totalVolume)}</span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors">
+                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => refetch()} disabled={isLoading}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar dados
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={verifyWithAI} disabled={isVerifying}>
+                <Zap className={`w-4 h-4 mr-2 ${isVerifying ? 'animate-pulse' : ''}`} />
+                Verificar com IA
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

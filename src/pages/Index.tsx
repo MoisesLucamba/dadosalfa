@@ -7,14 +7,16 @@ import { ProductionChart } from "@/components/dashboard/ProductionChart";
 import { ExportsMap } from "@/components/dashboard/ExportsMap";
 import { AIInsights } from "@/components/dashboard/AIInsights";
 import { OperatorsTable } from "@/components/dashboard/OperatorsTable";
-import { BarChart3, DollarSign, Ship, Gauge, RefreshCw, AlertTriangle } from "lucide-react";
+import { BarChart3, DollarSign, Ship, Gauge, RefreshCw, AlertTriangle, Zap } from "lucide-react";
 import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,8 +24,43 @@ const Index = () => {
   const { data: priceData, isLoading: loadingPrice, refetch: refetchPrice } = usePriceData();
   const { data: exportData, isLoading: loadingExport, refetch: refetchExport } = useExportData();
   const { data: isAdmin } = useIsAdmin();
+  const [isSyncingPrices, setIsSyncingPrices] = useState(false);
 
   const isLoading = loadingProduction || loadingPrice || loadingExport;
+
+  // Fetch real-time prices from AI
+  const syncRealTimePrices = async () => {
+    setIsSyncingPrices(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-oil-prices", {
+        body: { action: "sync" }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Preços atualizados com sucesso!", {
+          description: data.data?.source || "Dados sincronizados com o mercado"
+        });
+        refetchPrice();
+      } else {
+        throw new Error(data?.error || "Falha ao sincronizar preços");
+      }
+    } catch (error: any) {
+      console.error("Error syncing prices:", error);
+      if (error.message?.includes("429") || error.message?.includes("Rate limit")) {
+        toast.error("Limite de requisições excedido", {
+          description: "Aguarde alguns minutos antes de tentar novamente"
+        });
+      } else {
+        toast.error("Erro ao atualizar preços", {
+          description: error.message || "Tente novamente mais tarde"
+        });
+      }
+    } finally {
+      setIsSyncingPrices(false);
+    }
+  };
 
   // Calculate KPIs from real data
   const kpis = useMemo(() => {
@@ -129,6 +166,7 @@ const Index = () => {
     refetchProduction();
     refetchPrice();
     refetchExport();
+    toast.success("Dados atualizados");
   };
 
   return (
@@ -150,21 +188,34 @@ const Index = () => {
           <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
             <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
               {/* Page Header */}
-              <div className="mb-4 md:mb-8 flex items-center justify-between">
+              <div className="mb-4 md:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard Principal</h1>
                   <p className="text-sm md:text-base text-muted-foreground">Visão geral do mercado petrolífero angolano</p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className="gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Atualizar</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={syncRealTimePrices}
+                    disabled={isSyncingPrices}
+                    className="gap-2"
+                  >
+                    <Zap className={`h-4 w-4 ${isSyncingPrices ? 'animate-pulse' : ''}`} />
+                    <span className="hidden sm:inline">{isSyncingPrices ? "Atualizando..." : "Preços em Tempo Real"}</span>
+                    <span className="sm:hidden">{isSyncingPrices ? "..." : "Preços"}</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleRefresh}
+                    disabled={isLoading}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Atualizar</span>
+                  </Button>
+                </div>
               </div>
 
               {/* No Data Alert */}
