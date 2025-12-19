@@ -40,16 +40,19 @@ export function Header({ activeItem = "/" }: HeaderProps) {
       <div className="flex items-center gap-2 md:gap-4">
         <MobileNav activeItem={activeItem} />
         
-        <div className="relative hidden sm:block">
+        <div 
+          className="relative hidden sm:block cursor-pointer"
+          onClick={() => navigate("/search")}
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Pesquisar blocos, operadores..."
-            className="w-48 md:w-80 h-9 md:h-10 pl-10 pr-4 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-          />
+          <div
+            className="w-48 md:w-80 h-9 md:h-10 pl-10 pr-4 bg-secondary/50 border border-border/50 rounded-lg text-sm text-muted-foreground flex items-center hover:border-primary/50 hover:bg-secondary/70 transition-all"
+          >
+            Pesquisar blocos, operadores...
+          </div>
         </div>
         
-        <Button variant="ghost" size="icon" className="sm:hidden">
+        <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => navigate("/search")}>
           <Search className="w-5 h-5 text-muted-foreground" />
         </Button>
       </div>
