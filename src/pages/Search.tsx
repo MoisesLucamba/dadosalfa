@@ -17,6 +17,8 @@ interface SearchResult {
   source: string;
   relevance?: number;
   data?: any;
+  url?: string;
+  date?: string;
 }
 
 const Search = () => {
@@ -49,6 +51,8 @@ const Search = () => {
       case "exports": return "bg-purple-500/20 text-purple-400 border-purple-500/30";
       case "reports": return "bg-amber-500/20 text-amber-400 border-amber-500/30";
       case "geopolitical": return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "infrastructure": return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30";
+      case "investment": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -60,6 +64,8 @@ const Search = () => {
       case "exports": return "Exportações";
       case "reports": return "Relatório";
       case "geopolitical": return "Geopolítico";
+      case "infrastructure": return "Infraestrutura";
+      case "investment": return "Investimento";
       default: return type;
     }
   };
@@ -125,7 +131,7 @@ const Search = () => {
               Pesquisa Inteligente
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground text-center mb-4 sm:mb-6">
-              Pesquise dados internos e informações em tempo real com IA
+              Pesquise dados internos e extraia informações em tempo real de Reuters, Bloomberg, OPEC e mais
             </p>
             
             <div className="relative">
@@ -229,12 +235,13 @@ const Search = () => {
                         <div
                           key={index}
                           className="p-3 sm:p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-all cursor-pointer group"
+                          onClick={() => result.url && window.open(result.url, '_blank')}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                                 <h4 className="font-medium text-sm text-foreground">{result.title}</h4>
-                                <div className="flex gap-1">
+                                <div className="flex flex-wrap gap-1">
                                   <Badge className={`text-[10px] w-fit ${getTypeColor(result.type)}`}>
                                     {getTypeLabel(result.type)}
                                   </Badge>
@@ -250,22 +257,41 @@ const Search = () => {
                                       IA
                                     </Badge>
                                   )}
+                                  {result.source && result.source !== 'database' && result.source !== 'ai_search' && (
+                                    <Badge variant="outline" className="text-[10px] w-fit bg-accent/20">
+                                      <Globe className="h-2 w-2 mr-1" />
+                                      {result.source}
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               <p className="text-xs text-muted-foreground">{result.description}</p>
-                              {result.relevance && (
-                                <div className="mt-2 flex items-center gap-1">
-                                  <span className="text-[10px] text-muted-foreground">Relevância:</span>
-                                  <div className="flex gap-0.5">
-                                    {[...Array(10)].map((_, i) => (
-                                      <div 
-                                        key={i} 
-                                        className={`w-1.5 h-1.5 rounded-full ${i < result.relevance! ? 'bg-primary' : 'bg-muted'}`} 
-                                      />
-                                    ))}
+                              <div className="mt-2 flex flex-wrap items-center gap-3">
+                                {result.date && (
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-2 w-2" />
+                                    {result.date}
+                                  </span>
+                                )}
+                                {result.relevance && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-muted-foreground">Relevância:</span>
+                                    <div className="flex gap-0.5">
+                                      {[...Array(10)].map((_, i) => (
+                                        <div 
+                                          key={i} 
+                                          className={`w-1.5 h-1.5 rounded-full ${i < result.relevance! ? 'bg-primary' : 'bg-muted'}`} 
+                                        />
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                                {result.url && (
+                                  <span className="text-[10px] text-primary hover:underline">
+                                    Ver fonte →
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                           </div>
