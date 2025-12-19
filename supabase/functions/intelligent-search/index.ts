@@ -98,34 +98,57 @@ serve(async (req) => {
       }
     }
 
-    // Now use AI to search and analyze web data
-    const systemPrompt = `Você é um assistente especializado no setor petrolífero de Angola. 
-Sua função é fornecer informações atualizadas sobre:
-- Produção de petróleo em Angola (operadores, blocos, campos)
-- Preços do Brent e crudes angolanos (Cabinda, Girassol, Dalia, Nemba)
-- Exportações de petróleo (destinos, volumes, navios)
-- Decisões da OPEP+ e impactos no mercado angolano
-- Notícias e eventos geopolíticos relevantes
+    // Now use AI to search and analyze web data with focus on real-time petroleum sources
+    const systemPrompt = `Você é um analista especializado no setor petrolífero com acesso a dados em tempo real.
+Sua função é pesquisar e extrair informações atualizadas de fontes especializadas como:
 
-Responda sempre em português de Portugal. Forneça dados específicos e atualizados quando possível.
-Estruture sua resposta em formato JSON com os seguintes campos para cada resultado:
-- title: título curto e informativo
-- description: descrição detalhada (máximo 2 frases)
-- type: categoria (production, prices, exports, reports, geopolitical)
-- relevance: pontuação de relevância de 1-10
-- source: fonte da informação (se conhecida)`;
+FONTES PRINCIPAIS:
+- Reuters Energy (reuters.com/business/energy) - notícias e preços
+- Bloomberg Energy (bloomberg.com/energy) - análises de mercado
+- OPEC (opec.org) - decisões de produção, quotas, relatórios mensais
+- Platts (spglobal.com/platts) - benchmarks de preços
+- Argus Media - preços de crudes africanos
+- Energy Intelligence - análises estratégicas
+- Sonangol (sonangol.co.ao) - produção angolana
+- ANPG Angola - licenciamento e blocos
 
-    const userPrompt = `Pesquisa sobre "${query}" no contexto do mercado petrolífero angolano.
-${searchType && searchType !== 'all' ? `Foco em: ${searchType}` : ''}
+DADOS QUE DEVE FORNECER:
+- Preços atualizados do Brent, WTI e crudes angolanos (Cabinda, Girassol, Dalia, Nemba, Pazflor)
+- Níveis de produção da OPEP e Angola
+- Decisões recentes da OPEP+ e impactos
+- Movimentação de navios tanque e exportações
+- Investimentos e novos projetos em Angola
+- Eventos geopolíticos que afetam o mercado
 
-Forneça até 5 resultados relevantes em formato JSON array. Cada resultado deve ter:
-{
-  "title": "...",
-  "description": "...",
-  "type": "production|prices|exports|reports|geopolitical",
-  "relevance": 1-10,
-  "source": "..."
-}
+FORMATO DE RESPOSTA:
+- Sempre em português de Portugal
+- Incluir data/período dos dados quando disponível
+- Citar a fonte específica
+- Fornecer números e estatísticas concretas`;
+
+    const userPrompt = `PESQUISA EM TEMPO REAL: "${query}"
+${searchType && searchType !== 'all' ? `FOCO: ${searchType}` : 'PESQUISA GERAL'}
+
+Busque informações atualizadas nas fontes especializadas (Reuters, Bloomberg, OPEC, Platts, etc.) sobre este tema no contexto do mercado petrolífero angolano e africano.
+
+Forneça até 8 resultados relevantes em formato JSON array:
+[
+  {
+    "title": "Título informativo com dados chave",
+    "description": "Descrição detalhada com números específicos, datas e contexto (2-3 frases)",
+    "type": "production|prices|exports|reports|geopolitical|infrastructure|investment",
+    "relevance": 1-10,
+    "source": "Nome da fonte (Reuters, Bloomberg, OPEC, etc.)",
+    "url": "URL aproximado da fonte se conhecido",
+    "date": "Data da informação se disponível"
+  }
+]
+
+IMPORTANTE: 
+- Inclua preços específicos (ex: Brent a $XX.XX/bbl)
+- Inclua volumes de produção (ex: X milhões bpd)
+- Mencione datas e períodos
+- Cite sempre a fonte
 
 Responda APENAS com o JSON array, sem texto adicional.`;
 
@@ -141,6 +164,7 @@ Responda APENAS com o JSON array, sem texto adicional.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
+        temperature: 0.3,
       }),
     });
 
