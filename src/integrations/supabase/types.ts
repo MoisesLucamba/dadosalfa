@@ -242,6 +242,125 @@ export type Database = {
         }
         Relationships: []
       }
+      report_downloads: {
+        Row: {
+          downloaded_at: string
+          id: string
+          report_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          report_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          report_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_downloads_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          ai_generated: boolean | null
+          content: Json | null
+          created_at: string
+          download_count: number | null
+          file_url: string | null
+          id: string
+          pages: number | null
+          period: string | null
+          status: string
+          summary: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          content?: Json | null
+          created_at?: string
+          download_count?: number | null
+          file_url?: string | null
+          id?: string
+          pages?: number | null
+          period?: string | null
+          status?: string
+          summary?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_generated?: boolean | null
+          content?: Json | null
+          created_at?: string
+          download_count?: number | null
+          file_url?: string | null
+          id?: string
+          pages?: number | null
+          period?: string | null
+          status?: string
+          summary?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          frequency: string
+          id: string
+          is_active: boolean | null
+          name: string
+          next_run: string | null
+          recipients: number | null
+          report_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          next_run?: string | null
+          recipients?: number | null
+          report_type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          next_run?: string | null
+          recipients?: number | null
+          report_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_alerts: {
         Row: {
           alert_type: string
