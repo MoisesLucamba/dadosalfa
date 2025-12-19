@@ -1,8 +1,10 @@
+import { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { KPICard } from "@/components/dashboard/KPICard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { 
   AlertTriangle, 
   Shield,
@@ -13,7 +15,11 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
-  MapPin
+  MapPin,
+  RefreshCw,
+  Loader2,
+  Clock,
+  Minus
 } from "lucide-react";
 import {
   RadarChart,
@@ -30,104 +36,188 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const riskRadarData = [
-  { category: "Geopolítico", value: 72, fullMark: 100 },
-  { category: "Regulatório", value: 45, fullMark: 100 },
-  { category: "Fiscal", value: 58, fullMark: 100 },
-  { category: "Operacional", value: 35, fullMark: 100 },
-  { category: "Cambial", value: 68, fullMark: 100 },
-  { category: "Ambiental", value: 42, fullMark: 100 },
-];
+interface RiskScore {
+  category: string;
+  score: number;
+  trend: string;
+  description: string;
+}
 
-const riskTrendData = [
-  { month: "Jun", geopolitico: 65, regulatorio: 48, fiscal: 52 },
-  { month: "Jul", geopolitico: 68, regulatorio: 45, fiscal: 55 },
-  { month: "Ago", geopolitico: 70, regulatorio: 42, fiscal: 58 },
-  { month: "Set", geopolitico: 72, regulatorio: 46, fiscal: 56 },
-  { month: "Out", geopolitico: 75, regulatorio: 44, fiscal: 60 },
-  { month: "Nov", geopolitico: 72, regulatorio: 45, fiscal: 58 },
-];
+interface RiskAlert {
+  id: string;
+  alert_type: string;
+  title: string;
+  description: string;
+  impact: string;
+  region: string;
+  created_at: string;
+}
 
-const riskAlerts = [
-  {
-    id: 1,
-    type: "critical",
-    title: "Tensões no Mar Vermelho",
-    description: "Ataques a navios-tanque aumentam custos de seguro e tempo de transporte para Europa.",
-    impact: "Alto",
-    region: "Médio Oriente",
-    date: "há 2 horas",
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "Revisão Fiscal em Discussão",
-    description: "Governo angolano considera alterações aos royalties do setor petrolífero.",
-    impact: "Médio",
-    region: "Angola",
-    date: "há 8 horas",
-  },
-  {
-    id: 3,
-    type: "warning",
-    title: "Volatilidade Cambial Kwanza",
-    description: "Desvalorização do Kwanza de 5% face ao USD impacta custos operacionais.",
-    impact: "Médio",
-    region: "Angola",
-    date: "há 1 dia",
-  },
-  {
-    id: 4,
-    type: "info",
-    title: "Nova Regulamentação Ambiental",
-    description: "UE propõe novas métricas de emissões para importação de crude.",
-    impact: "Baixo",
-    region: "Europa",
-    date: "há 2 dias",
-  },
-];
+interface CountryRisk {
+  country: string;
+  score: number;
+  trend: string;
+}
 
-const countryRiskData = [
-  { country: "Angola", score: 58, trend: "stable" },
-  { country: "Nigéria", score: 72, trend: "up" },
-  { country: "Líbia", score: 85, trend: "up" },
-  { country: "Argélia", score: 52, trend: "down" },
-  { country: "Guiné Eq.", score: 48, trend: "stable" },
-];
-
-const regulatoryTimeline = [
-  {
-    date: "Q1 2025",
-    title: "Revisão Lei Petrolífera",
-    status: "pending",
-    description: "Atualização da Lei das Actividades Petrolíferas",
-  },
-  {
-    date: "Q2 2025",
-    title: "Novas Quotas OPEP+",
-    status: "pending",
-    description: "Revisão das quotas de produção para membros africanos",
-  },
-  {
-    date: "2024",
-    title: "Regulamento Conteúdo Local",
-    status: "active",
-    description: "Requisitos de participação angolana em projetos",
-  },
-  {
-    date: "2023",
-    title: "Reforma Fiscal Upstream",
-    status: "completed",
-    description: "Alterações ao regime de tributação do setor",
-  },
-];
+interface RegulatoryEvent {
+  id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  status: string;
+  impact_level: string;
+}
 
 const Risk = () => {
+  const [riskScores, setRiskScores] = useState<RiskScore[]>([]);
+  const [alerts, setAlerts] = useState<RiskAlert[]>([]);
+  const [countryRisks, setCountryRisks] = useState<CountryRisk[]>([]);
+  const [regulatoryEvents, setRegulatoryEvents] = useState<RegulatoryEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const fetchRiskData = async () => {
+    setLoading(true);
+    try {
+      const [riskResult, alertsResult, countryResult, regulatoryResult] = await Promise.all([
+        supabase.from('risk_data').select('*').order('created_at', { ascending: false }),
+        supabase.from('risk_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+        supabase.from('country_risk').select('*').order('data_date', { ascending: false }),
+        supabase.from('regulatory_events').select('*').order('event_date', { ascending: true }),
+      ]);
+
+      if (riskResult.data?.length) {
+        // Get latest data for each category
+        const latestByCategory = riskResult.data.reduce((acc: Record<string, RiskScore>, item) => {
+          if (!acc[item.category]) {
+            acc[item.category] = {
+              category: getCategoryName(item.category),
+              score: item.score,
+              trend: item.trend,
+              description: item.description,
+            };
+          }
+          return acc;
+        }, {});
+        setRiskScores(Object.values(latestByCategory));
+        setLastUpdated(riskResult.data[0]?.updated_at);
+      }
+
+      if (alertsResult.data?.length) {
+        setAlerts(alertsResult.data);
+      }
+
+      if (countryResult.data?.length) {
+        // Get latest data for each country
+        const latestByCountry = countryResult.data.reduce((acc: Record<string, CountryRisk>, item) => {
+          if (!acc[item.country]) {
+            acc[item.country] = {
+              country: item.country,
+              score: item.score,
+              trend: item.trend,
+            };
+          }
+          return acc;
+        }, {});
+        setCountryRisks(Object.values(latestByCountry));
+      }
+
+      if (regulatoryResult.data?.length) {
+        setRegulatoryEvents(regulatoryResult.data);
+      }
+    } catch (error) {
+      console.error('Error fetching risk data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const analyzeRisks = async () => {
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-risks');
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Análise de riscos atualizada com sucesso!");
+        fetchRiskData();
+      } else {
+        throw new Error(data?.error || "Erro na análise");
+      }
+    } catch (error) {
+      console.error('Error analyzing risks:', error);
+      toast.error("Erro ao analisar riscos. Tente novamente.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRiskData();
+  }, []);
+
+  const getCategoryName = (category: string) => {
+    const names: Record<string, string> = {
+      geopolitical: "Geopolítico",
+      regulatory: "Regulatório",
+      fiscal: "Fiscal",
+      operational: "Operacional",
+      currency: "Cambial",
+      environmental: "Ambiental",
+    };
+    return names[category] || category;
+  };
+
   const getRiskColor = (value: number) => {
     if (value >= 70) return "hsl(var(--destructive))";
     if (value >= 50) return "hsl(var(--accent))";
     return "hsl(var(--success))";
+  };
+
+  const getImpactLabel = (impact: string) => {
+    const labels: Record<string, string> = {
+      high: "Alto",
+      medium: "Médio",
+      low: "Baixo",
+    };
+    return labels[impact] || impact;
+  };
+
+  // Calculate global risk index
+  const globalRiskIndex = useMemo(() => {
+    if (riskScores.length === 0) return 0;
+    const weights: Record<string, number> = {
+      "Geopolítico": 0.25,
+      "Regulatório": 0.2,
+      "Fiscal": 0.2,
+      "Operacional": 0.15,
+      "Cambial": 0.1,
+      "Ambiental": 0.1,
+    };
+    const total = riskScores.reduce((sum, r) => sum + (r.score * (weights[r.category] || 0.15)), 0);
+    return Math.round(total);
+  }, [riskScores]);
+
+  // Radar chart data
+  const radarData = riskScores.map(r => ({
+    category: r.category,
+    value: r.score,
+    fullMark: 100,
+  }));
+
+  // Time since last update
+  const formatTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    if (hours > 24) return `há ${Math.floor(hours / 24)} dias`;
+    if (hours > 0) return `há ${hours} hora${hours > 1 ? 's' : ''}`;
+    return `há ${minutes} min`;
   };
 
   return (
@@ -152,48 +242,138 @@ const Risk = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-8 flex items-start justify-between flex-wrap gap-4"
               >
-                <h1 className="text-2xl font-bold text-foreground">Risco & Geopolítica</h1>
-                <p className="text-muted-foreground">Monitorização de riscos regulatórios, fiscais e geopolíticos</p>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Risco & Geopolítica</h1>
+                  <p className="text-muted-foreground">Monitorização de riscos regulatórios, fiscais e geopolíticos</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {lastUpdated && (
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      Atualizado {formatTimeAgo(lastUpdated)}
+                    </span>
+                  )}
+                  <Button
+                    onClick={analyzeRisks}
+                    disabled={analyzing}
+                    className="gap-2"
+                  >
+                    {analyzing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {analyzing ? "Analisando..." : "Atualizar Riscos"}
+                  </Button>
+                </div>
               </motion.div>
 
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard
-                  title="Índice de Risco Global"
-                  value="58/100"
-                  change={3}
-                  changeLabel="vs. mês anterior"
-                  icon={<AlertTriangle className="w-5 h-5" />}
-                  variant="accent"
-                  delay={0}
-                />
-                <KPICard
-                  title="Risco Geopolítico"
-                  value="72/100"
-                  change={5}
-                  changeLabel="elevado"
-                  icon={<Globe className="w-5 h-5" />}
-                  delay={0.05}
-                />
-                <KPICard
-                  title="Risco Regulatório"
-                  value="45/100"
-                  change={-2}
-                  changeLabel="moderado"
-                  icon={<Scale className="w-5 h-5" />}
-                  variant="primary"
-                  delay={0.1}
-                />
-                <KPICard
-                  title="Alertas Ativos"
-                  value="4"
-                  change={1}
-                  changeLabel="novo hoje"
-                  icon={<AlertCircle className="w-5 h-5" />}
-                  delay={0.15}
-                />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-xl border border-accent/50 p-4 card-gradient"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-accent/10">
+                      <AlertTriangle className="w-5 h-5 text-accent" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">Índice de Risco Global</span>
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-8 w-20" />
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-foreground">{globalRiskIndex}/100</div>
+                      <span className={`text-xs ${globalRiskIndex >= 60 ? 'text-destructive' : globalRiskIndex >= 40 ? 'text-accent' : 'text-success'}`}>
+                        {globalRiskIndex >= 60 ? 'Elevado' : globalRiskIndex >= 40 ? 'Moderado' : 'Baixo'}
+                      </span>
+                    </>
+                  )}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="rounded-xl border border-border/50 p-4 card-gradient"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Globe className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">Risco Geopolítico</span>
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-8 w-20" />
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-foreground">
+                        {riskScores.find(r => r.category === 'Geopolítico')?.score || 0}/100
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        {riskScores.find(r => r.category === 'Geopolítico')?.trend === 'up' && <TrendingUp className="w-3 h-3 text-destructive" />}
+                        {riskScores.find(r => r.category === 'Geopolítico')?.trend === 'down' && <TrendingDown className="w-3 h-3 text-success" />}
+                        {riskScores.find(r => r.category === 'Geopolítico')?.trend === 'stable' && <Minus className="w-3 h-3 text-muted-foreground" />}
+                        <span className="text-muted-foreground">
+                          {riskScores.find(r => r.category === 'Geopolítico')?.trend === 'up' ? 'A subir' : 
+                           riskScores.find(r => r.category === 'Geopolítico')?.trend === 'down' ? 'A descer' : 'Estável'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="rounded-xl border border-primary/50 p-4 card-gradient"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Scale className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">Risco Regulatório</span>
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-8 w-20" />
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-foreground">
+                        {riskScores.find(r => r.category === 'Regulatório')?.score || 0}/100
+                      </div>
+                      <span className="text-xs text-muted-foreground">Moderado</span>
+                    </>
+                  )}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="rounded-xl border border-border/50 p-4 card-gradient"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-destructive/10">
+                      <AlertCircle className="w-5 h-5 text-destructive" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">Alertas Ativos</span>
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-8 w-10" />
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-foreground">{alerts.length}</div>
+                      <span className="text-xs text-muted-foreground">
+                        {alerts.filter(a => a.alert_type === 'critical').length} críticos
+                      </span>
+                    </>
+                  )}
+                </motion.div>
               </div>
 
               {/* Risk Radar & Alerts */}
@@ -213,22 +393,46 @@ const Risk = () => {
                     <Shield className="w-5 h-5 text-primary" />
                   </div>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart data={riskRadarData}>
-                        <PolarGrid stroke="hsl(var(--border))" />
-                        <PolarAngleAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                        <Radar
-                          name="Risco"
-                          dataKey="value"
-                          stroke="hsl(var(--primary))"
-                          fill="hsl(var(--primary))"
-                          fillOpacity={0.3}
-                          strokeWidth={2}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                      <Skeleton className="w-full h-full" />
+                    ) : radarData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={radarData}>
+                          <PolarGrid stroke="hsl(var(--border))" />
+                          <PolarAngleAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                          <Radar
+                            name="Risco"
+                            dataKey="value"
+                            stroke="hsl(var(--primary))"
+                            fill="hsl(var(--primary))"
+                            fillOpacity={0.3}
+                            strokeWidth={2}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <Shield className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                          <p>Clique em "Atualizar Riscos" para gerar análise</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  {/* Risk descriptions */}
+                  {riskScores.length > 0 && (
+                    <div className="mt-4 space-y-2 text-xs">
+                      {riskScores.slice(0, 3).map((r, i) => (
+                        <div key={i} className="flex items-start gap-2 text-muted-foreground">
+                          <span className={`font-medium ${r.score >= 70 ? 'text-destructive' : r.score >= 50 ? 'text-accent' : 'text-success'}`}>
+                            {r.category}:
+                          </span>
+                          <span className="line-clamp-1">{r.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
 
                 {/* Active Alerts */}
@@ -243,46 +447,59 @@ const Risk = () => {
                       <h3 className="text-lg font-semibold text-foreground">Alertas Activos</h3>
                       <p className="text-sm text-muted-foreground">Eventos de risco recentes</p>
                     </div>
-                    <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-destructive/20 text-destructive">
-                      4 alertas
-                    </span>
+                    {alerts.length > 0 && (
+                      <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-destructive/20 text-destructive">
+                        {alerts.length} alertas
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
-                    {riskAlerts.map((alert, index) => (
-                      <motion.div
-                        key={alert.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 + index * 0.05 }}
-                        className="p-3 rounded-lg bg-secondary/30 border border-border/30"
-                      >
-                        <div className="flex items-start gap-3">
-                          {alert.type === 'critical' && <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />}
-                          {alert.type === 'warning' && <AlertCircle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />}
-                          {alert.type === 'info' && <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-sm font-medium text-foreground truncate">{alert.title}</h4>
-                              <span className={`px-1.5 py-0.5 text-xs rounded ${
-                                alert.impact === 'Alto' ? 'bg-destructive/20 text-destructive' :
-                                alert.impact === 'Médio' ? 'bg-accent/20 text-accent' :
-                                'bg-muted text-muted-foreground'
-                              }`}>
-                                {alert.impact}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-1">{alert.description}</p>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {alert.region}
-                              </span>
-                              <span>{alert.date}</span>
+                    {loading ? (
+                      [...Array(4)].map((_, i) => (
+                        <Skeleton key={i} className="h-20 rounded-lg" />
+                      ))
+                    ) : alerts.length > 0 ? (
+                      alerts.map((alert, index) => (
+                        <motion.div
+                          key={alert.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 + index * 0.05 }}
+                          className="p-3 rounded-lg bg-secondary/30 border border-border/30"
+                        >
+                          <div className="flex items-start gap-3">
+                            {alert.alert_type === 'critical' && <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />}
+                            {alert.alert_type === 'warning' && <AlertCircle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />}
+                            {alert.alert_type === 'info' && <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className="text-sm font-medium text-foreground truncate">{alert.title}</h4>
+                                <span className={`px-1.5 py-0.5 text-xs rounded ${
+                                  alert.impact === 'high' ? 'bg-destructive/20 text-destructive' :
+                                  alert.impact === 'medium' ? 'bg-accent/20 text-accent' :
+                                  'bg-muted text-muted-foreground'
+                                }`}>
+                                  {getImpactLabel(alert.impact)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-1">{alert.description}</p>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {alert.region}
+                                </span>
+                                <span>{formatTimeAgo(alert.created_at)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum alerta ativo</p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               </div>
@@ -304,25 +521,33 @@ const Risk = () => {
                     <Globe className="w-5 h-5 text-accent" />
                   </div>
                   <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={countryRiskData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                        <XAxis type="number" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis dataKey="country" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                        />
-                        <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                          {countryRiskData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={getRiskColor(entry.score)} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                      <Skeleton className="w-full h-full" />
+                    ) : countryRisks.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={countryRisks} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                          <XAxis type="number" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <YAxis dataKey="country" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={100} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--card))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                            }}
+                          />
+                          <Bar dataKey="score" radius={[0, 4, 4, 0]}>
+                            {countryRisks.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={getRiskColor(entry.score)} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <p>Sem dados disponíveis</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-center gap-4 mt-4 text-xs">
                     <div className="flex items-center gap-1">
@@ -354,85 +579,106 @@ const Risk = () => {
                     </div>
                     <Scale className="w-5 h-5 text-primary" />
                   </div>
-                  <div className="space-y-4">
-                    {regulatoryTimeline.map((event, index) => (
+                  <div className="space-y-4 max-h-64 overflow-y-auto">
+                    {loading ? (
+                      [...Array(4)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 rounded-lg" />
+                      ))
+                    ) : regulatoryEvents.length > 0 ? (
+                      regulatoryEvents.map((event, index) => (
+                        <motion.div
+                          key={event.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.4 + index * 0.05 }}
+                          className="flex gap-4"
+                        >
+                          <div className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full ${
+                              event.status === 'completed' ? 'bg-success' :
+                              event.status === 'active' ? 'bg-primary' : 'bg-muted-foreground'
+                            }`} />
+                            {index < regulatoryEvents.length - 1 && (
+                              <div className="w-0.5 h-full bg-border mt-1" />
+                            )}
+                          </div>
+                          <div className="flex-1 pb-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">{event.event_date}</span>
+                              {event.status === 'completed' && <CheckCircle className="w-3 h-3 text-success" />}
+                              {event.impact_level === 'high' && (
+                                <span className="px-1.5 py-0.5 text-xs rounded bg-destructive/20 text-destructive">
+                                  Alto impacto
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-medium text-foreground mb-1">{event.title}</h4>
+                            <p className="text-xs text-muted-foreground">{event.description}</p>
+                          </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Scale className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum evento regulatório</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Risk Trend Info */}
+              {riskScores.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="rounded-xl border border-border/50 p-6 card-gradient"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Resumo de Riscos</h3>
+                      <p className="text-sm text-muted-foreground">Análise detalhada por categoria</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {riskScores.map((risk, index) => (
                       <motion.div
                         key={index}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 + index * 0.05 }}
-                        className="flex gap-4"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.45 + index * 0.05 }}
+                        className="p-4 rounded-lg bg-secondary/30 border border-border/30"
                       >
-                        <div className="flex flex-col items-center">
-                          <div className={`w-3 h-3 rounded-full ${
-                            event.status === 'completed' ? 'bg-success' :
-                            event.status === 'active' ? 'bg-primary' : 'bg-muted-foreground'
-                          }`} />
-                          {index < regulatoryTimeline.length - 1 && (
-                            <div className="w-0.5 h-full bg-border mt-1" />
-                          )}
-                        </div>
-                        <div className="flex-1 pb-4">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium text-muted-foreground">{event.date}</span>
-                            {event.status === 'completed' && <CheckCircle className="w-3 h-3 text-success" />}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-foreground">{risk.category}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-lg font-bold ${
+                              risk.score >= 70 ? 'text-destructive' :
+                              risk.score >= 50 ? 'text-accent' : 'text-success'
+                            }`}>
+                              {risk.score}
+                            </span>
+                            {risk.trend === 'up' && <TrendingUp className="w-4 h-4 text-destructive" />}
+                            {risk.trend === 'down' && <TrendingDown className="w-4 h-4 text-success" />}
+                            {risk.trend === 'stable' && <Minus className="w-4 h-4 text-muted-foreground" />}
                           </div>
-                          <h4 className="text-sm font-medium text-foreground mb-1">{event.title}</h4>
-                          <p className="text-xs text-muted-foreground">{event.description}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{risk.description}</p>
+                        <div className="mt-2 h-1.5 bg-background rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${risk.score}%`,
+                              backgroundColor: getRiskColor(risk.score),
+                            }}
+                          />
                         </div>
                       </motion.div>
                     ))}
                   </div>
                 </motion.div>
-              </div>
-
-              {/* Risk Trend Chart */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="rounded-xl border border-border/50 p-6 card-gradient"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Evolução de Riscos</h3>
-                    <p className="text-sm text-muted-foreground">Tendência dos últimos 6 meses</p>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-destructive" />
-                      <span className="text-muted-foreground">Geopolítico</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-primary" />
-                      <span className="text-muted-foreground">Regulatório</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-accent" />
-                      <span className="text-muted-foreground">Fiscal</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={riskTrendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={[0, 100]} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Bar dataKey="geopolitico" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="regulatorio" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="fiscal" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </motion.div>
+              )}
             </div>
           </main>
         </div>

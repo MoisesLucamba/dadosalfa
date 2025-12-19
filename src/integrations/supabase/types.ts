@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      country_risk: {
+        Row: {
+          country: string
+          created_at: string
+          data_date: string
+          id: string
+          score: number
+          trend: string | null
+          updated_at: string
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          data_date?: string
+          id?: string
+          score: number
+          trend?: string | null
+          updated_at?: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          data_date?: string
+          id?: string
+          score?: number
+          trend?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_updates: {
         Row: {
           created_at: string
@@ -242,6 +272,39 @@ export type Database = {
         }
         Relationships: []
       }
+      regulatory_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string | null
+          id: string
+          impact_level: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          impact_level?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          impact_level?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_downloads: {
         Row: {
           downloaded_at: string
@@ -319,6 +382,78 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      risk_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          description: string
+          id: string
+          impact: string | null
+          is_active: boolean | null
+          region: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          description: string
+          id?: string
+          impact?: string | null
+          is_active?: boolean | null
+          region?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          impact?: string | null
+          is_active?: boolean | null
+          region?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      risk_data: {
+        Row: {
+          category: string
+          created_at: string
+          data_date: string
+          description: string | null
+          id: string
+          score: number
+          source: string | null
+          trend: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          data_date?: string
+          description?: string | null
+          id?: string
+          score: number
+          source?: string | null
+          trend?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          data_date?: string
+          description?: string | null
+          id?: string
+          score?: number
+          source?: string | null
+          trend?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
