@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.verify-market-data]
 verify_jwt = false
+
+[functions.ai-predictions]
+verify_jwt = false
