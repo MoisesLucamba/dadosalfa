@@ -38,6 +38,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 
 interface RiskScore {
   category: string;
@@ -501,8 +502,17 @@ const Risk = () => {
                       </div>
                     )}
                   </div>
-                </motion.div>
+              </motion.div>
               </div>
+
+              {/* Risk History Chart */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.28 }}
+              >
+                <RiskHistoryChart />
+              </motion.div>
 
               {/* Country Risk & Regulatory Timeline */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
