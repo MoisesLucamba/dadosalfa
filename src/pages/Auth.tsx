@@ -368,14 +368,19 @@ export default function Auth() {
             </div>
           </motion.div>
 
-          <motion.p 
-            className="text-sm text-muted-foreground"
+          <motion.div 
+            className="space-y-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.6 }}
           >
-            © 2024 AlphaData. Todos os direitos reservados.
-          </motion.p>
+            <p className="text-lg font-medium text-foreground italic">
+              "O tempo é o nosso ativo mais valioso"
+            </p>
+            <p className="text-sm text-muted-foreground">
+              © 2024 AlphaData. Todos os direitos reservados.
+            </p>
+          </motion.div>
         </div>
       </div>
 
