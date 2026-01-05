@@ -39,6 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
+import { GeopoliticalForecast } from "@/components/dashboard/GeopoliticalForecast";
 
 interface RiskScore {
   category: string;
@@ -72,11 +73,22 @@ interface RegulatoryEvent {
   impact_level: string;
 }
 
+interface GeopoliticalForecastData {
+  region: string;
+  situation: string;
+  impact_on_oil: string;
+  prediction_30d: string;
+  prediction_90d: string;
+  risk_level: string;
+  key_indicators: string[];
+}
+
 const Risk = () => {
   const [riskScores, setRiskScores] = useState<RiskScore[]>([]);
   const [alerts, setAlerts] = useState<RiskAlert[]>([]);
   const [countryRisks, setCountryRisks] = useState<CountryRisk[]>([]);
   const [regulatoryEvents, setRegulatoryEvents] = useState<RegulatoryEvent[]>([]);
+  const [geopoliticalForecasts, setGeopoliticalForecasts] = useState<GeopoliticalForecastData[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -146,6 +158,10 @@ const Risk = () => {
 
       if (data?.success) {
         toast.success("Análise de riscos atualizada com sucesso!");
+        // Store geopolitical forecasts from the response
+        if (data.analysis?.geopolitical_forecast) {
+          setGeopoliticalForecasts(data.analysis.geopolitical_forecast);
+        }
         fetchRiskData();
       } else {
         throw new Error(data?.error || "Erro na análise");
@@ -504,6 +520,15 @@ const Risk = () => {
                   </div>
               </motion.div>
               </div>
+
+              {/* Geopolitical Forecast - NEW SECTION */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.27 }}
+              >
+                <GeopoliticalForecast forecasts={geopoliticalForecasts} loading={loading && geopoliticalForecasts.length === 0} />
+              </motion.div>
 
               {/* Risk History Chart */}
               <motion.div
