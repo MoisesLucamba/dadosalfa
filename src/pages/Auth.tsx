@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,7 +253,16 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background flex overflow-hidden relative">
-      {/* Language Selector - Fixed Top Right */}
+      {/* Top Bar - Home Link & Language Selector */}
+      <div className="fixed top-4 left-4 z-50">
+        <Link 
+          to="/landing" 
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-card transition-all"
+        >
+          <Home className="h-4 w-4" />
+          <span className="text-sm font-medium">{t('common.back')}</span>
+        </Link>
+      </div>
       <div className="fixed top-4 right-4 z-50">
         <LanguageSelector />
       </div>
