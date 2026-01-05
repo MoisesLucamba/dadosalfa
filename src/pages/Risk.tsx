@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { GeopoliticalForecast } from "@/components/dashboard/GeopoliticalForecast";
+import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
 
 interface RiskScore {
   category: string;
@@ -537,6 +538,15 @@ const Risk = () => {
                 transition={{ duration: 0.5, delay: 0.28 }}
               >
                 <RiskHistoryChart />
+              </motion.div>
+
+              {/* Regulatory Impact Simulator - NEW */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.29 }}
+              >
+                <RegulatoryImpactSimulator />
               </motion.div>
 
               {/* Country Risk & Regulatory Timeline */}
