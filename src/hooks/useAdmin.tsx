@@ -27,6 +27,29 @@ export function useIsAdmin() {
   });
 }
 
+export function useIsSuperAdmin() {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["isSuperAdmin", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      
+      const { data, error } = await supabase.rpc("is_super_admin", {
+        _user_id: user.id,
+      });
+      
+      if (error) {
+        console.error("Error checking super admin role:", error);
+        return false;
+      }
+      
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+}
+
 export function useAllUsers() {
   return useQuery({
     queryKey: ["allUsers"],
@@ -38,6 +61,36 @@ export function useAllUsers() {
       
       if (error) throw error;
       return profiles;
+    },
+  });
+}
+
+export function useAllUsersWithEmail() {
+  return useQuery({
+    queryKey: ["allUsersWithEmail"],
+    queryFn: async () => {
+      // Get profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (profilesError) throw profilesError;
+
+      // Get user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
+      
+      if (rolesError) throw rolesError;
+
+      // Combine data
+      return profiles?.map(profile => ({
+        ...profile,
+        roles: roles?.filter(r => r.user_id === profile.id) || [],
+        isAdmin: roles?.some(r => r.user_id === profile.id && r.role === 'admin') || false,
+        isSuperAdmin: roles?.some(r => r.user_id === profile.id && r.role === 'admin' && r.is_super_admin) || false,
+      })) || [];
     },
   });
 }
@@ -179,6 +232,52 @@ export function useRespondToRequest() {
     },
     onError: (error) => {
       toast.error("Erro ao enviar resposta: " + error.message);
+    },
+  });
+}
+
+export function usePromoteToAdmin() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { data, error } = await supabase.rpc("promote_to_admin", {
+        _target_user_id: targetUserId,
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allUsersWithEmail"] });
+      queryClient.invalidateQueries({ queryKey: ["userRoles"] });
+      toast.success("Utilizador promovido a admin com sucesso");
+    },
+    onError: (error) => {
+      toast.error("Erro ao promover utilizador: " + error.message);
+    },
+  });
+}
+
+export function useDemoteFromAdmin() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { data, error } = await supabase.rpc("demote_from_admin", {
+        _target_user_id: targetUserId,
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allUsersWithEmail"] });
+      queryClient.invalidateQueries({ queryKey: ["userRoles"] });
+      toast.success("Utilizador removido de admin com sucesso");
+    },
+    onError: (error) => {
+      toast.error("Erro ao remover admin: " + error.message);
     },
   });
 }

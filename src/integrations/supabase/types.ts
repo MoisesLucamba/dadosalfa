@@ -574,16 +574,19 @@ export type Database = {
       user_roles: {
         Row: {
           id: string
+          is_super_admin: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           id?: string
+          is_super_admin?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           id?: string
+          is_super_admin?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -594,6 +597,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      demote_from_admin: { Args: { _target_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -601,6 +605,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      promote_to_admin: { Args: { _target_user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "analista" | "viewer"

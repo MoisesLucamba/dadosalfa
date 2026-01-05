@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail } from "lucide-react";
-import { useIsAdmin, useAllUsers, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest } from "@/hooks/useAdmin";
+import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail, Crown, UserCog } from "lucide-react";
+import { useIsAdmin, useIsSuperAdmin, useAllUsers, useAllUsersWithEmail, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest, usePromoteToAdmin, useDemoteFromAdmin } from "@/hooks/useAdmin";
 import { useProductionData, usePriceData, useExportData, useAddProductionData, useAddPriceData, useAddExportData, useDeleteProductionData, useDeletePriceData, useDeleteExportData, useUpdateProductionData, useUpdatePriceData, useUpdateExportData, useLogDataUpdate } from "@/hooks/useData";
 import { useRiskData, useRiskAlerts, useCountryRisk, useRegulatoryEvents, useAddRiskData, useAddRiskAlert, useAddCountryRisk, useAddRegulatoryEvent, useDeleteRiskData, useDeleteRiskAlert, useDeleteCountryRisk, useDeleteRegulatoryEvent, useUpdateRiskData, useUpdateRiskAlert } from "@/hooks/useRiskData";
 import { useNavigate } from "react-router-dom";
@@ -21,8 +21,10 @@ import { toast } from "sonner";
 const Admin = () => {
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: checkingAdmin } = useIsAdmin();
+  const { data: isSuperAdmin } = useIsSuperAdmin();
   
   const { data: users } = useAllUsers();
+  const { data: usersWithRoles } = useAllUsersWithEmail();
   const { data: requests } = useUserRequests();
   const { data: dataUpdates } = useDataUpdates();
   const { data: productionData } = useProductionData();
@@ -36,6 +38,8 @@ const Admin = () => {
   const updateApproval = useUpdateUserApproval();
   const sendNotification = useSendNotification();
   const respondToRequest = useRespondToRequest();
+  const promoteToAdmin = usePromoteToAdmin();
+  const demoteFromAdmin = useDemoteFromAdmin();
   const addProduction = useAddProductionData();
   const addPrice = useAddPriceData();
   const addExport = useAddExportData();
@@ -295,6 +299,9 @@ const Admin = () => {
           <Tabs defaultValue="users" className="space-y-4">
             <TabsList className="bg-muted/50 flex-wrap h-auto p-1">
               <TabsTrigger value="users" className="text-xs sm:text-sm"><Users className="h-4 w-4 mr-1" />Usuários</TabsTrigger>
+              {isSuperAdmin && (
+                <TabsTrigger value="admins" className="text-xs sm:text-sm"><Crown className="h-4 w-4 mr-1" />Administradores</TabsTrigger>
+              )}
               <TabsTrigger value="production" className="text-xs sm:text-sm"><BarChart3 className="h-4 w-4 mr-1" />Produção</TabsTrigger>
               <TabsTrigger value="prices" className="text-xs sm:text-sm"><TrendingUp className="h-4 w-4 mr-1" />Preços</TabsTrigger>
               <TabsTrigger value="exports" className="text-xs sm:text-sm"><Globe className="h-4 w-4 mr-1" />Exportações</TabsTrigger>
@@ -372,6 +379,104 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Admins Tab - Only visible to Super Admins */}
+            {isSuperAdmin && (
+              <TabsContent value="admins">
+                <Card className="bg-card border-border">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Crown className="h-5 w-5 text-amber-400" />
+                      Gestão de Administradores
+                      <Badge className="bg-amber-500/20 text-amber-400 ml-2">Super Admin</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Como Super Admin, pode promover ou remover privilégios de administrador de outros utilizadores.
+                    </p>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Empresa</TableHead>
+                            <TableHead>Contato</TableHead>
+                            <TableHead>Função</TableHead>
+                            <TableHead>Status Admin</TableHead>
+                            <TableHead>Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {usersWithRoles?.map((user) => (
+                            <TableRow key={user.id}>
+                              <TableCell className="font-medium">{user.company_name}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="text-sm">{user.contact_name}</p>
+                                  <p className="text-xs text-muted-foreground">{user.contact_role}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize">{user.company_type}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {user.isSuperAdmin ? (
+                                  <Badge className="bg-amber-500/20 text-amber-400">
+                                    <Crown className="h-3 w-3 mr-1" />
+                                    Super Admin
+                                  </Badge>
+                                ) : user.isAdmin ? (
+                                  <Badge className="bg-primary/20 text-primary">
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    Admin
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    Usuário
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {user.isSuperAdmin ? (
+                                    <Badge className="bg-muted text-muted-foreground">
+                                      Protegido
+                                    </Badge>
+                                  ) : user.isAdmin ? (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 text-red-400 hover:text-red-500"
+                                      onClick={() => demoteFromAdmin.mutate(user.id)}
+                                      disabled={demoteFromAdmin.isPending}
+                                    >
+                                      <X className="h-4 w-4 mr-1" />
+                                      Remover Admin
+                                    </Button>
+                                  ) : (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 text-primary hover:text-primary/80"
+                                      onClick={() => promoteToAdmin.mutate(user.id)}
+                                      disabled={promoteToAdmin.isPending}
+                                    >
+                                      <Shield className="h-4 w-4 mr-1" />
+                                      Promover a Admin
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             {/* Production Tab */}
             <TabsContent value="production">
