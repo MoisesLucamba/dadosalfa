@@ -45,30 +45,45 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'system',
-            content: `Você é um analista sénior de riscos geopolíticos especializado no setor petrolífero africano, com foco em Angola.
+            content: `Você é um analista sénior de inteligência geopolítica especializado no setor petrolífero global, com foco especial em África e Angola.
 
-Sua tarefa é analisar os riscos atuais e gerar uma avaliação completa incluindo:
-- Riscos geopolíticos globais e regionais que afetam o setor
-- Riscos regulatórios em Angola e na OPEP+
-- Riscos fiscais e cambiais
-- Riscos operacionais e ambientais
-- Alertas ativos baseados em eventos reais
-- Comparação de riscos entre países produtores africanos
-- Timeline regulatório previsto
+CONHECIMENTO OBRIGATÓRIO - Analise eventos REAIS e ACTUAIS:
 
-IMPORTANTE: Baseie suas análises em conhecimento real sobre:
-- Situação atual do Mar Vermelho e impacto no transporte
-- Decisões OPEP+ sobre cotas
-- Políticas fiscais angolanas
-- Volatilidade do Kwanza vs USD
-- Regulamentações ambientais europeias
-- Tensões geopolíticas globais
+🇻🇪 VENEZUELA & EUA:
+- Sanções americanas sobre petróleo venezuelano e impacto no mercado
+- Tensões políticas entre Washington e Caracas
+- Potencial retorno de petróleo venezuelano ao mercado global
+- Impacto nas quotas OPEP+ e preços regionais
+- Migração forçada e instabilidade regional na América Latina
 
-Retorne APENAS um JSON válido, sem markdown.`
+🌍 MÉDIO ORIENTE:
+- Conflito Israel-Gaza-Líbano e escalada regional
+- Tensões Irão-Israel e risco de guerra aberta
+- Ataques Houthi no Mar Vermelho afetando navegação
+- Instabilidade na Síria após queda de Assad
+- Posição da Arábia Saudita e Emirados no conflito
+- Impacto no estreito de Ormuz e rotas de transporte
+
+🇳🇬 NIGÉRIA - CRISE ACTIVA:
+- Violência sectária e étnica no norte (Kaduna, Plateau, Benue)
+- Ataques de grupos armados e banditismo
+- Sequestros massivos e insegurança geral
+- Impacto na produção petrolífera do Delta do Níger
+- Roubo de petróleo e vandalismo de oleodutos
+- Instabilidade política e económica
+- Mortes civis e deslocados internos
+
+🛢️ OUTROS FATORES:
+- Decisões OPEP+ sobre cortes de produção
+- Transição energética e pressão europeia
+- Volatilidade cambial em países produtores
+- China como principal comprador de crude africano
+
+RETORNE previsões ESPECÍFICAS sobre estes eventos com datas e projecções.`
           },
           {
             role: 'user',
@@ -79,10 +94,10 @@ CONTEXTO DO MERCADO ANGOLANO:
 - Operadoras activas: ${contextData.operators.join(', ') || 'TotalEnergies, BP, Chevron, ExxonMobil, Eni'}
 - Destinos exportação: ${contextData.exportDestinations.join(', ') || 'China, Europa, Índia, EUA'}
 
-Gere um JSON com esta estrutura exata:
+Gere um JSON com análise DETALHADA dos eventos actuais:
 {
   "risk_scores": {
-    "geopolitical": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação"},
+    "geopolitical": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação DETALHADA"},
     "regulatory": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação"},
     "fiscal": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação"},
     "operational": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação"},
@@ -90,25 +105,38 @@ Gere um JSON com esta estrutura exata:
     "environmental": {"score": número 0-100, "trend": "up"/"down"/"stable", "description": "explicação"}
   },
   "global_risk_index": número 0-100,
+  "geopolitical_forecast": [
+    {
+      "region": "Venezuela/EUA" ou "Médio Oriente" ou "Nigéria" ou "OPEP+" ou "Angola",
+      "situation": "descrição detalhada da situação actual (50-100 palavras)",
+      "impact_on_oil": "impacto específico no mercado petrolífero",
+      "prediction_30d": "previsão para próximos 30 dias",
+      "prediction_90d": "previsão para próximos 90 dias",
+      "risk_level": "critical"/"high"/"medium"/"low",
+      "key_indicators": ["indicador 1", "indicador 2", "indicador 3"]
+    }
+  ],
   "alerts": [
     {
       "type": "critical"/"warning"/"info",
-      "title": "título curto",
-      "description": "descrição detalhada",
+      "title": "título curto mas informativo",
+      "description": "descrição detalhada do evento e impacto",
       "impact": "high"/"medium"/"low",
-      "region": "região afetada"
+      "region": "região afetada",
+      "source_event": "evento específico que gerou o alerta"
     }
   ],
   "country_risks": [
     {"country": "Angola", "score": número, "trend": "up"/"down"/"stable"},
     {"country": "Nigéria", "score": número, "trend": "up"/"down"/"stable"},
+    {"country": "Venezuela", "score": número, "trend": "up"/"down"/"stable"},
     {"country": "Líbia", "score": número, "trend": "up"/"down"/"stable"},
-    {"country": "Argélia", "score": número, "trend": "up"/"down"/"stable"},
-    {"country": "Guiné Equatorial", "score": número, "trend": "up"/"down"/"stable"}
+    {"country": "Irão", "score": número, "trend": "up"/"down"/"stable"},
+    {"country": "Iraque", "score": número, "trend": "up"/"down"/"stable"}
   ],
   "regulatory_timeline": [
     {
-      "event_date": "Q1 2025",
+      "event_date": "data ou período",
       "title": "título",
       "description": "descrição",
       "status": "pending"/"active"/"completed",
@@ -116,14 +144,14 @@ Gere um JSON com esta estrutura exata:
     }
   ],
   "recommendations": [
-    "recomendação 1",
-    "recomendação 2"
+    "recomendação estratégica 1",
+    "recomendação estratégica 2",
+    "recomendação estratégica 3"
   ]
 }`
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2500,
+        max_tokens: 4000,
       }),
     });
 
@@ -250,60 +278,123 @@ Gere um JSON com esta estrutura exata:
 function generateFallbackRiskData() {
   return {
     risk_scores: {
-      geopolitical: { score: 72, trend: "up", description: "Tensões no Mar Vermelho elevam riscos de transporte" },
-      regulatory: { score: 45, trend: "stable", description: "Ambiente regulatório angolano estável" },
-      fiscal: { score: 58, trend: "up", description: "Discussões sobre alterações aos royalties" },
-      operational: { score: 35, trend: "down", description: "Operações estáveis nos principais blocos" },
-      currency: { score: 68, trend: "up", description: "Pressão sobre o Kwanza face ao USD" },
-      environmental: { score: 42, trend: "stable", description: "Cumprimento de normas ambientais" },
+      geopolitical: { score: 78, trend: "up", description: "Tensões elevadas: conflito Israel-Gaza, ataques Houthi no Mar Vermelho, e crise na Venezuela aumentam volatilidade global" },
+      regulatory: { score: 45, trend: "stable", description: "Ambiente regulatório angolano estável, mas OPEP+ pode rever quotas" },
+      fiscal: { score: 58, trend: "up", description: "Discussões sobre alterações aos royalties em Angola e pressão fiscal global" },
+      operational: { score: 42, trend: "stable", description: "Operações estáveis nos principais blocos angolanos" },
+      currency: { score: 68, trend: "up", description: "Pressão sobre o Kwanza e naira nigeriano face ao USD" },
+      environmental: { score: 45, trend: "stable", description: "Pressão europeia sobre emissões de carbono intensifica" },
     },
-    global_risk_index: 58,
+    global_risk_index: 65,
+    geopolitical_forecast: [
+      {
+        region: "Venezuela/EUA",
+        situation: "As tensões entre EUA e Venezuela continuam elevadas após sanções renovadas ao setor petrolífero. A administração americana mantém pressão sobre Maduro enquanto empresas americanas aguardam licenças para operar. A Venezuela busca aproximação com China e Rússia.",
+        impact_on_oil: "Potencial retorno de 500k-800k bpd ao mercado global pode pressionar preços para baixo",
+        prediction_30d: "Manutenção das sanções com negociações em curso para licenças específicas",
+        prediction_90d: "Possível flexibilização parcial das sanções se houver avanços democráticos",
+        risk_level: "high",
+        key_indicators: ["Eleições venezuelanas", "Licenças OFAC", "Produção PDVSA"]
+      },
+      {
+        region: "Médio Oriente",
+        situation: "Conflito Israel-Hamas estendeu-se ao Líbano e ameaça escalar para confronto direto com Irão. Ataques Houthi no Mar Vermelho forçam desvio de petroleiros pelo Cabo da Boa Esperança, aumentando custos e tempo de entrega para Europa.",
+        impact_on_oil: "Fretes marítimos subiram 200-300%. Prémio de risco geopolítico de $5-8/barril no Brent",
+        prediction_30d: "Continuação dos ataques Houthi. Cessar-fogo em Gaza improvável a curto prazo",
+        prediction_90d: "Risco elevado de escalada Irão-Israel. Estreito de Ormuz sob vigilância máxima",
+        risk_level: "critical",
+        key_indicators: ["Ataques no Mar Vermelho", "Negociações de cessar-fogo", "Movimentação naval iraniana"]
+      },
+      {
+        region: "Nigéria",
+        situation: "Violência extrema no norte da Nigéria com milhares de mortos em ataques sectários. Banditismo e sequestros generalizados. No Delta do Níger, roubo de petróleo atinge 400k bpd. Presidente Tinubu enfrenta crise de segurança sem precedentes.",
+        impact_on_oil: "Produção nigeriana reduzida em 15-20% face ao potencial. Investidores internacionais cautelosos",
+        prediction_30d: "Continuação da violência no norte. Governo sem capacidade de restaurar ordem",
+        prediction_90d: "Crise humanitária agravada. Possível retirada de operadoras de áreas onshore",
+        risk_level: "critical",
+        key_indicators: ["Ataques no norte", "Produção do Delta", "Segurança de oleodutos"]
+      },
+      {
+        region: "Angola",
+        situation: "Angola mantém estabilidade política e operacional. Produção estável em 1.1 MMBPD. Foco em atração de investimento estrangeiro e diversificação da base de exportação. Kwanza sob pressão cambial moderada.",
+        impact_on_oil: "Angola beneficia como alternativa estável aos produtores instáveis da região",
+        prediction_30d: "Estabilidade operacional mantida. Novos blocos em licitação",
+        prediction_90d: "Potencial aumento de investimento como 'safe haven' africano",
+        risk_level: "medium",
+        key_indicators: ["Produção SONANGOL", "Investimento IOCs", "Taxa de câmbio AOA/USD"]
+      },
+      {
+        region: "OPEP+",
+        situation: "OPEP+ mantém cortes de produção para sustentar preços. Arábia Saudita lidera com cortes voluntários adicionais. Tensões internas sobre quotas e capacidade de produção sobressalente.",
+        impact_on_oil: "Suporte aos preços no curto prazo. Risco de excesso de oferta em 2025 se cortes terminarem",
+        prediction_30d: "Manutenção dos cortes actuais na próxima reunião ministerial",
+        prediction_90d: "Revisão gradual dos cortes dependendo da demanda chinesa",
+        risk_level: "medium",
+        key_indicators: ["Reuniões OPEP+", "Produção saudita", "Demanda chinesa"]
+      }
+    ],
     alerts: [
       {
         type: "critical",
-        title: "Tensões no Mar Vermelho",
-        description: "Ataques a navios-tanque aumentam custos de seguro e tempo de transporte para Europa.",
+        title: "Crise Humanitária na Nigéria",
+        description: "Ataques violentos no norte da Nigéria causaram milhares de mortos nas últimas semanas. Instabilidade ameaça operações petrolíferas e afeta sentimento de mercado africano.",
         impact: "high",
-        region: "Médio Oriente"
+        region: "Nigéria",
+        source_event: "Violência sectária em Kaduna/Plateau"
+      },
+      {
+        type: "critical",
+        title: "Ataques Houthi no Mar Vermelho",
+        description: "Navios-tanque forçados a desviar pelo Cabo da Boa Esperança. Custos de transporte e seguro dispararam. Impacto directo em exportações para Europa.",
+        impact: "high",
+        region: "Médio Oriente",
+        source_event: "Campanha Houthi contra navegação"
       },
       {
         type: "warning",
-        title: "Revisão Fiscal em Discussão",
-        description: "Governo angolano considera alterações aos royalties do setor petrolífero.",
+        title: "Tensões Venezuela-EUA Escalam",
+        description: "Novas sanções americanas e retórica hostil de Caracas aumentam incerteza sobre retorno do crude venezuelano ao mercado.",
         impact: "medium",
-        region: "Angola"
+        region: "Venezuela",
+        source_event: "Disputa sobre eleições e sanções"
       },
       {
         type: "warning",
-        title: "Volatilidade Cambial",
-        description: "Desvalorização do Kwanza impacta custos operacionais.",
-        impact: "medium",
-        region: "Angola"
+        title: "Risco de Escalada Irão-Israel",
+        description: "Troca de ameaças directas e ataques proxy elevam risco de confronto que poderia fechar Estreito de Ormuz.",
+        impact: "high",
+        region: "Médio Oriente",
+        source_event: "Tensões Israel-Irão via Hezbollah"
       },
       {
         type: "info",
-        title: "Nova Regulamentação Ambiental UE",
-        description: "União Europeia propõe novas métricas de emissões para importação de crude.",
+        title: "Angola como Refúgio Seguro",
+        description: "Estabilidade angolana atrai investidores que fogem da turbulência nigeriana e líbia.",
         impact: "low",
-        region: "Europa"
+        region: "Angola",
+        source_event: "Reposicionamento de IOCs"
       }
     ],
     country_risks: [
-      { country: "Angola", score: 58, trend: "stable" },
-      { country: "Nigéria", score: 72, trend: "up" },
-      { country: "Líbia", score: 85, trend: "up" },
-      { country: "Argélia", score: 52, trend: "down" },
-      { country: "Guiné Equatorial", score: 48, trend: "stable" }
+      { country: "Angola", score: 52, trend: "stable" },
+      { country: "Nigéria", score: 85, trend: "up" },
+      { country: "Venezuela", score: 78, trend: "up" },
+      { country: "Líbia", score: 82, trend: "up" },
+      { country: "Irão", score: 88, trend: "up" },
+      { country: "Iraque", score: 65, trend: "stable" }
     ],
     regulatory_timeline: [
-      { event_date: "Q1 2025", title: "Revisão Lei Petrolífera", description: "Atualização da Lei das Actividades Petrolíferas", status: "pending", impact_level: "high" },
-      { event_date: "Q2 2025", title: "Novas Quotas OPEP+", description: "Revisão das quotas de produção para membros africanos", status: "pending", impact_level: "medium" },
-      { event_date: "2024", title: "Regulamento Conteúdo Local", description: "Requisitos de participação angolana em projetos", status: "active", impact_level: "medium" }
+      { event_date: "Q1 2025", title: "Reunião OPEP+ Viena", description: "Revisão de quotas de produção para primeiro semestre", status: "pending", impact_level: "high" },
+      { event_date: "Q1 2025", title: "Revisão Lei Petrolífera Angola", description: "Actualização da Lei das Actividades Petrolíferas", status: "pending", impact_level: "high" },
+      { event_date: "Q2 2025", title: "Regulamento Emissões UE", description: "Novas métricas de carbono para importação de crude", status: "pending", impact_level: "medium" },
+      { event_date: "2025", title: "Eleições Venezuela", description: "Processo eleitoral pode influenciar sanções", status: "pending", impact_level: "high" }
     ],
     recommendations: [
-      "Diversificar rotas de exportação para mitigar riscos de transporte",
-      "Monitorar desenvolvimentos fiscais e preparar cenários alternativos",
-      "Reforçar hedge cambial para proteger contra volatilidade do Kwanza"
+      "Monitorizar atentamente escalada no Médio Oriente e preparar planos de contingência para interrupção do Estreito de Ormuz",
+      "Diversificar rotas de exportação para reduzir dependência do canal de Suez/Mar Vermelho",
+      "Reforçar posição de Angola como destino estável de investimento face à instabilidade regional",
+      "Implementar cobertura de risco para volatilidade cambial AOA/USD",
+      "Preparar cenários para retorno de crude venezuelano ao mercado global"
     ]
   };
 }
