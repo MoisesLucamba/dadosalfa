@@ -29,7 +29,10 @@ import {
   Sparkles,
   ChevronRight,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Globe,
+  Zap,
+  MapPin
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { z } from "zod";
@@ -279,18 +282,42 @@ export default function Auth() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
-                <Sparkles className="h-4 w-4" />
-                Powered by AI
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
+                  <Sparkles className="h-4 w-4" />
+                  Powered by AI
+                </div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium">
+                  <Globe className="h-4 w-4" />
+                  Pan-African Coverage
+                </div>
               </div>
-              <h1 className="text-5xl font-bold text-foreground mb-6 leading-tight">
-                Market Intelligence
+              <h1 className="text-5xl font-bold text-foreground mb-4 leading-tight">
+                Africa's Premier
                 <br />
-                <span className="text-gradient-primary">para o Setor Petrolífero</span>
+                <span className="text-gradient-primary">Oil & Gas Intelligence</span>
               </h1>
-              <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
-                Plataforma de análise avançada com inteligência artificial para decisões estratégicas no mercado de petróleo angolano.
+              <p className="text-lg text-muted-foreground max-w-md leading-relaxed mb-4">
+                A plataforma líder de market intelligence para o setor petrolífero africano. Dados em tempo real de Angola, Nigéria, Argélia, Líbia, Egito e mais 20+ países produtores.
               </p>
+              
+              {/* African Countries Stats */}
+              <div className="flex items-center gap-6 mt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">25+</div>
+                  <div className="text-xs text-muted-foreground">Países Cobertos</div>
+                </div>
+                <div className="h-10 w-px bg-border" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-accent">7.5M</div>
+                  <div className="text-xs text-muted-foreground">Barris/Dia</div>
+                </div>
+                <div className="h-10 w-px bg-border" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-[hsl(var(--success))]">$200B+</div>
+                  <div className="text-xs text-muted-foreground">Volume Anual</div>
+                </div>
+              </div>
             </motion.div>
           </div>
 
@@ -300,35 +327,42 @@ export default function Auth() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
+            {/* African Focus Badge */}
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Principais Regiões Cobertas:</span>
+              <span className="text-sm text-muted-foreground">África Ocidental • OPEC Africa • Norte de África</span>
+            </div>
+            
             <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
               <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <BarChart3 className="h-7 w-7 text-primary" />
+                <Globe className="h-7 w-7 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">Dados em Tempo Real</h3>
-                <p className="text-sm text-muted-foreground">Produção, preços e exportações atualizados</p>
+                <h3 className="font-semibold text-foreground mb-1">Cobertura Pan-Africana</h3>
+                <p className="text-sm text-muted-foreground">Angola, Nigéria, Argélia, Líbia, Egito, Gabão e mais</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
             
             <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
               <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <TrendingUp className="h-7 w-7 text-accent" />
+                <Zap className="h-7 w-7 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">Análise Preditiva</h3>
-                <p className="text-sm text-muted-foreground">Previsões com machine learning avançado</p>
+                <h3 className="font-semibold text-foreground mb-1">Análise com IA Avançada</h3>
+                <p className="text-sm text-muted-foreground">Previsões de risco geopolítico e preços com ML</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-colors" />
             </div>
             
             <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
               <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-success/20 to-success/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Shield className="h-7 w-7 text-[hsl(var(--success))]" />
+                <BarChart3 className="h-7 w-7 text-[hsl(var(--success))]" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">Segurança Enterprise</h3>
-                <p className="text-sm text-muted-foreground">Encriptação e controlo de acessos avançado</p>
+                <h3 className="font-semibold text-foreground mb-1">Dados em Tempo Real</h3>
+                <p className="text-sm text-muted-foreground">Produção, exportações e preços atualizados diariamente</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-[hsl(var(--success))] transition-colors" />
             </div>
@@ -355,7 +389,7 @@ export default function Auth() {
         >
           <div className="lg:hidden mb-8 text-center">
             <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Market Intelligence Platform</p>
+            <p className="text-sm text-muted-foreground">Africa's Oil & Gas Intelligence Platform</p>
           </div>
 
           <div className="bg-card border border-border rounded-3xl p-8 shadow-[var(--shadow-elevated)]">
