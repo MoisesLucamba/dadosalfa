@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Loader2,
   Clock,
-  Minus
+  Minus,
+  FileDown
 } from "lucide-react";
 import {
   RadarChart,
@@ -41,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { GeopoliticalForecast } from "@/components/dashboard/GeopoliticalForecast";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
+import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
 interface RiskScore {
   category: string;
@@ -266,13 +268,37 @@ const Risk = () => {
                   <h1 className="text-2xl font-bold text-foreground">Risco & Geopolítica</h1>
                   <p className="text-muted-foreground">Monitorização de riscos regulatórios, fiscais e geopolíticos</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   {lastUpdated && (
                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       Atualizado {formatTimeAgo(lastUpdated)}
                     </span>
                   )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      try {
+                        generateRiskPDF({
+                          riskScores,
+                          alerts,
+                          countryRisks,
+                          geopoliticalForecasts,
+                          globalRiskIndex,
+                          lastUpdated: lastUpdated || undefined,
+                        });
+                        toast.success("PDF gerado com sucesso!");
+                      } catch (error) {
+                        console.error('Error generating PDF:', error);
+                        toast.error("Erro ao gerar PDF");
+                      }
+                    }}
+                    disabled={loading || riskScores.length === 0}
+                    className="gap-2"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Exportar PDF
+                  </Button>
                   <Button
                     onClick={analyzeRisks}
                     disabled={analyzing}
