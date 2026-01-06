@@ -17,3 +17,15 @@ verify_jwt = false
 
 [functions.analyze-risks]
 verify_jwt = false
+
+[functions.fetch-production-data]
+verify_jwt = false
+
+[functions.fetch-export-data]
+verify_jwt = false
+
+[functions.fetch-risk-data]
+verify_jwt = false
+
+[functions.sync-all-data]
+verify_jwt = false

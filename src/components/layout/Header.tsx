@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigate } from "react-router-dom";
 import { MobileNav } from "./MobileNav";
+import { DataSyncButton } from "@/components/dashboard/DataSyncButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +59,12 @@ export function Header({ activeItem = "/" }: HeaderProps) {
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Data Sync Button */}
+        <div className="hidden sm:block">
+          <DataSyncButton variant="compact" />
+        </div>
+        
         {/* Live Indicator */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-full">
           <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
