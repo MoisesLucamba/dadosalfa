@@ -149,6 +149,75 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          contact_email: string
+          contact_phone: string | null
+          country: string
+          created_at: string
+          email_domain: string
+          id: string
+          is_approved: boolean
+          name: string
+          nif: string
+          sector: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email: string
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          email_domain: string
+          id?: string
+          is_approved?: boolean
+          name: string
+          nif: string
+          sector: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          email_domain?: string
+          id?: string
+          is_approved?: boolean
+          name?: string
+          nif?: string
+          sector?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      predefined_companies: {
+        Row: {
+          country: string
+          created_at: string
+          email_domain: string
+          id: string
+          name: string
+          sector: string
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          email_domain: string
+          id?: string
+          name: string
+          sector: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          email_domain?: string
+          id?: string
+          name?: string
+          sector?: string
+        }
+        Relationships: []
+      }
       price_data: {
         Row: {
           change_percent: number | null
@@ -228,6 +297,7 @@ export type Database = {
         Row: {
           accepted_nda: boolean
           accepted_terms: boolean
+          account_type: string
           company_name: string
           company_type: Database["public"]["Enums"]["company_type"]
           contact_name: string
@@ -237,12 +307,15 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean
+          job_title: string | null
           nif: string
+          organization_id: string | null
           updated_at: string
         }
         Insert: {
           accepted_nda?: boolean
           accepted_terms?: boolean
+          account_type?: string
           company_name: string
           company_type: Database["public"]["Enums"]["company_type"]
           contact_name: string
@@ -252,12 +325,15 @@ export type Database = {
           created_at?: string
           id: string
           is_approved?: boolean
+          job_title?: string | null
           nif: string
+          organization_id?: string | null
           updated_at?: string
         }
         Update: {
           accepted_nda?: boolean
           accepted_terms?: boolean
+          account_type?: string
           company_name?: string
           company_type?: Database["public"]["Enums"]["company_type"]
           contact_name?: string
@@ -267,10 +343,20 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          job_title?: string | null
           nif?: string
+          organization_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regulatory_events: {
         Row: {
