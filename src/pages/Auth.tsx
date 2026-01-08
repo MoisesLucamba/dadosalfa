@@ -7,31 +7,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { 
   Eye, 
   EyeOff, 
-  Building2, 
   Mail, 
   Lock, 
-  User, 
-  Phone, 
-  Briefcase, 
-  FileText, 
   Shield,
   ArrowLeft,
   Sparkles,
   ChevronRight,
   BarChart3,
-  TrendingUp,
   Globe,
   Zap,
   MapPin
@@ -39,42 +25,21 @@ import {
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { z } from "zod";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { AccountTypeSelector } from "@/components/auth/AccountTypeSelector";
+import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
+import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
 
 const loginSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }),
   password: z.string().min(6, { message: "Password deve ter pelo menos 6 caracteres" }),
 });
 
-const signupSchema = z.object({
-  email: z.string().trim().email({ message: "Email corporativo inválido" }),
-  password: z.string().min(8, { message: "Password deve ter pelo menos 8 caracteres" }),
-  companyName: z.string().trim().min(2, { message: "Nome da empresa é obrigatório" }),
-  companyType: z.enum(["operadora", "banco", "trader", "consultora", "governo", "prestadora_servicos"], {
-    required_error: "Selecione o tipo de empresa",
-  }),
-  nif: z.string().trim().min(5, { message: "NIF inválido" }),
-  contactName: z.string().trim().min(2, { message: "Nome do responsável é obrigatório" }),
-  contactRole: z.string().trim().min(2, { message: "Cargo é obrigatório" }),
-  contactPhone: z.string().optional(),
-  acceptedTerms: z.literal(true, { errorMap: () => ({ message: "Deve aceitar os termos de uso" }) }),
-  acceptedNda: z.literal(true, { errorMap: () => ({ message: "Deve aceitar o NDA" }) }),
-});
-
 const forgotPasswordSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }),
 });
 
-type CompanyType = "operadora" | "banco" | "trader" | "consultora" | "governo" | "prestadora_servicos";
 type AuthView = "login" | "signup" | "forgot-password";
-
-const companyTypeLabels: Record<CompanyType, string> = {
-  operadora: "Operadora Petrolífera",
-  banco: "Banco / Instituição Financeira",
-  trader: "Trader de Petróleo",
-  consultora: "Consultora Estratégica",
-  governo: "Órgão Regulador / Governo",
-  prestadora_servicos: "Prestadora de Serviços",
-};
+type AccountType = "personal" | "organization";
 
 export default function Auth() {
   const navigate = useNavigate();
