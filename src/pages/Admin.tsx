@@ -10,13 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail, Crown, UserCog, Building2 } from "lucide-react";
+import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail, Crown, UserCog, Building2, Settings, Cog } from "lucide-react";
 import { useIsAdmin, useIsSuperAdmin, useAllUsers, useAllUsersWithEmail, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest, usePromoteToAdmin, useDemoteFromAdmin, usePendingOrganizations, useUpdateOrganizationApproval } from "@/hooks/useAdmin";
 import { useProductionData, usePriceData, useExportData, useAddProductionData, useAddPriceData, useAddExportData, useDeleteProductionData, useDeletePriceData, useDeleteExportData, useUpdateProductionData, useUpdatePriceData, useUpdateExportData, useLogDataUpdate } from "@/hooks/useData";
 import { useRiskData, useRiskAlerts, useCountryRisk, useRegulatoryEvents, useAddRiskData, useAddRiskAlert, useAddCountryRisk, useAddRegulatoryEvent, useDeleteRiskData, useDeleteRiskAlert, useDeleteCountryRisk, useDeleteRegulatoryEvent, useUpdateRiskData, useUpdateRiskAlert } from "@/hooks/useRiskData";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
+import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -313,6 +315,9 @@ const Admin = () => {
 
           <Tabs defaultValue="users" className="space-y-4">
             <TabsList className="bg-muted/50 flex-wrap h-auto p-1">
+              {isSuperAdmin && (
+                <TabsTrigger value="system" className="text-xs sm:text-sm"><Cog className="h-4 w-4 mr-1" />Sistema</TabsTrigger>
+              )}
               <TabsTrigger value="users" className="text-xs sm:text-sm"><Users className="h-4 w-4 mr-1" />Usuários</TabsTrigger>
               <TabsTrigger value="organizations" className="text-xs sm:text-sm"><Building2 className="h-4 w-4 mr-1" />Organizações</TabsTrigger>
               {isSuperAdmin && (
@@ -326,6 +331,13 @@ const Admin = () => {
               <TabsTrigger value="requests" className="text-xs sm:text-sm"><MessageSquare className="h-4 w-4 mr-1" />Solicitações</TabsTrigger>
               <TabsTrigger value="logs" className="text-xs sm:text-sm"><Database className="h-4 w-4 mr-1" />Logs</TabsTrigger>
             </TabsList>
+
+            {/* System Settings Tab - Super Admin Only */}
+            {isSuperAdmin && (
+              <TabsContent value="system">
+                <SystemSettingsPanel />
+              </TabsContent>
+            )}
 
             {/* Users Tab */}
             <TabsContent value="users">
@@ -508,98 +520,7 @@ const Admin = () => {
 
             {isSuperAdmin && (
               <TabsContent value="admins">
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Crown className="h-5 w-5 text-amber-400" />
-                      Gestão de Administradores
-                      <Badge className="bg-amber-500/20 text-amber-400 ml-2">Super Admin</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Como Super Admin, pode promover ou remover privilégios de administrador de outros utilizadores.
-                    </p>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Empresa</TableHead>
-                            <TableHead>Contato</TableHead>
-                            <TableHead>Função</TableHead>
-                            <TableHead>Status Admin</TableHead>
-                            <TableHead>Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {usersWithRoles?.map((user) => (
-                            <TableRow key={user.id}>
-                              <TableCell className="font-medium">{user.company_name}</TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="text-sm">{user.contact_name}</p>
-                                  <p className="text-xs text-muted-foreground">{user.contact_role}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="capitalize">{user.company_type}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                {user.isSuperAdmin ? (
-                                  <Badge className="bg-amber-500/20 text-amber-400">
-                                    <Crown className="h-3 w-3 mr-1" />
-                                    Super Admin
-                                  </Badge>
-                                ) : user.isAdmin ? (
-                                  <Badge className="bg-primary/20 text-primary">
-                                    <Shield className="h-3 w-3 mr-1" />
-                                    Admin
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="secondary">
-                                    <Users className="h-3 w-3 mr-1" />
-                                    Usuário
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  {user.isSuperAdmin ? (
-                                    <Badge className="bg-muted text-muted-foreground">
-                                      Protegido
-                                    </Badge>
-                                  ) : user.isAdmin ? (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-8 text-red-400 hover:text-red-500"
-                                      onClick={() => demoteFromAdmin.mutate(user.id)}
-                                      disabled={demoteFromAdmin.isPending}
-                                    >
-                                      <X className="h-4 w-4 mr-1" />
-                                      Remover Admin
-                                    </Button>
-                                  ) : (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-8 text-primary hover:text-primary/80"
-                                      onClick={() => promoteToAdmin.mutate(user.id)}
-                                      disabled={promoteToAdmin.isPending}
-                                    >
-                                      <Shield className="h-4 w-4 mr-1" />
-                                      Promover a Admin
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
+                <AdminManagementPanel />
               </TabsContent>
             )}
 
