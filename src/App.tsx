@@ -20,6 +20,7 @@ import Alerts from "./pages/Alerts";
 import Search from "./pages/Search";
 import Pricing from "./pages/Pricing";
 import Admin from "./pages/Admin";
+import Competitors from "./pages/Competitors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -147,6 +148,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Admin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/competitors"
+                  element={
+                    <ProtectedRoute>
+                      <Competitors />
                     </ProtectedRoute>
                   }
                 />
