@@ -15,6 +15,7 @@ import {
   Search,
   CreditCard,
   Shield,
+  Building2,
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { icon: BarChart3, label: "Produção", href: "/production" },
   { icon: DollarSign, label: "Preços & Mercado", href: "/prices" },
   { icon: Ship, label: "Exportações", href: "/exports" },
+  { icon: Building2, label: "Competidores", href: "/competitors" },
   { icon: Brain, label: "Previsões IA", href: "/predictions", badge: "AI" },
   { icon: AlertTriangle, label: "Risco", href: "/risk" },
   { icon: FileText, label: "Relatórios", href: "/reports" },
