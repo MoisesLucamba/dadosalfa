@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail, Crown, UserCog } from "lucide-react";
-import { useIsAdmin, useIsSuperAdmin, useAllUsers, useAllUsersWithEmail, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest, usePromoteToAdmin, useDemoteFromAdmin } from "@/hooks/useAdmin";
+import { Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X, RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp, AlertTriangle, Globe, Eye, Mail, Crown, UserCog, Building2 } from "lucide-react";
+import { useIsAdmin, useIsSuperAdmin, useAllUsers, useAllUsersWithEmail, useUserRequests, useDataUpdates, useUpdateUserApproval, useSendNotification, useRespondToRequest, usePromoteToAdmin, useDemoteFromAdmin, usePendingOrganizations, useUpdateOrganizationApproval } from "@/hooks/useAdmin";
 import { useProductionData, usePriceData, useExportData, useAddProductionData, useAddPriceData, useAddExportData, useDeleteProductionData, useDeletePriceData, useDeleteExportData, useUpdateProductionData, useUpdatePriceData, useUpdateExportData, useLogDataUpdate } from "@/hooks/useData";
 import { useRiskData, useRiskAlerts, useCountryRisk, useRegulatoryEvents, useAddRiskData, useAddRiskAlert, useAddCountryRisk, useAddRegulatoryEvent, useDeleteRiskData, useDeleteRiskAlert, useDeleteCountryRisk, useDeleteRegulatoryEvent, useUpdateRiskData, useUpdateRiskAlert } from "@/hooks/useRiskData";
 import { useNavigate } from "react-router-dom";
@@ -34,8 +34,10 @@ const Admin = () => {
   const { data: riskAlerts } = useRiskAlerts();
   const { data: countryRisk } = useCountryRisk();
   const { data: regulatoryEvents } = useRegulatoryEvents();
+  const { data: organizations } = usePendingOrganizations();
   
   const updateApproval = useUpdateUserApproval();
+  const updateOrgApproval = useUpdateOrganizationApproval();
   const sendNotification = useSendNotification();
   const respondToRequest = useRespondToRequest();
   const promoteToAdmin = usePromoteToAdmin();
@@ -237,7 +239,20 @@ const Admin = () => {
                   </div>
                   <div>
                     <p className="text-lg sm:text-2xl font-bold text-foreground">{users?.filter(u => !u.is_approved).length || 0}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Pendentes</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Usuários Pend.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 rounded-lg bg-orange-500/20">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground">{organizations?.filter(o => !o.is_approved).length || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Orgs Pend.</p>
                   </div>
                 </div>
               </CardContent>
@@ -299,6 +314,7 @@ const Admin = () => {
           <Tabs defaultValue="users" className="space-y-4">
             <TabsList className="bg-muted/50 flex-wrap h-auto p-1">
               <TabsTrigger value="users" className="text-xs sm:text-sm"><Users className="h-4 w-4 mr-1" />Usuários</TabsTrigger>
+              <TabsTrigger value="organizations" className="text-xs sm:text-sm"><Building2 className="h-4 w-4 mr-1" />Organizações</TabsTrigger>
               {isSuperAdmin && (
                 <TabsTrigger value="admins" className="text-xs sm:text-sm"><Crown className="h-4 w-4 mr-1" />Administradores</TabsTrigger>
               )}
@@ -380,7 +396,116 @@ const Admin = () => {
               </Card>
             </TabsContent>
 
-            {/* Admins Tab - Only visible to Super Admins */}
+            {/* Organizations Tab */}
+            <TabsContent value="organizations">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Gestão de Organizações
+                    {organizations?.filter(o => !o.is_approved).length ? (
+                      <Badge className="bg-amber-500/20 text-amber-400 ml-2">
+                        {organizations?.filter(o => !o.is_approved).length} Pendentes
+                      </Badge>
+                    ) : null}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Aprove ou rejeite organizações que solicitaram acesso à plataforma.
+                    Funcionários só podem fazer login quando a organização estiver aprovada.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Organização</TableHead>
+                          <TableHead>Setor</TableHead>
+                          <TableHead>País</TableHead>
+                          <TableHead>NIF</TableHead>
+                          <TableHead>Domínio Email</TableHead>
+                          <TableHead>Contato</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {organizations?.map((org) => (
+                          <TableRow key={org.id}>
+                            <TableCell className="font-medium">{org.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="capitalize">{org.sector}</Badge>
+                            </TableCell>
+                            <TableCell>{org.country}</TableCell>
+                            <TableCell className="font-mono text-sm">{org.nif}</TableCell>
+                            <TableCell className="font-mono text-sm">@{org.email_domain}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="text-sm">{org.contact_email}</p>
+                                {org.contact_phone && (
+                                  <p className="text-xs text-muted-foreground">{org.contact_phone}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={org.is_approved ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}>
+                                {org.is_approved ? "Aprovada" : "Pendente"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(org.created_at), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {!org.is_approved ? (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-8 text-emerald-400 hover:text-emerald-300" 
+                                    onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: true })}
+                                    title="Aprovar organização"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-8 text-red-400 hover:text-red-300" 
+                                    onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: false })}
+                                    title="Revogar aprovação"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8" 
+                                  onClick={() => window.open(`mailto:${org.contact_email}`)}
+                                  title="Enviar email"
+                                >
+                                  <Mail className="h-4 w-4 text-blue-400" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!organizations || organizations.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                              Nenhuma organização registada
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {isSuperAdmin && (
               <TabsContent value="admins">
                 <Card className="bg-card border-border">
