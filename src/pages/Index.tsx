@@ -10,6 +10,7 @@ import { OperatorsTable } from "@/components/dashboard/OperatorsTable";
 import { DataSourceIndicator, DATA_SOURCES } from "@/components/dashboard/DataSourceIndicator";
 import { BarChart3, DollarSign, Ship, Gauge, RefreshCw, AlertTriangle, Zap } from "lucide-react";
 import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
+import { useLatestDataUpdates, formatLastUpdate, getSourceShortName } from "@/hooks/useDataUpdates";
 import { useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,6 +25,7 @@ const Index = () => {
   const { data: productionData, isLoading: loadingProduction, refetch: refetchProduction } = useProductionData();
   const { data: priceData, isLoading: loadingPrice, refetch: refetchPrice } = usePriceData();
   const { data: exportData, isLoading: loadingExport, refetch: refetchExport } = useExportData();
+  const { data: dataUpdates } = useLatestDataUpdates();
   const { data: isAdmin } = useIsAdmin();
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
 
@@ -253,6 +255,8 @@ const Index = () => {
                       changeLabel="vs. período anterior"
                       icon={<Gauge className="w-5 h-5" />}
                       delay={0}
+                      source={dataUpdates?.production ? getSourceShortName(dataUpdates.production.source) : undefined}
+                      lastUpdate={dataUpdates?.production ? formatLastUpdate(dataUpdates.production.created_at) : undefined}
                     />
                     <KPICard
                       title="Preço Brent"
@@ -262,6 +266,8 @@ const Index = () => {
                       icon={<DollarSign className="w-5 h-5" />}
                       variant="accent"
                       delay={0.05}
+                      source={dataUpdates?.price ? getSourceShortName(dataUpdates.price.source) : undefined}
+                      lastUpdate={dataUpdates?.price ? formatLastUpdate(dataUpdates.price.created_at) : undefined}
                     />
                     <KPICard
                       title="Exportações (Mês)"
@@ -270,6 +276,8 @@ const Index = () => {
                       changeLabel="vs. mês anterior"
                       icon={<Ship className="w-5 h-5" />}
                       delay={0.1}
+                      source={dataUpdates?.export ? getSourceShortName(dataUpdates.export.source) : undefined}
+                      lastUpdate={dataUpdates?.export ? formatLastUpdate(dataUpdates.export.created_at) : undefined}
                     />
                     <KPICard
                       title="Receita Estimada"
@@ -279,6 +287,8 @@ const Index = () => {
                       icon={<BarChart3 className="w-5 h-5" />}
                       variant="primary"
                       delay={0.15}
+                      source="Calculado"
+                      lastUpdate={dataUpdates?.price ? formatLastUpdate(dataUpdates.price.created_at) : undefined}
                     />
                   </>
                 )}
