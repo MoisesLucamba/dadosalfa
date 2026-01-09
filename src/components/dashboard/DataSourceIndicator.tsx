@@ -123,6 +123,11 @@ export const DataSourceIndicator = ({ sources, compact = false }: DataSourceIndi
 export const DATA_SOURCES = {
   prices: [
     { 
+      name: 'Oil Price API (Real-time)', 
+      url: 'https://www.oilpriceapi.com/', 
+      type: 'official' as const 
+    },
+    { 
       name: 'EIA (U.S. Energy Information Administration)', 
       url: 'https://www.eia.gov/opendata/', 
       type: 'official' as const 

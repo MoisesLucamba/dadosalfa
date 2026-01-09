@@ -6,12 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// EIA API series IDs for oil prices
-const EIA_SERIES = {
-  brent: "PET.RBRTE.D", // Brent crude daily
-  wti: "PET.RWTC.D",    // WTI crude daily
-};
-
 // Angolan crude differentials (typical premium/discount to Brent in USD)
 const ANGOLAN_DIFFERENTIALS = {
   "Cabinda": -0.50,
@@ -27,24 +21,57 @@ serve(async (req) => {
   }
 
   try {
+    const OIL_PRICE_API_KEY = Deno.env.get("OIL_PRICE_API_KEY");
     const EIA_API_KEY = Deno.env.get("EIA_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("Fetching real oil prices from EIA API...");
+    console.log("Fetching real oil prices...");
 
     let brentPrice: number | null = null;
     let wtiPrice: number | null = null;
     let dataDate: string | null = null;
-    let source = "EIA (U.S. Energy Information Administration)";
+    let source = "";
 
-    if (EIA_API_KEY) {
-      // Fetch Brent crude price from EIA API v2
+    // PRIMARY SOURCE: Oil Price API (oilpriceapi.com) - Real-time data
+    if (OIL_PRICE_API_KEY) {
+      console.log("Trying Oil Price API (primary source)...");
+      try {
+        const oilPriceUrl = `https://api.oilpriceapi.com/v1/prices/latest`;
+        
+        const oilPriceResponse = await fetch(oilPriceUrl, {
+          headers: {
+            "Authorization": `Token ${OIL_PRICE_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (oilPriceResponse.ok) {
+          const oilPriceData = await oilPriceResponse.json();
+          console.log("Oil Price API response:", JSON.stringify(oilPriceData).substring(0, 500));
+          
+          if (oilPriceData.status === "success" && oilPriceData.data) {
+            brentPrice = oilPriceData.data.price;
+            dataDate = new Date(oilPriceData.data.created_at).toISOString().split("T")[0];
+            source = "Oil Price API (Real-time)";
+            console.log(`Brent price from Oil Price API: $${brentPrice} on ${dataDate}`);
+          }
+        } else {
+          const errorText = await oilPriceResponse.text();
+          console.error("Oil Price API error:", oilPriceResponse.status, errorText);
+        }
+      } catch (oilPriceError) {
+        console.error("Oil Price API error:", oilPriceError);
+      }
+    }
+
+    // SECONDARY SOURCE: EIA API (U.S. Energy Information Administration)
+    if (!brentPrice && EIA_API_KEY) {
+      console.log("Trying EIA API (secondary source)...");
       try {
         const brentUrl = `https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=${EIA_API_KEY}&frequency=daily&data[0]=value&facets[series][]=RBRTE&sort[0][column]=period&sort[0][direction]=desc&length=5`;
         
-        console.log("Fetching Brent price from EIA...");
         const brentResponse = await fetch(brentUrl);
         
         if (brentResponse.ok) {
@@ -55,6 +82,7 @@ serve(async (req) => {
             const latestBrent = brentData.response.data[0];
             brentPrice = parseFloat(latestBrent.value);
             dataDate = latestBrent.period;
+            source = "EIA (U.S. Energy Information Administration)";
             console.log(`Brent price from EIA: $${brentPrice} on ${dataDate}`);
           }
         } else {
@@ -77,18 +105,16 @@ serve(async (req) => {
       }
     }
 
-    // If EIA failed, try FRED (Federal Reserve Economic Data) as backup - free API
+    // TERTIARY SOURCE: FRED (Federal Reserve Economic Data) - Free API
     if (!brentPrice) {
-      console.log("EIA unavailable, trying FRED backup...");
+      console.log("Trying FRED API (tertiary source)...");
       try {
-        // FRED Brent crude: DCOILBRENTEU
         const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=DCOILBRENTEU&api_key=DEMO_KEY&file_type=json&sort_order=desc&limit=5`;
         
         const fredResponse = await fetch(fredUrl);
         if (fredResponse.ok) {
           const fredData = await fredResponse.json();
           if (fredData.observations?.length > 0) {
-            // Find the first non-null value
             for (const obs of fredData.observations) {
               if (obs.value !== ".") {
                 brentPrice = parseFloat(obs.value);
@@ -105,7 +131,7 @@ serve(async (req) => {
       }
     }
 
-    // Final fallback: use database cached value with warning
+    // FINAL FALLBACK: Use cached database value
     if (!brentPrice) {
       console.log("Using cached database values...");
       const { data: cachedPrices } = await supabase
@@ -119,7 +145,7 @@ serve(async (req) => {
       if (cachedPrices) {
         brentPrice = cachedPrices.price;
         dataDate = cachedPrices.data_date;
-        source = "Cached data (API unavailable)";
+        source = "Cached data (APIs unavailable)";
         console.log(`Using cached Brent price: $${brentPrice}`);
       } else {
         throw new Error("No price data available from any source");
@@ -131,7 +157,7 @@ serve(async (req) => {
       { 
         crude_type: "Brent", 
         price: brentPrice!, 
-        change_percent: 0, // Will calculate from DB
+        change_percent: 0,
         source: source
       },
       ...Object.entries(ANGOLAN_DIFFERENTIALS).map(([crude, differential]) => ({
@@ -141,6 +167,16 @@ serve(async (req) => {
         source: `Calculated from Brent + differential (${differential >= 0 ? '+' : ''}${differential})`
       }))
     ];
+
+    // Add WTI if available
+    if (wtiPrice) {
+      prices.push({
+        crude_type: "WTI",
+        price: wtiPrice,
+        change_percent: 0,
+        source: "EIA (U.S. Energy Information Administration)"
+      });
+    }
 
     // Calculate change percentages from previous day in DB
     for (const price of prices) {
@@ -199,7 +235,7 @@ serve(async (req) => {
         data_type: "price",
         source: source,
         records_updated: prices.length,
-        notes: `Data from ${dataDate}. Primary source: EIA API`
+        notes: `Data from ${dataDate}. Sources hierarchy: Oil Price API → EIA → FRED`
       });
 
       console.log("Prices synced to database");
@@ -212,7 +248,10 @@ serve(async (req) => {
           prices,
           last_updated: dataDate,
           source: source,
-          api_status: EIA_API_KEY ? "EIA API configured" : "Using fallback sources"
+          api_status: {
+            oil_price_api: OIL_PRICE_API_KEY ? "configured" : "not configured",
+            eia_api: EIA_API_KEY ? "configured" : "not configured"
+          }
         },
         synced: action === "sync"
       }),
