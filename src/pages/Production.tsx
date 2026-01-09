@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
+import { DataExportButton } from "@/components/dashboard/DataExportButton";
 import { 
   BarChart3, 
   TrendingDown, 
@@ -89,10 +90,26 @@ const Production = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-8 flex items-start justify-between flex-wrap gap-4"
               >
-                <h1 className="text-2xl font-bold text-foreground">Produção Petrolífera</h1>
-                <p className="text-muted-foreground">Análise detalhada por bloco, operadora e campo</p>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Produção Petrolífera</h1>
+                  <p className="text-muted-foreground">Análise detalhada por bloco, operadora e campo</p>
+                </div>
+                <DataExportButton
+                  data={blockProductionData.map(d => ({
+                    ...d,
+                    date: new Date().toISOString().split('T')[0]
+                  }))}
+                  columns={[
+                    { key: 'block', header: 'Bloco' },
+                    { key: 'operator', header: 'Operadora' },
+                    { key: 'production', header: 'Produção (kbpd)' },
+                    { key: 'trend', header: 'Tendência (%)' },
+                  ]}
+                  filename="producao_petrolifera"
+                  dateField="date"
+                />
               </motion.div>
 
               {/* KPI Cards */}

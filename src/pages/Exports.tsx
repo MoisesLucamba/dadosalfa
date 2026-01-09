@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
+import { DataExportButton } from "@/components/dashboard/DataExportButton";
 import { 
   Ship, 
   Globe, 
@@ -121,10 +122,33 @@ const Exports = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-8 flex items-start justify-between flex-wrap gap-4"
               >
-                <h1 className="text-2xl font-bold text-foreground">Exportações & Logística</h1>
-                <p className="text-muted-foreground">Volumes, destinos e rastreamento de embarques</p>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Exportações & Logística</h1>
+                  <p className="text-muted-foreground">Volumes, destinos e rastreamento de embarques</p>
+                </div>
+                <DataExportButton
+                  data={recentShipments.map(s => ({
+                    vessel: s.vessel,
+                    destination: s.destination,
+                    volume: s.volume,
+                    departure: s.departure,
+                    eta: s.eta,
+                    status: s.status,
+                    date: s.departure
+                  }))}
+                  columns={[
+                    { key: 'vessel', header: 'Navio' },
+                    { key: 'destination', header: 'Destino' },
+                    { key: 'volume', header: 'Volume' },
+                    { key: 'departure', header: 'Partida' },
+                    { key: 'eta', header: 'ETA' },
+                    { key: 'status', header: 'Status' },
+                  ]}
+                  filename="exportacoes"
+                  dateField="date"
+                />
               </motion.div>
 
               {/* KPI Cards */}
