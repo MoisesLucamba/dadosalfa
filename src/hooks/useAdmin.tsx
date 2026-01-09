@@ -109,6 +109,43 @@ export function useUserRoles() {
   });
 }
 
+export function usePendingOrganizations() {
+  return useQuery({
+    queryKey: ["pendingOrganizations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpdateOrganizationApproval() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ organizationId, isApproved }: { organizationId: string; isApproved: boolean }) => {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ is_approved: isApproved })
+        .eq("id", organizationId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingOrganizations"] });
+      toast.success("Status da organização atualizado");
+    },
+    onError: (error) => {
+      toast.error("Erro ao atualizar organização: " + error.message);
+    },
+  });
+}
+
 export function useUserRequests() {
   return useQuery({
     queryKey: ["userRequests"],
