@@ -13,7 +13,6 @@ import {
   EyeOff, 
   Mail, 
   Lock, 
-  Shield,
   ArrowLeft,
   Sparkles,
   ChevronRight,
@@ -28,6 +27,9 @@ import { LanguageSelector } from "@/components/LanguageSelector";
 import { AccountTypeSelector } from "@/components/auth/AccountTypeSelector";
 import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
 import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
+import { Database } from "@/integrations/supabase/types";
+
+type CompanyType = Database["public"]["Enums"]["company_type"];
 
 const loginSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }),
@@ -45,22 +47,15 @@ export default function Auth() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [authView, setAuthView] = useState<AuthView>("login");
+  const [accountType, setAccountType] = useState<AccountType>("personal");
   const [loading, setLoading] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   
   // Login fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
-  // Signup fields
-  const [companyName, setCompanyName] = useState("");
-  const [companyType, setCompanyType] = useState<CompanyType | "">("");
-  const [nif, setNif] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactRole, setContactRole] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [acceptedNda, setAcceptedNda] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -107,72 +102,6 @@ export default function Auth() {
     setLoading(false);
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const validation = signupSchema.safeParse({
-      email,
-      password,
-      companyName,
-      companyType,
-      nif,
-      contactName,
-      contactRole,
-      contactPhone,
-      acceptedTerms,
-      acceptedNda,
-    });
-
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
-    }
-
-    setLoading(true);
-
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (authError) {
-      if (authError.message.includes("already registered")) {
-        toast.error("Este email já está registado");
-      } else {
-        toast.error(authError.message);
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        company_name: companyName.trim(),
-        company_type: companyType as CompanyType,
-        nif: nif.trim(),
-        contact_name: contactName.trim(),
-        contact_role: contactRole.trim(),
-        contact_phone: contactPhone.trim() || null,
-        accepted_terms: acceptedTerms,
-        accepted_nda: acceptedNda,
-      });
-
-      if (profileError) {
-        toast.error("Erro ao criar perfil: " + profileError.message);
-      } else {
-        toast.success("Conta criada com sucesso! A sua conta aguarda aprovação.");
-      }
-    }
-
-    setLoading(false);
-  };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -201,19 +130,167 @@ export default function Auth() {
   const resetForm = () => {
     setEmail("");
     setPassword("");
-    setCompanyName("");
-    setCompanyType("");
-    setNif("");
-    setContactName("");
-    setContactRole("");
-    setContactPhone("");
-    setAcceptedTerms(false);
-    setAcceptedNda(false);
+    setAccountType("personal");
+    setSignupError(null);
   };
 
   const switchView = (view: AuthView) => {
     resetForm();
     setAuthView(view);
+  };
+
+  // Personal signup handler
+  const handlePersonalSignup = async (data: {
+    contactName: string;
+    jobTitle: string;
+    phone?: string;
+    email: string;
+    password: string;
+    acceptTerms: boolean;
+    acceptNda: boolean;
+    companyId: string;
+    companyName: string;
+    emailDomain: string;
+  }) => {
+    setSignupLoading(true);
+    setSignupError(null);
+
+    const redirectUrl = `${window.location.origin}/`;
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email.trim(),
+      password: data.password,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (authError) {
+      if (authError.message.includes("already registered")) {
+        setSignupError("Este email já está registado");
+      } else {
+        setSignupError(authError.message);
+      }
+      setSignupLoading(false);
+      return;
+    }
+
+    if (authData.user) {
+      // Find organization by email domain to link
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("email_domain", data.emailDomain)
+        .eq("is_approved", true)
+        .single();
+
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: authData.user.id,
+        account_type: "personal",
+        company_name: data.companyName,
+        company_type: "operadora" as CompanyType, // Will be updated based on org
+        nif: "N/A", // Personal accounts don't have NIF
+        contact_name: data.contactName,
+        contact_role: data.jobTitle,
+        contact_phone: data.phone || null,
+        job_title: data.jobTitle,
+        accepted_terms: data.acceptTerms,
+        accepted_nda: data.acceptNda,
+        organization_id: org?.id || null,
+      });
+
+      if (profileError) {
+        setSignupError("Erro ao criar perfil: " + profileError.message);
+      } else {
+        toast.success("Conta criada com sucesso! A sua conta aguarda aprovação.");
+        switchView("login");
+      }
+    }
+
+    setSignupLoading(false);
+  };
+
+  // Organization signup handler
+  const handleOrganizationSignup = async (data: {
+    companyName: string;
+    nif: string;
+    sector: string;
+    country: string;
+    emailDomain: string;
+    contactEmail: string;
+    contactPhone?: string;
+    contactName: string;
+    contactRole: string;
+    password: string;
+    acceptTerms: boolean;
+    acceptNda: boolean;
+  }) => {
+    setSignupLoading(true);
+    setSignupError(null);
+
+    const redirectUrl = `${window.location.origin}/`;
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.contactEmail.trim(),
+      password: data.password,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (authError) {
+      if (authError.message.includes("already registered")) {
+        setSignupError("Este email já está registado");
+      } else {
+        setSignupError(authError.message);
+      }
+      setSignupLoading(false);
+      return;
+    }
+
+    if (authData.user) {
+      // Create the organization first
+      const { data: org, error: orgError } = await supabase.from("organizations").insert({
+        name: data.companyName.trim(),
+        nif: data.nif.trim(),
+        sector: data.sector,
+        country: data.country,
+        email_domain: data.emailDomain.trim(),
+        contact_email: data.contactEmail.trim(),
+        contact_phone: data.contactPhone || null,
+        is_approved: false, // Requires admin approval
+      }).select().single();
+
+      if (orgError) {
+        setSignupError("Erro ao criar organização: " + orgError.message);
+        setSignupLoading(false);
+        return;
+      }
+
+      // Create the user profile linked to the organization
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: authData.user.id,
+        account_type: "organization",
+        company_name: data.companyName.trim(),
+        company_type: data.sector as CompanyType,
+        nif: data.nif.trim(),
+        contact_name: data.contactName.trim(),
+        contact_role: data.contactRole.trim(),
+        contact_phone: data.contactPhone || null,
+        accepted_terms: data.acceptTerms,
+        accepted_nda: data.acceptNda,
+        organization_id: org.id,
+      });
+
+      if (profileError) {
+        setSignupError("Erro ao criar perfil: " + profileError.message);
+      } else {
+        toast.success("Organização registada com sucesso! Aguarde a aprovação do administrador.");
+        switchView("login");
+      }
+    }
+
+    setSignupLoading(false);
   };
 
   return (
@@ -572,220 +649,37 @@ export default function Auth() {
 
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-foreground mb-2">{t('auth.createAccount')}</h2>
-                    <p className="text-muted-foreground">{t('auth.completeForm')}</p>
+                    <p className="text-muted-foreground">{t('auth.selectAccountType', 'Selecione o tipo de conta')}</p>
                   </div>
 
-                  <form onSubmit={handleSignup} className="space-y-4 max-h-[55vh] overflow-y-auto pr-2 scrollbar-thin">
-                    {/* Company Section */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">{t('auth.companyData')}</h3>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="company-name" className="text-sm">{t('auth.companyName')}</Label>
-                        <Input
-                          id="company-name"
-                          placeholder={t('auth.companyNamePlaceholder')}
-                          value={companyName}
-                          onChange={(e) => setCompanyName(e.target.value)}
-                          className="h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="company-type" className="text-sm">{t('auth.companyType')}</Label>
-                          <Select value={companyType} onValueChange={(v) => setCompanyType(v as CompanyType)}>
-                            <SelectTrigger className="h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background">
-                              <SelectValue placeholder={t('auth.selectCompanyType')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="operadora">{t('auth.oilOperator')}</SelectItem>
-                              <SelectItem value="banco">{t('auth.bank')}</SelectItem>
-                              <SelectItem value="trader">{t('auth.trader')}</SelectItem>
-                              <SelectItem value="consultora">{t('auth.consultant')}</SelectItem>
-                              <SelectItem value="governo">{t('auth.government')}</SelectItem>
-                              <SelectItem value="prestadora_servicos">{t('auth.serviceProvider')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="nif" className="text-sm">{t('auth.taxId')}</Label>
-                          <Input
-                            id="nif"
-                            placeholder={t('auth.taxIdPlaceholder')}
-                            value={nif}
-                            onChange={(e) => setNif(e.target.value)}
-                            className="h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
+                  {/* Account Type Selector */}
+                  <div className="mb-6">
+                    <AccountTypeSelector value={accountType} onChange={setAccountType} />
+                  </div>
 
-                    <div className="h-px bg-border my-4" />
-                    
-                    {/* Contact Section */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-accent" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">{t('auth.contactData')}</h3>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-name" className="text-sm">{t('auth.contactName')}</Label>
-                        <Input
-                          id="contact-name"
-                          placeholder={t('auth.contactNamePlaceholder')}
-                          value={contactName}
-                          onChange={(e) => setContactName(e.target.value)}
-                          className="h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-role" className="text-sm">{t('auth.contactRole')}</Label>
-                        <div className="relative group">
-                          <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="contact-role"
-                            placeholder={t('auth.contactRolePlaceholder')}
-                            value={contactRole}
-                            onChange={(e) => setContactRole(e.target.value)}
-                            className="pl-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                            required
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-phone" className="text-sm">{t('auth.contactPhone')}</Label>
-                        <div className="relative group">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="contact-phone"
-                            placeholder={t('auth.contactPhonePlaceholder')}
-                            value={contactPhone}
-                            onChange={(e) => setContactPhone(e.target.value)}
-                            className="pl-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-email" className="text-sm">{t('auth.corporateEmail')}</Label>
-                        <div className="relative group">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="signup-email"
-                            type="email"
-                            placeholder={t('auth.corporateEmailPlaceholder')}
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="pl-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password" className="text-sm">{t('auth.createPassword')}</Label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder={t('auth.passwordMin')}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10 pr-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="h-px bg-border my-4" />
-
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/20 border border-border/30">
-                        <Checkbox
-                          id="terms"
-                          checked={acceptedTerms}
-                          onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-                          className="mt-0.5"
-                        />
-                        <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
-                          {t('auth.acceptTerms')}
-                        </Label>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/20 border border-border/30">
-                        <Checkbox
-                          id="nda"
-                          checked={acceptedNda}
-                          onCheckedChange={(checked) => setAcceptedNda(checked === true)}
-                          className="mt-0.5"
-                        />
-                        <Label htmlFor="nda" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
-                          {t('auth.acceptNda')}
-                        </Label>
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all mt-4" 
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <span className="flex items-center gap-2">
-                          <motion.div
-                            className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          />
-                          {t('auth.submitting')}
-                        </span>
-                      ) : (
-                        t('auth.submitRequest')
-                      )}
-                    </Button>
-                    
-                    <p className="text-xs text-center text-muted-foreground pb-2">
-                      {t('auth.hasAccount')}{" "}
-                      <button
-                        type="button"
-                        onClick={() => switchView("login")}
-                        className="text-primary hover:text-primary/80 font-medium"
-                      >
-                        {t('auth.loginHere')}
-                      </button>
-                    </p>
-                  </form>
+                  {/* Conditional Form Based on Account Type */}
+                  <div className="max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin">
+                    {accountType === "personal" ? (
+                      <PersonalSignupForm 
+                        onSubmit={handlePersonalSignup} 
+                        isLoading={signupLoading}
+                        error={signupError}
+                      />
+                    ) : (
+                      <OrganizationSignupForm 
+                        onSubmit={handleOrganizationSignup} 
+                        isLoading={signupLoading}
+                        error={signupError}
+                      />
+                    )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            {t('auth.enterpriseEncryption')}
+            {t('auth.securityNote')}
           </p>
         </motion.div>
       </div>
