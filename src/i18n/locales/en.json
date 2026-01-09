@@ -123,7 +123,9 @@
     "registerOrganization": "Register Organization",
     "organizationApprovalNote": "Organization registration requires approval. You will be notified by email.",
     "accountType": "Account Type",
-    "chooseAccountType": "Choose the type of account you want to create"
+    "chooseAccountType": "Choose the type of account you want to create",
+    "accountPendingApproval": "Your account is pending administrator approval.",
+    "organizationPendingApproval": "The organization has not yet been approved. Contact the administrator."
   },
   "nav": {
     "dashboard": "Dashboard",

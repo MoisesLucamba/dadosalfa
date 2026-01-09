@@ -84,7 +84,7 @@ export default function Auth() {
 
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -95,7 +95,46 @@ export default function Auth() {
       } else {
         toast.error(error.message);
       }
-    } else {
+      setLoading(false);
+      return;
+    }
+
+    // Check if user's profile and organization are approved
+    if (authData.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("account_type, is_approved, organization_id")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+      if (profile) {
+        // Check if user profile is approved
+        if (!profile.is_approved) {
+          await supabase.auth.signOut();
+          toast.error(t('auth.accountPendingApproval', 'A sua conta aguarda aprovação do administrador.'));
+          setLoading(false);
+          return;
+        }
+
+        // For personal accounts, check if their organization is approved
+        if (profile.account_type === "personal" && profile.organization_id) {
+          const { data: org } = await supabase
+            .from("organizations")
+            .select("is_approved, name")
+            .eq("id", profile.organization_id)
+            .maybeSingle();
+
+          if (org && !org.is_approved) {
+            await supabase.auth.signOut();
+            toast.error(
+              t('auth.organizationPendingApproval', `A organização "${org.name}" ainda não foi aprovada. Contacte o administrador.`)
+            );
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       toast.success("Login efetuado com sucesso!");
     }
     
