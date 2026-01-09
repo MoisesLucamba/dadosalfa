@@ -1,6 +1,12 @@
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface KPICardProps {
   title: string;
@@ -10,6 +16,8 @@ interface KPICardProps {
   icon: React.ReactNode;
   delay?: number;
   variant?: "default" | "accent" | "primary";
+  lastUpdate?: string;
+  source?: string;
 }
 
 export function KPICard({
@@ -20,6 +28,8 @@ export function KPICard({
   icon,
   delay = 0,
   variant = "default",
+  lastUpdate,
+  source,
 }: KPICardProps) {
   const isPositive = change > 0;
   const isNegative = change < 0;
@@ -46,7 +56,38 @@ export function KPICard({
 
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
-          <span className="text-sm font-medium text-muted-foreground">{title}</span>
+          <div className="flex-1">
+            <span className="text-sm font-medium text-muted-foreground">{title}</span>
+            {/* Source and Last Update Indicator */}
+            {(lastUpdate || source) && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 mt-1 cursor-help">
+                      {source && (
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70 bg-muted/50 px-1.5 py-0.5 rounded">
+                          <Database className="w-2.5 h-2.5" />
+                          {source}
+                        </span>
+                      )}
+                      {lastUpdate && (
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                          <Clock className="w-2.5 h-2.5" />
+                          {lastUpdate}
+                        </span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <div className="space-y-1">
+                      {source && <p><strong>Fonte:</strong> {source}</p>}
+                      {lastUpdate && <p><strong>Atualização:</strong> {lastUpdate}</p>}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <div
             className={cn(
               "p-2 rounded-lg",
