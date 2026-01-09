@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
+import { DataExportButton } from "@/components/dashboard/DataExportButton";
+import { WhatIfSimulator } from "@/components/dashboard/WhatIfSimulator";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -116,10 +118,25 @@ const Prices = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-8 flex items-start justify-between flex-wrap gap-4"
               >
-                <h1 className="text-2xl font-bold text-foreground">Preços & Mercado</h1>
-                <p className="text-muted-foreground">Benchmarks, spreads e análise de mercado</p>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Preços & Mercado</h1>
+                  <p className="text-muted-foreground">Benchmarks, spreads e análise de mercado</p>
+                </div>
+                <DataExportButton
+                  data={brentHistoryData.map(d => ({
+                    ...d,
+                    date: `2024-${String(brentHistoryData.indexOf(d) + 1).padStart(2, '0')}-01`
+                  }))}
+                  columns={[
+                    { key: 'date', header: 'Data' },
+                    { key: 'price', header: 'Preço (USD)' },
+                    { key: 'volume', header: 'Volume' },
+                  ]}
+                  filename="precos_brent"
+                  dateField="date"
+                />
               </motion.div>
 
               {/* Price Cards */}
@@ -403,6 +420,9 @@ const Prices = () => {
                   </div>
                 </motion.div>
               </div>
+
+              {/* What-If Simulator */}
+              <WhatIfSimulator />
             </div>
           </main>
         </div>
