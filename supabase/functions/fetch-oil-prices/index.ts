@@ -6,150 +6,167 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// EIA API series IDs for oil prices
+const EIA_SERIES = {
+  brent: "PET.RBRTE.D", // Brent crude daily
+  wti: "PET.RWTC.D",    // WTI crude daily
+};
+
+// Angolan crude differentials (typical premium/discount to Brent in USD)
+const ANGOLAN_DIFFERENTIALS = {
+  "Cabinda": -0.50,
+  "Girassol": 0.20,
+  "Dalia": -0.30,
+  "Nemba": -0.40,
+  "Plutonio": 0.15,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
+    const EIA_API_KEY = Deno.env.get("EIA_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("Fetching real-time oil prices using AI...");
+    console.log("Fetching real oil prices from EIA API...");
 
-    // Use Lovable AI to get current oil prices
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a financial data assistant specialized in oil and petroleum markets. 
-Your task is to provide the most recent crude oil prices. 
-Always return realistic market prices based on your training data.
-Return ONLY valid JSON, no markdown or explanations.`
-          },
-          {
-            role: "user",
-            content: `Provide the current approximate prices for these crude oil types as of today (December 2024):
-1. Brent Crude (international benchmark)
-2. Cabinda (Angolan grade)
-3. Girassol (Angolan grade)
-4. Dalia (Angolan grade)  
-5. Nemba (Angolan grade)
+    let brentPrice: number | null = null;
+    let wtiPrice: number | null = null;
+    let dataDate: string | null = null;
+    let source = "EIA (U.S. Energy Information Administration)";
 
-Angolan crude grades typically trade at a small discount or premium to Brent.
-
-Return a JSON object with this exact structure:
-{
-  "prices": [
-    {"crude_type": "Brent", "price": 72.50, "change_percent": 0.5},
-    {"crude_type": "Cabinda", "price": 71.20, "change_percent": 0.3},
-    ...
-  ],
-  "last_updated": "2024-12-19",
-  "source": "Market estimates based on December 2024 trading range"
-}`
+    if (EIA_API_KEY) {
+      // Fetch Brent crude price from EIA API v2
+      try {
+        const brentUrl = `https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=${EIA_API_KEY}&frequency=daily&data[0]=value&facets[series][]=RBRTE&sort[0][column]=period&sort[0][direction]=desc&length=5`;
+        
+        console.log("Fetching Brent price from EIA...");
+        const brentResponse = await fetch(brentUrl);
+        
+        if (brentResponse.ok) {
+          const brentData = await brentResponse.json();
+          console.log("EIA Brent response:", JSON.stringify(brentData).substring(0, 500));
+          
+          if (brentData.response?.data?.length > 0) {
+            const latestBrent = brentData.response.data[0];
+            brentPrice = parseFloat(latestBrent.value);
+            dataDate = latestBrent.period;
+            console.log(`Brent price from EIA: $${brentPrice} on ${dataDate}`);
           }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_oil_prices",
-              description: "Return current oil prices data",
-              parameters: {
-                type: "object",
-                properties: {
-                  prices: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        crude_type: { type: "string" },
-                        price: { type: "number" },
-                        change_percent: { type: "number" }
-                      },
-                      required: ["crude_type", "price", "change_percent"]
-                    }
-                  },
-                  last_updated: { type: "string" },
-                  source: { type: "string" }
-                },
-                required: ["prices", "last_updated", "source"]
+        } else {
+          console.error("EIA Brent fetch failed:", brentResponse.status);
+        }
+
+        // Fetch WTI crude price
+        const wtiUrl = `https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=${EIA_API_KEY}&frequency=daily&data[0]=value&facets[series][]=RWTC&sort[0][column]=period&sort[0][direction]=desc&length=5`;
+        
+        const wtiResponse = await fetch(wtiUrl);
+        if (wtiResponse.ok) {
+          const wtiData = await wtiResponse.json();
+          if (wtiData.response?.data?.length > 0) {
+            wtiPrice = parseFloat(wtiData.response.data[0].value);
+            console.log(`WTI price from EIA: $${wtiPrice}`);
+          }
+        }
+      } catch (eiaError) {
+        console.error("EIA API error:", eiaError);
+      }
+    }
+
+    // If EIA failed, try FRED (Federal Reserve Economic Data) as backup - free API
+    if (!brentPrice) {
+      console.log("EIA unavailable, trying FRED backup...");
+      try {
+        // FRED Brent crude: DCOILBRENTEU
+        const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=DCOILBRENTEU&api_key=DEMO_KEY&file_type=json&sort_order=desc&limit=5`;
+        
+        const fredResponse = await fetch(fredUrl);
+        if (fredResponse.ok) {
+          const fredData = await fredResponse.json();
+          if (fredData.observations?.length > 0) {
+            // Find the first non-null value
+            for (const obs of fredData.observations) {
+              if (obs.value !== ".") {
+                brentPrice = parseFloat(obs.value);
+                dataDate = obs.date;
+                source = "FRED (Federal Reserve Economic Data)";
+                console.log(`Brent price from FRED: $${brentPrice} on ${dataDate}`);
+                break;
               }
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "return_oil_prices" } }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("AI response:", JSON.stringify(data));
-
-    // Extract the function call result
-    let priceData;
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (toolCall?.function?.arguments) {
-      priceData = JSON.parse(toolCall.function.arguments);
-    } else {
-      // Fallback: try to parse from content
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          priceData = JSON.parse(jsonMatch[0]);
         }
+      } catch (fredError) {
+        console.error("FRED API error:", fredError);
       }
     }
 
-    if (!priceData || !priceData.prices) {
-      throw new Error("Failed to parse price data from AI response");
+    // Final fallback: use database cached value with warning
+    if (!brentPrice) {
+      console.log("Using cached database values...");
+      const { data: cachedPrices } = await supabase
+        .from("price_data")
+        .select("*")
+        .eq("crude_type", "Brent")
+        .order("data_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cachedPrices) {
+        brentPrice = cachedPrices.price;
+        dataDate = cachedPrices.data_date;
+        source = "Cached data (API unavailable)";
+        console.log(`Using cached Brent price: $${brentPrice}`);
+      } else {
+        throw new Error("No price data available from any source");
+      }
     }
 
-    console.log("Parsed price data:", priceData);
+    // Calculate Angolan crude prices based on Brent + differentials
+    const prices = [
+      { 
+        crude_type: "Brent", 
+        price: brentPrice!, 
+        change_percent: 0, // Will calculate from DB
+        source: source
+      },
+      ...Object.entries(ANGOLAN_DIFFERENTIALS).map(([crude, differential]) => ({
+        crude_type: crude,
+        price: Math.round((brentPrice! + differential) * 100) / 100,
+        change_percent: 0,
+        source: `Calculated from Brent + differential (${differential >= 0 ? '+' : ''}${differential})`
+      }))
+    ];
+
+    // Calculate change percentages from previous day in DB
+    for (const price of prices) {
+      const { data: previousPrice } = await supabase
+        .from("price_data")
+        .select("price")
+        .eq("crude_type", price.crude_type)
+        .neq("data_date", dataDate)
+        .order("data_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (previousPrice) {
+        price.change_percent = Math.round(((price.price - previousPrice.price) / previousPrice.price) * 10000) / 100;
+      }
+    }
+
+    console.log("Final prices:", prices);
 
     // Check if we should update the database
     const { action } = await req.json().catch(() => ({ action: "fetch" }));
 
     if (action === "sync") {
-      // Update prices in database
-      const today = new Date().toISOString().split("T")[0];
+      const today = dataDate || new Date().toISOString().split("T")[0];
       
-      for (const price of priceData.prices) {
-        // Check if price exists for today
+      for (const price of prices) {
         const { data: existing } = await supabase
           .from("price_data")
           .select("id")
@@ -158,7 +175,6 @@ Return a JSON object with this exact structure:
           .maybeSingle();
 
         if (existing) {
-          // Update existing
           await supabase
             .from("price_data")
             .update({
@@ -168,7 +184,6 @@ Return a JSON object with this exact structure:
             })
             .eq("id", existing.id);
         } else {
-          // Insert new
           await supabase
             .from("price_data")
             .insert({
@@ -180,12 +195,11 @@ Return a JSON object with this exact structure:
         }
       }
 
-      // Log the update
       await supabase.from("data_updates").insert({
         data_type: "price",
-        source: "AI Real-time Fetch",
-        records_updated: priceData.prices.length,
-        notes: priceData.source
+        source: source,
+        records_updated: prices.length,
+        notes: `Data from ${dataDate}. Primary source: EIA API`
       });
 
       console.log("Prices synced to database");
@@ -194,7 +208,12 @@ Return a JSON object with this exact structure:
     return new Response(
       JSON.stringify({
         success: true,
-        data: priceData,
+        data: {
+          prices,
+          last_updated: dataDate,
+          source: source,
+          api_status: EIA_API_KEY ? "EIA API configured" : "Using fallback sources"
+        },
         synced: action === "sync"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

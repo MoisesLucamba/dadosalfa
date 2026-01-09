@@ -7,6 +7,7 @@ import { ProductionChart } from "@/components/dashboard/ProductionChart";
 import { ExportsMap } from "@/components/dashboard/ExportsMap";
 import { AIInsights } from "@/components/dashboard/AIInsights";
 import { OperatorsTable } from "@/components/dashboard/OperatorsTable";
+import { DataSourceIndicator, DATA_SOURCES } from "@/components/dashboard/DataSourceIndicator";
 import { BarChart3, DollarSign, Ship, Gauge, RefreshCw, AlertTriangle, Zap } from "lucide-react";
 import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
 import { useMemo, useState } from "react";
@@ -338,6 +339,15 @@ const Index = () => {
                   <AIInsights />
                 </div>
               </div>
+
+              {/* Data Sources */}
+              <DataSourceIndicator 
+                sources={[
+                  ...DATA_SOURCES.prices,
+                  ...DATA_SOURCES.production,
+                  ...DATA_SOURCES.exports,
+                ]} 
+              />
             </div>
           </main>
         </div>
