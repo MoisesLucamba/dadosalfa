@@ -123,7 +123,9 @@
     "registerOrganization": "Registar Organização",
     "organizationApprovalNote": "O registo da organização requer aprovação. Será notificado por email.",
     "accountType": "Tipo de Conta",
-    "chooseAccountType": "Escolha o tipo de conta que deseja criar"
+    "chooseAccountType": "Escolha o tipo de conta que deseja criar",
+    "accountPendingApproval": "A sua conta aguarda aprovação do administrador.",
+    "organizationPendingApproval": "A organização ainda não foi aprovada. Contacte o administrador."
   },
   "nav": {
     "dashboard": "Dashboard",
