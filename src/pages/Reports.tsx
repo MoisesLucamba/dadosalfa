@@ -228,7 +228,14 @@ const Reports = () => {
   };
 
   const handleDownload = async (report: Report, format: 'pdf' | 'docx' | 'excel') => {
+    const loadingToast = toast.loading(`A gerar ${format.toUpperCase()}...`);
+    
     try {
+      // Validate report data before generation
+      if (!report) {
+        throw new Error('Relatório não encontrado');
+      }
+
       // Record download
       await supabase.from('report_downloads').insert({
         report_id: report.id,
@@ -241,26 +248,31 @@ const Reports = () => {
         .update({ download_count: (report.download_count || 0) + 1 })
         .eq('id', report.id);
 
-      // Prepare report data for generation
+      // Prepare report data for generation with safe defaults
       const reportData: ReportData = {
-        title: report.title,
-        type: report.type,
+        title: report.title || 'Relatório AlphaData',
+        type: report.type || 'production',
         period: report.period || 'Atual',
-        summary: report.summary || undefined,
-        content: report.content,
-        highlights: report.content?.highlights,
-        generatedAt: new Date(report.created_at),
-        aiGenerated: report.ai_generated,
+        summary: report.summary || 'Relatório gerado pela plataforma AlphaData.',
+        content: report.content || { data: {} },
+        highlights: report.content?.highlights || [],
+        generatedAt: report.created_at ? new Date(report.created_at) : new Date(),
+        aiGenerated: report.ai_generated || false,
       };
 
       // Generate and download in selected format
       await downloadReport(reportData, format);
 
-      toast.success(`Download ${format.toUpperCase()} iniciado!`);
+      toast.dismiss(loadingToast);
+      toast.success(`Download ${format.toUpperCase()} concluído!`);
       fetchReports();
     } catch (error) {
+      toast.dismiss(loadingToast);
       console.error('Error downloading:', error);
-      toast.error("Erro no download");
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error(`Erro no download: ${errorMessage}`, {
+        description: 'Por favor, tente novamente ou contacte o suporte.'
+      });
     }
   };
 

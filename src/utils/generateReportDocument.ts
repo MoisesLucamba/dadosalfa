@@ -56,59 +56,70 @@ const getTypeName = (type: string): string => {
  * Generate PDF Report with AlphaData branding
  */
 export const generatePDFReport = (data: ReportData): void => {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  let yPos = margin;
+  try {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    let yPos = margin;
 
-  const checkNewPage = (requiredSpace: number) => {
-    if (yPos + requiredSpace > pageHeight - 25) {
-      doc.addPage();
-      yPos = margin;
-      addHeader();
-    }
-  };
+    const checkNewPage = (requiredSpace: number) => {
+      if (yPos + requiredSpace > pageHeight - 25) {
+        doc.addPage();
+        yPos = margin;
+        addHeader();
+      }
+    };
 
-  const addHeader = () => {
-    // Header background
-    doc.setFillColor(...COLORS.dark);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    
-    // Brand name with red accent
-    doc.setTextColor(...COLORS.brand);
-    doc.setFontSize(28);
-    doc.setFont('helvetica', 'bold');
-    doc.text('α', margin, 22);
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text('ALPHADATA', margin + 12, 22);
-    
-    // Report title
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.title, margin, 33);
-    
-    // Generation info
-    doc.setFontSize(9);
-    doc.setTextColor(200, 200, 200);
-    const generatedText = `Gerado em: ${data.generatedAt.toLocaleDateString('pt-AO', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
-    doc.text(generatedText, pageWidth - margin - 75, 22);
-    
-    if (data.aiGenerated) {
-      doc.setTextColor(...COLORS.primary);
-      doc.text('✨ Gerado com IA', pageWidth - margin - 30, 33);
-    }
-    
-    yPos = 50;
-  };
+    const addHeader = () => {
+      // Header background
+      doc.setFillColor(...COLORS.dark);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Brand name with red accent
+      doc.setTextColor(...COLORS.brand);
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.text('α', margin, 22);
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.text('ALPHADATA', margin + 12, 22);
+      
+      // Report title - handle undefined or null
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      const safeTitle = data.title || 'Relatório AlphaData';
+      doc.text(safeTitle, margin, 33);
+      
+      // Generation info - safe date handling
+      doc.setFontSize(9);
+      doc.setTextColor(200, 200, 200);
+      let generatedDate: Date;
+      try {
+        generatedDate = data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt);
+        if (isNaN(generatedDate.getTime())) {
+          generatedDate = new Date();
+        }
+      } catch {
+        generatedDate = new Date();
+      }
+      const generatedText = `Gerado em: ${generatedDate.toLocaleDateString('pt-AO', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`;
+      doc.text(generatedText, pageWidth - margin - 75, 22);
+      
+      if (data.aiGenerated) {
+        doc.setTextColor(...COLORS.primary);
+        doc.text('✨ Gerado com IA', pageWidth - margin - 30, 33);
+      }
+      
+      yPos = 50;
+    };
 
   const addFooter = () => {
     const totalPages = doc.getNumberOfPages();
@@ -349,12 +360,18 @@ export const generatePDFReport = (data: ReportData): void => {
   const disclaimerLines = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin - 10);
   doc.text(disclaimerLines, margin + 5, yPos + 8);
 
-  // Add footers
-  addFooter();
+    // Add footers
+    addFooter();
 
-  // Save
-  const fileName = `AlphaData_${getTypeName(data.type)}_${data.period?.replace(/\s+/g, '_') || new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(fileName);
+    // Save
+    const safeType = data.type || 'Relatorio';
+    const safePeriod = data.period?.replace(/\s+/g, '_') || new Date().toISOString().split('T')[0];
+    const fileName = `AlphaData_${getTypeName(safeType)}_${safePeriod}.pdf`;
+    doc.save(fileName);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw new Error(`Falha ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  }
 };
 
 /**
