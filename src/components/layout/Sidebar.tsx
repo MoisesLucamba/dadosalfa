@@ -16,6 +16,7 @@ import {
   CreditCard,
   Shield,
   Building2,
+  Users2,
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
 ];
 
 const bottomNavItems: NavItem[] = [
+  { icon: Users2, label: "Workspaces", href: "/workspace" },
   { icon: Bell, label: "Alertas", href: "/alerts", badge: "3" },
   { icon: CreditCard, label: "Planos", href: "/pricing" },
   { icon: Settings, label: "Configurações", href: "/settings" },
