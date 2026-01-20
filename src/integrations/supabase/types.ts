@@ -74,6 +74,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notifications: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          recipient_email: string
+          sent_at: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
       export_data: {
         Row: {
           arrival_date: string | null
@@ -612,6 +648,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity_metrics: {
+        Row: {
+          action_count: number | null
+          action_type: string
+          created_at: string | null
+          date: string | null
+          id: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          action_count?: number | null
+          action_type: string
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          action_count?: number | null
+          action_type?: string
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_metrics_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_alerts: {
         Row: {
           alert_type: string
@@ -644,6 +718,39 @@ export type Database = {
           notify_email?: boolean | null
           threshold_value?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_presence: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_seen_at: string | null
+          session_count: number | null
+          status: string | null
+          total_session_time_minutes: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          session_count?: number | null
+          status?: string | null
+          total_session_time_minutes?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          session_count?: number | null
+          status?: string | null
+          total_session_time_minutes?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

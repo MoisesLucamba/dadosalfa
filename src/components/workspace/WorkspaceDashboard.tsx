@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { WorkspacePanel } from "./WorkspacePanel";
-import { TeamManagement } from "./TeamManagement";
+import { AdvancedTeamManagement } from "./AdvancedTeamManagement";
 import { 
   PieChart, 
   Pie, 
@@ -202,7 +202,7 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
         </TabsList>
 
         <TabsContent value="team" className="space-y-4">
-          <TeamManagement workspaceId={workspaceId} />
+          <AdvancedTeamManagement workspaceId={workspaceId} maxUsers={16} planName="Professional" />
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
