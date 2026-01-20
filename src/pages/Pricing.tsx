@@ -8,58 +8,69 @@ import { Check, Star, Zap, Shield, Users, Phone, Mail, Building2 } from "lucide-
 const Pricing = () => {
   const plans = [
     {
-      name: "Standard",
-      price: "50.000",
+      name: "Starter",
+      price: "14.000",
       period: "por ano",
-      description: "Acesso completo à plataforma AlphaData com todas as funcionalidades essenciais",
-      popular: true,
+      description: "Ideal para equipas pequenas que precisam de inteligência de mercado essencial",
+      popular: false,
+      users: 6,
       features: [
         "Dashboard em tempo real",
         "Dados de produção por bloco/operador",
         "Preços Brent e crudes angolanos",
         "Exportações e logística",
         "Previsões IA 30/60/90 dias",
-        "Risco geopolítico",
+        "Risco geopolítico básico",
         "Relatórios mensais automáticos",
         "Alertas configuráveis",
         "Suporte por email",
-        "Até 5 usuários",
+        "Até 6 usuários",
+        "1 Workspace colaborativo",
+      ],
+    },
+    {
+      name: "Professional",
+      price: "39.999",
+      period: "por ano",
+      description: "Para organizações em crescimento com necessidades avançadas de análise",
+      popular: true,
+      users: 16,
+      features: [
+        "Tudo do plano Starter",
+        "Até 16 usuários",
+        "Workspaces ilimitados",
+        "API de integração básica",
+        "Relatórios personalizados",
+        "Dados históricos completos",
+        "Análise de competidores",
+        "Benchmarking de mercado",
+        "Suporte prioritário",
+        "Treinamento online",
+        "Exportação multi-formato (PDF, DOCX, Excel)",
       ],
     },
     {
       name: "Enterprise",
-      price: "Personalizado",
-      period: "",
-      description: "Soluções sob medida para grandes organizações com necessidades específicas",
+      price: "60.000+",
+      period: "por ano",
+      description: "Soluções completas para grandes organizações com requisitos personalizados",
       popular: false,
+      users: "Ilimitado",
+      customPrice: true,
+      priceRange: "60.000 - 100.000+",
       features: [
-        "Tudo do plano Standard",
+        "Tudo do plano Professional",
         "Usuários ilimitados",
-        "API de integração",
+        "API de integração completa",
         "White-label customizado",
         "Domínio personalizado",
-        "Relatórios personalizados",
-        "Dados históricos completos",
+        "Relatórios sob medida",
         "Suporte prioritário 24/7",
         "Gerente de conta dedicado",
         "Treinamento on-site",
-      ],
-    },
-    {
-      name: "Consultoria",
-      price: "Sob consulta",
-      period: "",
-      description: "Análises especializadas e relatórios customizados para projetos específicos",
-      popular: false,
-      features: [
-        "Estudos de viabilidade",
-        "Análise de mercado personalizada",
-        "Due diligence petrolífero",
-        "Projeções customizadas",
-        "Relatórios ad-hoc",
-        "Workshops estratégicos",
-        "Consultoria regulatória",
-        "Suporte a decisões M&A",
+        "SLA garantido",
+        "Consultoria estratégica incluída",
+        "Previsões IA personalizadas",
       ],
     },
   ];
@@ -120,8 +131,12 @@ const Pricing = () => {
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg sm:text-xl text-foreground">{plan.name}</CardTitle>
                   <div className="mt-3">
-                    {plan.price === "Personalizado" || plan.price === "Sob consulta" ? (
-                      <span className="text-2xl sm:text-3xl font-bold text-foreground">{plan.price}</span>
+                    {plan.customPrice ? (
+                      <>
+                        <span className="text-xs text-muted-foreground">USD </span>
+                        <span className="text-2xl sm:text-3xl font-bold text-foreground">${plan.priceRange}</span>
+                        <span className="text-sm text-muted-foreground ml-1">{plan.period}</span>
+                      </>
                     ) : (
                       <>
                         <span className="text-xs text-muted-foreground">USD </span>
@@ -129,6 +144,12 @@ const Pricing = () => {
                         <span className="text-sm text-muted-foreground ml-1">{plan.period}</span>
                       </>
                     )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      Até {plan.users} usuários
+                    </span>
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-2">{plan.description}</p>
                 </CardHeader>
@@ -148,9 +169,7 @@ const Pricing = () => {
                         : "bg-muted hover:bg-muted/80 text-foreground"
                     }`}
                   >
-                    {plan.price === "Personalizado" || plan.price === "Sob consulta" 
-                      ? "Contactar Vendas" 
-                      : "Começar Agora"}
+                    {plan.customPrice ? "Contactar Vendas" : "Começar Agora"}
                   </Button>
                 </CardContent>
               </Card>

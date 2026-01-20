@@ -21,6 +21,7 @@ import Search from "./pages/Search";
 import Pricing from "./pages/Pricing";
 import Admin from "./pages/Admin";
 import Competitors from "./pages/Competitors";
+import Workspace from "./pages/Workspace";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -156,6 +157,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Competitors />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/workspace"
+                  element={
+                    <ProtectedRoute>
+                      <Workspace />
                     </ProtectedRoute>
                   }
                 />
