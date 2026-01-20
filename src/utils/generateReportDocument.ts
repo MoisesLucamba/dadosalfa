@@ -4,16 +4,8 @@
  */
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle, Header, Footer, ImageRun, PageNumber, NumberFormat } from 'docx';
-
-// Extend jsPDF type for autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 export interface ReportData {
   title: string;
@@ -115,7 +107,10 @@ export const generatePDFReport = (data: ReportData): void => {
       
       if (data.aiGenerated) {
         doc.setTextColor(...COLORS.primary);
-        doc.text('✨ Gerado com IA', pageWidth - margin - 30, 33);
+        doc.setFillColor(230, 240, 255);
+        doc.roundedRect(pageWidth - margin - 45, 28, 42, 10, 2, 2, 'F');
+        doc.setFontSize(8);
+        doc.text('Gerado com IA', pageWidth - margin - 40, 34);
       }
       
       yPos = 50;
@@ -204,10 +199,12 @@ export const generatePDFReport = (data: ReportData): void => {
       if (highlight.trend) {
         const trendColor = highlight.trend === 'up' ? COLORS.success : 
                            highlight.trend === 'down' ? COLORS.danger : COLORS.muted;
-        const trendSymbol = highlight.trend === 'up' ? '▲' : 
-                            highlight.trend === 'down' ? '▼' : '►';
-        doc.setTextColor(...trendColor);
-        doc.text(trendSymbol, pageWidth - margin - 15, yPos + 11);
+        doc.setFillColor(...trendColor);
+        doc.circle(pageWidth - margin - 10, yPos + 9, 4, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        const arrow = highlight.trend === 'up' ? '+' : highlight.trend === 'down' ? '-' : '=';
+        doc.text(arrow, pageWidth - margin - 11.5, yPos + 11);
       }
       
       doc.setFont('helvetica', 'normal');
@@ -234,7 +231,7 @@ export const generatePDFReport = (data: ReportData): void => {
         ]);
 
         if (tableData.length > 0) {
-          doc.autoTable({
+          autoTable(doc, {
             startY: yPos,
             head: [['Operador', 'Bloco', 'Campo', 'Produção', 'Status']],
             body: tableData,
@@ -252,8 +249,14 @@ export const generatePDFReport = (data: ReportData): void => {
             alternateRowStyles: {
               fillColor: COLORS.light,
             },
+            theme: 'grid',
+            styles: {
+              cellPadding: 3,
+              lineColor: [200, 200, 200],
+              lineWidth: 0.1,
+            },
           });
-          yPos = doc.lastAutoTable.finalY + 15;
+          yPos = (doc as any).lastAutoTable.finalY + 15;
         }
       }
 
@@ -268,7 +271,7 @@ export const generatePDFReport = (data: ReportData): void => {
 
         if (tableData.length > 0) {
           checkNewPage(50);
-          doc.autoTable({
+          autoTable(doc, {
             startY: yPos,
             head: [['Tipo de Crude', 'Preço (USD)', 'Variação', 'Data']],
             body: tableData,
@@ -286,8 +289,14 @@ export const generatePDFReport = (data: ReportData): void => {
             alternateRowStyles: {
               fillColor: COLORS.light,
             },
+            theme: 'grid',
+            styles: {
+              cellPadding: 3,
+              lineColor: [200, 200, 200],
+              lineWidth: 0.1,
+            },
           });
-          yPos = doc.lastAutoTable.finalY + 15;
+          yPos = (doc as any).lastAutoTable.finalY + 15;
         }
       }
 
@@ -302,7 +311,7 @@ export const generatePDFReport = (data: ReportData): void => {
 
         if (tableData.length > 0) {
           checkNewPage(50);
-          doc.autoTable({
+          autoTable(doc, {
             startY: yPos,
             head: [['Destino', 'Volume', 'Tanque', 'Status']],
             body: tableData,
@@ -320,8 +329,14 @@ export const generatePDFReport = (data: ReportData): void => {
             alternateRowStyles: {
               fillColor: COLORS.light,
             },
+            theme: 'grid',
+            styles: {
+              cellPadding: 3,
+              lineColor: [200, 200, 200],
+              lineWidth: 0.1,
+            },
           });
-          yPos = doc.lastAutoTable.finalY + 15;
+          yPos = (doc as any).lastAutoTable.finalY + 15;
         }
       }
     }
@@ -340,7 +355,7 @@ export const generatePDFReport = (data: ReportData): void => {
     
     doc.setTextColor(...COLORS.primary);
     doc.setFontSize(9);
-    doc.text('✨ Esta análise foi gerada automaticamente por modelos de IA treinados da AlphaData', margin + 5, yPos + 9);
+    doc.text('Esta analise foi gerada automaticamente por modelos de IA treinados da AlphaData', margin + 5, yPos + 9);
     yPos += 20;
     
     doc.setTextColor(...COLORS.dark);
@@ -437,7 +452,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
           color: '64748B',
         }),
         data.aiGenerated ? new TextRun({
-          text: ' | ✨ Gerado com IA',
+          text: ' | Gerado com IA',
           size: 18,
           color: '1E40AF',
         }) : new TextRun({ text: '' }),
@@ -494,9 +509,10 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
           new TableCell({
             children: [new Paragraph({
               children: [new TextRun({ 
-                text: h.trend === 'up' ? '▲' : h.trend === 'down' ? '▼' : '►',
+                text: h.trend === 'up' ? '+' : h.trend === 'down' ? '-' : '=',
                 color: h.trend === 'up' ? '22C55E' : h.trend === 'down' ? 'EF4444' : '64748B',
                 size: 24,
+                bold: true,
               })],
             })],
             width: { size: 20, type: WidthType.PERCENTAGE },
