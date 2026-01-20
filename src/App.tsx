@@ -22,6 +22,7 @@ import Pricing from "./pages/Pricing";
 import Admin from "./pages/Admin";
 import Competitors from "./pages/Competitors";
 import Workspace from "./pages/Workspace";
+import Subscription from "./pages/Subscription";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -165,6 +166,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Workspace />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/subscription"
+                  element={
+                    <ProtectedRoute>
+                      <Subscription />
                     </ProtectedRoute>
                   }
                 />

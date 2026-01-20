@@ -14,13 +14,15 @@ import {
   Clock,
   Building2,
   Crown,
-  Settings
+  Settings,
+  UserPlus
 } from "lucide-react";
 import { useWorkspaces, useWorkspaceMembers, useWorkspaceActivity, useWorkspaceReports } from "@/hooks/useWorkspaces";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { WorkspacePanel } from "./WorkspacePanel";
+import { TeamManagement } from "./TeamManagement";
 import { 
   PieChart, 
   Pie, 
@@ -193,10 +195,15 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-muted/50">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="team">Equipa</TabsTrigger>
           <TabsTrigger value="members">Membros</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="activity">Atividade</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="team" className="space-y-4">
+          <TeamManagement workspaceId={workspaceId} />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
