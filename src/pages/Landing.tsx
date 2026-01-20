@@ -16,10 +16,16 @@ import {
   Building2,
   Users,
   FileText,
-  Star
+  Star,
+  Sun,
+  Moon,
+  Clock,
+  Target,
+  LineChart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { useTheme } from "@/hooks/useTheme";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 
 const features = [
@@ -89,11 +95,88 @@ const stats = [
   { value: "25+", label: "Países Cobertos", labelEn: "Countries Covered", labelFr: "Pays Couverts" },
   { value: "7.5M", label: "Barris/Dia", labelEn: "Barrels/Day", labelFr: "Barils/Jour" },
   { value: "$200B+", label: "Volume Anual", labelEn: "Annual Volume", labelFr: "Volume Annuel" },
-  { value: "500+", label: "Empresas Clientes", labelEn: "Client Companies", labelFr: "Entreprises Clientes" }
+  { value: "94%", label: "Precisão", labelEn: "Accuracy", labelFr: "Précision" }
 ];
 
-const clients = [
-  "Sonangol", "Total Energies", "ExxonMobil", "Chevron", "BP Angola", "ENI"
+const valuePropositions = [
+  {
+    icon: Clock,
+    title: "Decisões em Minutos",
+    titleEn: "Decisions in Minutes",
+    titleFr: "Décisions en Minutes",
+    description: "Reduza o tempo de análise de dias para minutos com dados centralizados e insights automáticos",
+    descriptionEn: "Reduce analysis time from days to minutes with centralized data and automated insights",
+    descriptionFr: "Réduisez le temps d'analyse de jours à minutes avec des données centralisées et des insights automatiques"
+  },
+  {
+    icon: Target,
+    title: "Previsibilidade",
+    titleEn: "Predictability",
+    titleFr: "Prévisibilité",
+    description: "Antecipe riscos e oportunidades com modelos preditivos alimentados por IA",
+    descriptionEn: "Anticipate risks and opportunities with AI-powered predictive models",
+    descriptionFr: "Anticipez les risques et opportunités avec des modèles prédictifs alimentés par l'IA"
+  },
+  {
+    icon: LineChart,
+    title: "Vantagem Competitiva",
+    titleEn: "Competitive Advantage",
+    titleFr: "Avantage Compétitif",
+    description: "Aceda a informações que os seus concorrentes não têm, antes que eles as tenham",
+    descriptionEn: "Access information your competitors don't have, before they have it",
+    descriptionFr: "Accédez à des informations que vos concurrents n'ont pas, avant qu'ils ne les aient"
+  }
+];
+
+// Pricing plans synced with Subscription page
+const pricingPlans = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 14000,
+    maxUsers: 6,
+    features: [
+      { pt: 'Dashboard em tempo real', en: 'Real-time dashboard', fr: 'Tableau de bord en temps réel' },
+      { pt: 'Dados de produção por bloco/operador', en: 'Production data by block/operator', fr: 'Données de production par bloc/opérateur' },
+      { pt: 'Preços Brent e crudes angolanos', en: 'Brent and Angolan crude prices', fr: 'Prix Brent et bruts angolais' },
+      { pt: 'Exportações e logística', en: 'Exports and logistics', fr: 'Exportations et logistique' },
+      { pt: 'Previsões IA 30/60/90 dias', en: 'AI predictions 30/60/90 days', fr: 'Prévisions IA 30/60/90 jours' },
+      { pt: 'Relatórios mensais automáticos', en: 'Automatic monthly reports', fr: 'Rapports mensuels automatiques' },
+      { pt: 'Suporte por email', en: 'Email support', fr: 'Support par email' },
+    ],
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    price: 39999,
+    maxUsers: 16,
+    popular: true,
+    features: [
+      { pt: 'Tudo do plano Starter', en: 'Everything in Starter', fr: 'Tout du plan Starter' },
+      { pt: 'Workspaces ilimitados', en: 'Unlimited workspaces', fr: 'Espaces de travail illimités' },
+      { pt: 'API de integração básica', en: 'Basic integration API', fr: 'API d\'intégration de base' },
+      { pt: 'Relatórios personalizados', en: 'Custom reports', fr: 'Rapports personnalisés' },
+      { pt: 'Dados históricos completos', en: 'Complete historical data', fr: 'Données historiques complètes' },
+      { pt: 'Análise de competidores', en: 'Competitor analysis', fr: 'Analyse des concurrents' },
+      { pt: 'Suporte prioritário', en: 'Priority support', fr: 'Support prioritaire' },
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 60000,
+    priceMax: 100000,
+    maxUsers: -1,
+    features: [
+      { pt: 'Tudo do plano Professional', en: 'Everything in Professional', fr: 'Tout du plan Professional' },
+      { pt: 'Usuários ilimitados', en: 'Unlimited users', fr: 'Utilisateurs illimités' },
+      { pt: 'API de integração completa', en: 'Full integration API', fr: 'API d\'intégration complète' },
+      { pt: 'White-label customizado', en: 'Custom white-label', fr: 'White-label personnalisé' },
+      { pt: 'Domínio personalizado', en: 'Custom domain', fr: 'Domaine personnalisé' },
+      { pt: 'Suporte 24/7', en: 'Support 24/7', fr: 'Support 24/7' },
+      { pt: 'Gerente dedicado', en: 'Dedicated manager', fr: 'Responsable dédié' },
+    ],
+  },
 ];
 
 const testimonials = [
@@ -121,12 +204,19 @@ const testimonials = [
 
 export default function Landing() {
   const { i18n } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
   const lang = i18n.language?.substring(0, 2) || 'pt';
 
   const getLocalizedText = (pt: string, en: string, fr: string) => {
     if (lang === 'en') return en;
     if (lang === 'fr') return fr;
     return pt;
+  };
+
+  const getLocalizedFeature = (feature: { pt: string; en: string; fr: string }) => {
+    if (lang === 'en') return feature.en;
+    if (lang === 'fr') return feature.fr;
+    return feature.pt;
   };
 
   return (
@@ -152,6 +242,18 @@ export default function Landing() {
             </div>
 
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
               <LanguageSelector variant="compact" />
               <Link to="/auth">
                 <Button variant="ghost" className="hidden sm:inline-flex">
@@ -361,29 +463,58 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Clients Section */}
-      <section className="py-12 border-y border-border/50 bg-muted/30">
+      {/* Value Proposition Section */}
+      <section className="py-16 border-y border-border/50 bg-muted/30">
         <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-sm text-muted-foreground mb-8">
-            {getLocalizedText(
-              "Empresas líderes do setor confiam na AlphaData",
-              "Leading industry companies trust AlphaData",
-              "Les entreprises leaders du secteur font confiance à AlphaData"
-            )}
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-12">
-            {clients.map((client, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.6 }}
-                whileHover={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="text-xl font-bold text-muted-foreground"
-              >
-                {client}
-              </motion.div>
-            ))}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium mb-4">
+              {getLocalizedText("Proposta de Valor", "Value Proposition", "Proposition de Valeur")}
+            </span>
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              {getLocalizedText(
+                "Clareza, previsibilidade e vantagem estratégica",
+                "Clarity, predictability and strategic advantage",
+                "Clarté, prévisibilité et avantage stratégique"
+              )}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              {getLocalizedText(
+                "O nosso valor não está em vender dados brutos, mas em fornecer decisões mais rápidas e informadas com risco reduzido",
+                "Our value isn't in selling raw data, but in providing faster, better-informed decisions with reduced risk",
+                "Notre valeur ne réside pas dans la vente de données brutes, mais dans des décisions plus rapides et mieux informées avec un risque réduit"
+              )}
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {valuePropositions.map((prop, index) => {
+              const Icon = prop.icon;
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="p-8 rounded-2xl bg-card border border-border/50 hover:border-primary/30 transition-colors text-center"
+                >
+                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                    <Icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
+                    {getLocalizedText(prop.title, prop.titleEn, prop.titleFr)}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {getLocalizedText(prop.description, prop.descriptionEn, prop.descriptionFr)}
+                  </p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -580,7 +711,7 @@ export default function Landing() {
 
       {/* Pricing Section */}
       <section id="pricing" className="py-24 bg-muted/30">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -588,90 +719,99 @@ export default function Landing() {
             className="text-center mb-12"
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
-              {getLocalizedText("Plano Enterprise", "Enterprise Plan", "Plan Entreprise")}
+              {getLocalizedText("Planos", "Plans", "Plans")}
             </span>
             <h2 className="text-4xl font-bold text-foreground mb-4">
               {getLocalizedText(
-                "Acesso completo à plataforma",
-                "Complete platform access",
-                "Accès complet à la plateforme"
+                "Escolha o plano ideal para a sua empresa",
+                "Choose the ideal plan for your company",
+                "Choisissez le plan idéal pour votre entreprise"
               )}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               {getLocalizedText(
-                "Um único plano com acesso ilimitado a todas as funcionalidades",
-                "One plan with unlimited access to all features",
-                "Un seul plan avec accès illimité à toutes les fonctionnalités"
+                "Planos flexíveis adaptados às necessidades da sua organização",
+                "Flexible plans adapted to your organization's needs",
+                "Plans flexibles adaptés aux besoins de votre organisation"
               )}
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative p-8 md:p-12 rounded-3xl bg-card border-2 border-primary/30 shadow-2xl"
-          >
-            {/* Popular Badge */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <span className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-lg">
-                <Star className="h-4 w-4 fill-current" />
-                {getLocalizedText("Plano Único", "Single Plan", "Plan Unique")}
-              </span>
-            </div>
-
-            <div className="text-center mb-8">
-              <div className="flex items-baseline justify-center gap-2 mb-2">
-                <span className="text-6xl font-bold text-foreground">$50,000</span>
-                <span className="text-xl text-muted-foreground">
-                  /{getLocalizedText("ano", "year", "an")}
-                </span>
-              </div>
-              <p className="text-muted-foreground">
-                {getLocalizedText(
-                  "Faturação anual • Acesso para toda a empresa",
-                  "Annual billing • Company-wide access",
-                  "Facturation annuelle • Accès pour toute l'entreprise"
+          <div className="grid md:grid-cols-3 gap-8">
+            {pricingPlans.map((plan, index) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className={`relative p-8 rounded-2xl bg-card border ${
+                  plan.popular ? 'border-primary shadow-xl shadow-primary/10' : 'border-border/50'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-lg">
+                      <Star className="h-3 w-3 fill-current" />
+                      {getLocalizedText("Mais Popular", "Most Popular", "Plus Populaire")}
+                    </span>
+                  </div>
                 )}
-              </p>
-            </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-8">
-              {[
-                { pt: "Acesso ilimitado a todos os dados", en: "Unlimited access to all data", fr: "Accès illimité à toutes les données" },
-                { pt: "Análise de riscos com IA", en: "AI-powered risk analysis", fr: "Analyse des risques par IA" },
-                { pt: "Previsões geopolíticas em tempo real", en: "Real-time geopolitical forecasts", fr: "Prévisions géopolitiques en temps réel" },
-                { pt: "Simulador de impacto regulatório", en: "Regulatory impact simulator", fr: "Simulateur d'impact réglementaire" },
-                { pt: "Relatórios PDF profissionais", en: "Professional PDF reports", fr: "Rapports PDF professionnels" },
-                { pt: "Alertas personalizados", en: "Custom alerts", fr: "Alertes personnalisées" },
-                { pt: "API de integração", en: "Integration API", fr: "API d'intégration" },
-                { pt: "Suporte prioritário 24/7", en: "24/7 priority support", fr: "Support prioritaire 24/7" },
-                { pt: "Gestão de múltiplos utilizadores", en: "Multi-user management", fr: "Gestion multi-utilisateurs" },
-                { pt: "Formação personalizada", en: "Personalized training", fr: "Formation personnalisée" }
-              ].map((item, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
-                  <span className="text-foreground">{getLocalizedText(item.pt, item.en, item.fr)}</span>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-foreground">
+                      ${plan.price.toLocaleString()}
+                      {plan.priceMax && (
+                        <span className="text-2xl"> - ${plan.priceMax.toLocaleString()}</span>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground">/{getLocalizedText("ano", "year", "an")}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {getLocalizedText(
+                      `Até ${plan.maxUsers === -1 ? 'ilimitados' : plan.maxUsers} usuários`,
+                      `Up to ${plan.maxUsers === -1 ? 'unlimited' : plan.maxUsers} users`,
+                      `Jusqu'à ${plan.maxUsers === -1 ? 'illimités' : plan.maxUsers} utilisateurs`
+                    )}
+                  </p>
                 </div>
-              ))}
-            </div>
 
-            <div className="text-center">
-              <Link to="/auth">
-                <Button size="lg" className="h-14 px-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all">
-                  {getLocalizedText("Começar Agora", "Get Started", "Commencer Maintenant")}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <p className="mt-4 text-sm text-muted-foreground">
-                {getLocalizedText(
-                  "Inclui demonstração gratuita e período de teste de 30 dias",
-                  "Includes free demo and 30-day trial period",
-                  "Comprend une démo gratuite et une période d'essai de 30 jours"
-                )}
-              </p>
-            </div>
-          </motion.div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-muted-foreground">{getLocalizedFeature(feature)}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link to="/auth" className="block">
+                  <Button 
+                    className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
+                    variant={plan.popular ? 'default' : 'outline'}
+                  >
+                    {getLocalizedText("Começar Agora", "Get Started", "Commencer")}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center text-sm text-muted-foreground mt-8"
+          >
+            {getLocalizedText(
+              "Todos os planos incluem demonstração gratuita e período de teste de 30 dias",
+              "All plans include free demo and 30-day trial period",
+              "Tous les plans comprennent une démo gratuite et une période d'essai de 30 jours"
+            )}
+          </motion.p>
         </div>
       </section>
 
