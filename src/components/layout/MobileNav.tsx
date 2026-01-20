@@ -12,17 +12,24 @@ import {
   Settings,
   Menu,
   X,
+  Search,
+  CreditCard,
+  Shield,
+  Building2,
+  Users2,
 } from "lucide-react";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
   badge?: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -30,13 +37,18 @@ const navItems: NavItem[] = [
   { icon: BarChart3, label: "Produção", href: "/production" },
   { icon: DollarSign, label: "Preços & Mercado", href: "/prices" },
   { icon: Ship, label: "Exportações", href: "/exports" },
+  { icon: Building2, label: "Competidores", href: "/competitors" },
   { icon: Brain, label: "Previsões IA", href: "/predictions", badge: "AI" },
   { icon: AlertTriangle, label: "Risco", href: "/risk" },
   { icon: FileText, label: "Relatórios", href: "/reports" },
+  { icon: Search, label: "Pesquisa", href: "/search" },
+  { icon: Shield, label: "Admin", href: "/admin", badge: "Admin", adminOnly: true },
 ];
 
 const bottomNavItems: NavItem[] = [
+  { icon: Users2, label: "Workspaces", href: "/workspace" },
   { icon: Bell, label: "Alertas", href: "/alerts", badge: "3" },
+  { icon: CreditCard, label: "Subscrição", href: "/subscription" },
   { icon: Settings, label: "Configurações", href: "/settings" },
 ];
 
@@ -46,6 +58,9 @@ interface MobileNavProps {
 
 export function MobileNav({ activeItem = "/" }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const { data: isAdmin } = useIsAdmin();
+
+  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -67,7 +82,7 @@ export function MobileNav({ activeItem = "/" }: MobileNavProps) {
 
           {/* Main Navigation */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
-            {navItems.map((item, index) => (
+            {filteredNavItems.map((item, index) => (
               <motion.a
                 key={item.href}
                 href={item.href}
