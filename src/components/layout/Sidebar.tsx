@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
 const bottomNavItems: NavItem[] = [
   { icon: Users2, label: "Workspaces", href: "/workspace" },
   { icon: Bell, label: "Alertas", href: "/alerts", badge: "3" },
-  { icon: CreditCard, label: "Planos", href: "/pricing" },
+  { icon: CreditCard, label: "Subscrição", href: "/subscription" },
   { icon: Settings, label: "Configurações", href: "/settings" },
 ];
 
