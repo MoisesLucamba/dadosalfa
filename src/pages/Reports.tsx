@@ -24,7 +24,11 @@ import {
   Plus,
   Loader2,
   RefreshCw,
-  X
+  X,
+  FileSpreadsheet,
+  FileType,
+  Users,
+  Share2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,6 +49,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { downloadReport, ReportData } from "@/utils/generateReportDocument";
+import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { useWorkspaces, useWorkspaceReports } from "@/hooks/useWorkspaces";
 
 interface Report {
   id: string;
@@ -98,6 +112,12 @@ const Reports = () => {
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleFrequency, setScheduleFrequency] = useState("weekly");
   const [scheduleRecipients, setScheduleRecipients] = useState(1);
+
+  // Workspace states
+  const [showWorkspacePanel, setShowWorkspacePanel] = useState(false);
+  const { workspaces } = useWorkspaces();
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const { shareReport } = useWorkspaceReports(selectedWorkspaceId);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -207,7 +227,7 @@ const Reports = () => {
     }
   };
 
-  const handleDownload = async (report: Report) => {
+  const handleDownload = async (report: Report, format: 'pdf' | 'docx' | 'excel') => {
     try {
       // Record download
       await supabase.from('report_downloads').insert({
@@ -221,23 +241,35 @@ const Reports = () => {
         .update({ download_count: (report.download_count || 0) + 1 })
         .eq('id', report.id);
 
-      // Generate and download content
-      const content = JSON.stringify(report.content, null, 2);
-      const blob = new Blob([`${report.title}\n\n${report.summary || ''}\n\nDados:\n${content}`], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${report.title.replace(/\s+/g, '_')}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Prepare report data for generation
+      const reportData: ReportData = {
+        title: report.title,
+        type: report.type,
+        period: report.period || 'Atual',
+        summary: report.summary || undefined,
+        content: report.content,
+        highlights: report.content?.highlights,
+        generatedAt: new Date(report.created_at),
+        aiGenerated: report.ai_generated,
+      };
 
-      toast.success("Download iniciado!");
+      // Generate and download in selected format
+      await downloadReport(reportData, format);
+
+      toast.success(`Download ${format.toUpperCase()} iniciado!`);
       fetchReports();
     } catch (error) {
       console.error('Error downloading:', error);
       toast.error("Erro no download");
+    }
+  };
+
+  const handleShareToWorkspace = async (report: Report, workspaceId: string) => {
+    setSelectedWorkspaceId(workspaceId);
+    try {
+      await shareReport.mutateAsync(report.id);
+    } catch (error) {
+      console.error('Error sharing to workspace:', error);
     }
   };
 
@@ -374,6 +406,14 @@ const Reports = () => {
                   <p className="text-muted-foreground">Análises automatizadas e insights gerados por IA</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowWorkspacePanel(true)}
+                    className="gap-2"
+                  >
+                    <Users className="w-4 h-4" />
+                    Workspaces
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setShowScheduleDialog(true)}
@@ -608,12 +648,43 @@ const Reports = () => {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
-                                <button 
-                                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                  onClick={() => handleDownload(report)}
-                                >
-                                  <Download className="w-4 h-4" />
-                                </button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button 
+                                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDownload(report, 'pdf')}>
+                                      <FileText className="w-4 h-4 mr-2 text-red-500" />
+                                      Baixar PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDownload(report, 'docx')}>
+                                      <FileType className="w-4 h-4 mr-2 text-blue-500" />
+                                      Baixar DOCX
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDownload(report, 'excel')}>
+                                      <FileSpreadsheet className="w-4 h-4 mr-2 text-green-500" />
+                                      Baixar Excel
+                                    </DropdownMenuItem>
+                                    {workspaces.length > 0 && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        {workspaces.map(ws => (
+                                          <DropdownMenuItem 
+                                            key={ws.id}
+                                            onClick={() => handleShareToWorkspace(report, ws.id)}
+                                          >
+                                            <Share2 className="w-4 h-4 mr-2" />
+                                            Partilhar: {ws.name}
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </>
                             ) : (
                               <span className="flex items-center gap-2 text-xs text-accent">
@@ -898,6 +969,12 @@ const Reports = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Workspace Panel */}
+      <WorkspacePanel 
+        isOpen={showWorkspacePanel} 
+        onClose={() => setShowWorkspacePanel(false)} 
+      />
     </>
   );
 };
