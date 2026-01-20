@@ -133,18 +133,10 @@ export const generatePDFReport = (data: ReportData): void => {
       // Footer content
       doc.setTextColor(...COLORS.muted);
       doc.setFontSize(8);
-      doc.text('AlphaData - Inteligência de Mercado Petrolífero Angolano', margin, pageHeight - 8);
-      doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text('AlphaData - Inteligencia de Mercado Petrolifero Angolano', margin, pageHeight - 8);
+      doc.text(`Pagina ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
       doc.text('CONFIDENCIAL - USO INTERNO', pageWidth - margin - 35, pageHeight - 8);
-      
-      // Watermark
-      doc.setTextColor(200, 200, 200);
-      doc.setFontSize(60);
-      doc.setFont('helvetica', 'bold');
-      doc.text('AlphaData', pageWidth / 2, pageHeight / 2, {
-        align: 'center',
-        angle: 45,
-      });
+      // NO watermark - removed per user request
     }
   };
 

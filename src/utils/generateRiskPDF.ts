@@ -1,13 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend jsPDF type for autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 interface RiskScore {
   category: string;
@@ -77,6 +69,7 @@ const COLORS = {
   dark: [15, 23, 42] as [number, number, number], // Slate 900
   muted: [100, 116, 139] as [number, number, number], // Slate 500
   light: [241, 245, 249] as [number, number, number], // Slate 100
+  brand: [220, 38, 38] as [number, number, number], // AlphaData Red
 };
 
 const getRiskColor = (score: number): [number, number, number] => {
@@ -86,11 +79,10 @@ const getRiskColor = (score: number): [number, number, number] => {
 };
 
 const getTrendSymbol = (trend: string): string => {
-  if (trend === 'up') return '↑';
-  if (trend === 'down') return '↓';
-  return '→';
+  if (trend === 'up') return '+';
+  if (trend === 'down') return '-';
+  return '=';
 };
-
 export const generateRiskPDF = (data: PDFData): void => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -110,56 +102,67 @@ export const generateRiskPDF = (data: PDFData): void => {
   // Add header with logo and title
   const addHeader = () => {
     doc.setFillColor(...COLORS.dark);
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    // AlphaData branding with alpha symbol
+    doc.setTextColor(...COLORS.brand);
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    doc.text('α', margin, 22);
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('AlphaData', margin, 18);
+    doc.setFontSize(20);
+    doc.text('ALPHADATA', margin + 12, 22);
     
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text('Relatório de Análise Geopolítica e Riscos', margin, 28);
+    doc.text('Relatorio de Analise Geopolitica e Riscos', margin, 33);
     
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-PT', { 
+    doc.setFontSize(9);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-AO', { 
       day: '2-digit', 
       month: 'long', 
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })}`, pageWidth - margin - 80, 28);
+    })}`, pageWidth - margin - 80, 22);
     
-    yPos = 45;
+    yPos = 50;
   };
 
-  // Add footer
+  // Add footer - NO watermark
   const addFooter = () => {
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
       doc.setFillColor(...COLORS.light);
-      doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+      doc.rect(0, pageHeight - 18, pageWidth, 18, 'F');
+      
+      // Footer line
+      doc.setDrawColor(...COLORS.brand);
+      doc.setLineWidth(0.5);
+      doc.line(0, pageHeight - 18, pageWidth, pageHeight - 18);
       
       doc.setTextColor(...COLORS.muted);
       doc.setFontSize(8);
-      doc.text('AlphaData - Inteligência de Mercado Petrolífero', margin, pageHeight - 6);
-      doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin - 20, pageHeight - 6);
-      doc.text('CONFIDENCIAL', pageWidth / 2, pageHeight - 6, { align: 'center' });
+      doc.text('AlphaData - Inteligencia de Mercado Petrolifero Angolano', margin, pageHeight - 8);
+      doc.text(`Pagina ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text('CONFIDENCIAL - USO INTERNO', pageWidth - margin - 35, pageHeight - 8);
     }
   };
 
   // Section title helper
-  const addSectionTitle = (title: string, icon?: string) => {
+  const addSectionTitle = (title: string) => {
     checkNewPage(20);
-    doc.setFillColor(...COLORS.primary);
-    doc.rect(margin, yPos, 3, 10, 'F');
+    doc.setFillColor(...COLORS.brand);
+    doc.rect(margin, yPos, 4, 12, 'F');
     
     doc.setTextColor(...COLORS.dark);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${icon ? icon + ' ' : ''}${title}`, margin + 6, yPos + 7);
-    yPos += 15;
+    doc.text(title, margin + 8, yPos + 8);
+    yPos += 18;
   };
 
   // Start PDF generation
@@ -204,9 +207,9 @@ export const generateRiskPDF = (data: PDFData): void => {
       risk.description || '-'
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
-      head: [['Categoria', 'Score', 'Tendência', 'Descrição']],
+      head: [['Categoria', 'Score', 'Tendencia', 'Descricao']],
       body: riskTableData,
       margin: { left: margin, right: margin },
       headStyles: {
@@ -230,14 +233,14 @@ export const generateRiskPDF = (data: PDFData): void => {
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
   }
 
   // Geopolitical Forecasts
   if (data.geopoliticalForecasts && data.geopoliticalForecasts.length > 0) {
-    addSectionTitle('Previsões Geopolíticas');
+    addSectionTitle('Previsoes Geopoliticas');
     
-    data.geopoliticalForecasts.forEach((forecast, index) => {
+    data.geopoliticalForecasts.forEach((forecast) => {
       checkNewPage(60);
       
       // Region header
@@ -252,9 +255,9 @@ export const generateRiskPDF = (data: PDFData): void => {
       doc.setFont('helvetica', 'bold');
       doc.text(forecast.region.toUpperCase(), margin + 5, yPos + 5.5);
       
-      const riskLabel = forecast.risk_level === 'critical' ? 'CRÍTICO' : 
+      const riskLabel = forecast.risk_level === 'critical' ? 'CRITICO' : 
                         forecast.risk_level === 'high' ? 'ALTO' : 
-                        forecast.risk_level === 'medium' ? 'MÉDIO' : 'BAIXO';
+                        forecast.risk_level === 'medium' ? 'MEDIO' : 'BAIXO';
       doc.text(`Risco: ${riskLabel}`, pageWidth - margin - 30, yPos + 5.5);
       
       yPos += 12;
@@ -263,7 +266,7 @@ export const generateRiskPDF = (data: PDFData): void => {
       doc.setTextColor(...COLORS.dark);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Situação Actual:', margin, yPos);
+      doc.text('Situacao Actual:', margin, yPos);
       yPos += 4;
       
       doc.setFont('helvetica', 'normal');
@@ -273,7 +276,7 @@ export const generateRiskPDF = (data: PDFData): void => {
       
       // Impact on Oil
       doc.setFont('helvetica', 'bold');
-      doc.text('Impacto no Petróleo:', margin, yPos);
+      doc.text('Impacto no Petroleo:', margin, yPos);
       yPos += 4;
       
       doc.setFont('helvetica', 'normal');
@@ -282,9 +285,9 @@ export const generateRiskPDF = (data: PDFData): void => {
       yPos += impactLines.length * 4 + 3;
       
       // Predictions table
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPos,
-        head: [['Horizonte', 'Previsão']],
+        head: [['Horizonte', 'Previsao']],
         body: [
           ['30 dias', forecast.prediction_30d],
           ['90 dias', forecast.prediction_90d],
@@ -302,7 +305,7 @@ export const generateRiskPDF = (data: PDFData): void => {
         },
       });
       
-      yPos = doc.lastAutoTable.finalY + 10;
+      yPos = (doc as any).lastAutoTable.finalY + 10;
     });
   }
 
@@ -311,15 +314,15 @@ export const generateRiskPDF = (data: PDFData): void => {
     addSectionTitle('Alertas Activos');
     
     const alertsTableData = data.alerts.map(alert => [
-      alert.alert_type === 'critical' ? '🔴' : alert.alert_type === 'warning' ? '🟠' : '🔵',
+      alert.alert_type === 'critical' ? 'CRITICO' : alert.alert_type === 'warning' ? 'ALERTA' : 'INFO',
       alert.title,
       alert.region || '-',
-      alert.impact === 'high' ? 'Alto' : alert.impact === 'medium' ? 'Médio' : 'Baixo',
+      alert.impact === 'high' ? 'Alto' : alert.impact === 'medium' ? 'Medio' : 'Baixo',
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
-      head: [['', 'Alerta', 'Região', 'Impacto']],
+      head: [['Tipo', 'Alerta', 'Regiao', 'Impacto']],
       body: alertsTableData,
       margin: { left: margin, right: margin },
       headStyles: {
@@ -330,19 +333,19 @@ export const generateRiskPDF = (data: PDFData): void => {
         fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 70 },
+        0: { cellWidth: 18, halign: 'center' },
+        1: { cellWidth: 62 },
         2: { cellWidth: 35 },
         3: { cellWidth: 25, halign: 'center' },
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
   }
 
   // Country Risk Comparison
   if (data.countryRisks && data.countryRisks.length > 0) {
-    addSectionTitle('Comparativo de Risco por País');
+    addSectionTitle('Comparativo de Risco por Pais');
     
     const countryTableData = data.countryRisks.map(cr => [
       cr.country,
@@ -351,9 +354,9 @@ export const generateRiskPDF = (data: PDFData): void => {
       cr.score >= 70 ? 'Elevado' : cr.score >= 50 ? 'Moderado' : 'Baixo',
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
-      head: [['País', 'Score', 'Tendência', 'Classificação']],
+      head: [['Pais', 'Score', 'Tendencia', 'Classificacao']],
       body: countryTableData,
       margin: { left: margin, right: margin },
       headStyles: {
@@ -371,7 +374,7 @@ export const generateRiskPDF = (data: PDFData): void => {
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
   }
 
   // Simulation Results
@@ -380,26 +383,26 @@ export const generateRiskPDF = (data: PDFData): void => {
     yPos = margin;
     addHeader();
     
-    addSectionTitle('Simulação de Impacto Regulatório');
+    addSectionTitle('Simulacao de Impacto Regulatorio');
     
     // Parameters
     doc.setTextColor(...COLORS.dark);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Parâmetros da Simulação:', margin, yPos);
+    doc.text('Parametros da Simulacao:', margin, yPos);
     yPos += 8;
     
     const params = data.simulationParams;
     const paramsData = [
-      ['Alteração Royalties', `${params.royaltyChange > 0 ? '+' : ''}${params.royaltyChange}%`],
-      ['Alteração Impostos', `${params.taxChange > 0 ? '+' : ''}${params.taxChange}%`],
+      ['Alteracao Royalties', `${params.royaltyChange > 0 ? '+' : ''}${params.royaltyChange}%`],
+      ['Alteracao Impostos', `${params.taxChange > 0 ? '+' : ''}${params.taxChange}%`],
       ['Custos Ambientais', `+${params.environmentalCompliance}%`],
       ['Quota OPEP+', `${params.opepQuotaChange > 0 ? '+' : ''}${params.opepQuotaChange}%`],
-      ['Preço Brent', `$${params.brentPriceScenario}/bbl`],
-      ['Desvalorização Cambial', `+${params.currencyDevaluation}%`],
+      ['Preco Brent', `$${params.brentPriceScenario}/bbl`],
+      ['Desvalorizacao Cambial', `+${params.currencyDevaluation}%`],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       body: paramsData,
       margin: { left: margin, right: margin },
@@ -413,24 +416,24 @@ export const generateRiskPDF = (data: PDFData): void => {
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
     
     // Results
     doc.setFont('helvetica', 'bold');
-    doc.text('Resultados da Simulação:', margin, yPos);
+    doc.text('Resultados da Simulacao:', margin, yPos);
     yPos += 8;
     
     const results = data.simulationResults;
     const resultsData = [
       ['Impacto na Receita', `${results.revenueImpact > 0 ? '+' : ''}${results.revenueImpact.toFixed(1)}%`],
       ['Impacto nos Custos', `${results.productionCostImpact > 0 ? '+' : ''}${results.productionCostImpact.toFixed(1)}%`],
-      ['Impacto no Lucro Líquido', `${results.netProfitImpact > 0 ? '+' : ''}${results.netProfitImpact.toFixed(1)}%`],
-      ['Impacto nas Exportações', `${results.exportVolumeImpact > 0 ? '+' : ''}${results.exportVolumeImpact.toFixed(1)}%`],
-      ['Alteração Government Take', `${results.governmentTakeChange > 0 ? '+' : ''}${results.governmentTakeChange.toFixed(0)}pp`],
+      ['Impacto no Lucro Liquido', `${results.netProfitImpact > 0 ? '+' : ''}${results.netProfitImpact.toFixed(1)}%`],
+      ['Impacto nas Exportacoes', `${results.exportVolumeImpact > 0 ? '+' : ''}${results.exportVolumeImpact.toFixed(1)}%`],
+      ['Alteracao Government Take', `${results.governmentTakeChange > 0 ? '+' : ''}${results.governmentTakeChange.toFixed(0)}pp`],
       ['Break-Even Price', `$${results.breakEvenPrice.toFixed(0)}/bbl`],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       body: resultsData,
       margin: { left: margin, right: margin },
@@ -456,22 +459,22 @@ export const generateRiskPDF = (data: PDFData): void => {
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
   }
 
   // Disclaimer
-  checkNewPage(30);
+  checkNewPage(35);
   doc.setFillColor(...COLORS.light);
-  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 25, 2, 2, 'F');
+  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 30, 3, 3, 'F');
   
   doc.setTextColor(...COLORS.muted);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
-  const disclaimer = 'AVISO LEGAL: Este relatório é fornecido apenas para fins informativos e não constitui aconselhamento financeiro, jurídico ou de investimento. As previsões e análises apresentadas baseiam-se em dados disponíveis e modelos analíticos, podendo diferir dos resultados reais. A AlphaData não se responsabiliza por decisões tomadas com base neste documento.';
+  const disclaimer = 'AVISO LEGAL: Este relatorio foi gerado pela AlphaData - Inteligencia de Mercado Petrolifero Angolano. As informacoes aqui contidas sao para fins informativos e nao constituem aconselhamento financeiro ou de investimento. A AlphaData nao se responsabiliza por decisoes tomadas com base neste documento. Todos os dados sao provenientes de fontes oficiais e APIs de mercado em tempo real.';
   const disclaimerLines = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin - 10);
-  doc.text(disclaimerLines, margin + 5, yPos + 6);
+  doc.text(disclaimerLines, margin + 5, yPos + 8);
 
-  // Add footers to all pages
+  // Add footers to all pages - NO watermark
   addFooter();
 
   // Save the PDF
