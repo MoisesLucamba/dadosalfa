@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -112,7 +113,7 @@ const Prices = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header activeItem="/prices" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 scrollbar-thin">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Page Header */}
               <motion.div
@@ -426,6 +427,8 @@ const Prices = () => {
             </div>
           </main>
         </div>
+        
+        <MobileBottomNav />
       </div>
     </>
   );
