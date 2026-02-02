@@ -1,18 +1,42 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   BarChart3,
   DollarSign,
   Brain,
   MoreHorizontal,
+  Ship,
+  FileText,
+  AlertTriangle,
+  Settings,
+  Bell,
+  Search,
+  Users,
+  Building2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface TabItem {
   icon: React.ElementType;
   label: string;
   href: string;
+}
+
+interface MoreMenuItem {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  description: string;
+  color: string;
 }
 
 const tabItems: TabItem[] = [
@@ -22,85 +46,193 @@ const tabItems: TabItem[] = [
   { icon: Brain, label: "IA", href: "/predictions" },
 ];
 
+const moreMenuItems: MoreMenuItem[] = [
+  {
+    icon: Ship,
+    label: "Exportações",
+    href: "/exports",
+    description: "Dados de exportação e logística",
+    color: "text-emerald-500",
+  },
+  {
+    icon: FileText,
+    label: "Relatórios",
+    href: "/reports",
+    description: "Relatórios inteligentes com IA",
+    color: "text-primary",
+  },
+  {
+    icon: AlertTriangle,
+    label: "Riscos",
+    href: "/risk",
+    description: "Análise geopolítica e riscos",
+    color: "text-amber-500",
+  },
+  {
+    icon: Building2,
+    label: "Concorrentes",
+    href: "/competitors",
+    description: "Monitoramento de operadores",
+    color: "text-violet-500",
+  },
+  {
+    icon: Search,
+    label: "Pesquisa",
+    href: "/search",
+    description: "Pesquisa inteligente de dados",
+    color: "text-cyan-500",
+  },
+  {
+    icon: Bell,
+    label: "Alertas",
+    href: "/alerts",
+    description: "Configurar notificações",
+    color: "text-rose-500",
+  },
+  {
+    icon: Users,
+    label: "Workspace",
+    href: "/workspace",
+    description: "Gestão de equipas",
+    color: "text-indigo-500",
+  },
+  {
+    icon: Settings,
+    label: "Configurações",
+    href: "/settings",
+    description: "Preferências da conta",
+    color: "text-muted-foreground",
+  },
+];
+
 export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Check if current path is one of the main tabs or "more" section
   const isMoreActive = !["/", "/production", "/prices", "/predictions"].includes(currentPath);
 
+  const handleMoreItemClick = (href: string) => {
+    setShowMoreMenu(false);
+    navigate(href);
+  };
+
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-card/95 backdrop-blur-xl border-t border-border/50 safe-area-bottom"
-    >
-      <div className="flex items-center justify-around h-16 px-2">
-        {tabItems.map((item) => {
-          const isActive = currentPath === item.href;
-          return (
-            <button
-              key={item.href}
-              onClick={() => navigate(item.href)}
-              className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="bottomNavIndicator"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-b-full"
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                />
-              )}
-              <motion.div
-                animate={{ scale: isActive ? 1.1 : 1 }}
-                transition={{ type: "spring", damping: 15, stiffness: 300 }}
+    <>
+      <motion.nav
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-card/95 backdrop-blur-xl border-t border-border/50 safe-area-bottom"
+      >
+        <div className="flex items-center justify-around h-16 px-2">
+          {tabItems.map((item) => {
+            const isActive = currentPath === item.href;
+            return (
+              <button
+                key={item.href}
+                onClick={() => navigate(item.href)}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}
               >
-                <item.icon className={cn("w-5 h-5", isActive && "text-primary")} />
-              </motion.div>
-              <span className={cn(
-                "text-[10px] mt-1 font-medium",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-        
-        {/* More button for other pages */}
-        <button
-          onClick={() => navigate("/exports")}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-colors",
-            isMoreActive ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          {isMoreActive && (
-            <motion.div
-              layoutId="bottomNavIndicator"
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-b-full"
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: isMoreActive ? 1.1 : 1 }}
-            transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                {isActive && (
+                  <motion.div
+                    layoutId="bottomNavIndicator"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-b-full"
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  />
+                )}
+                <motion.div
+                  animate={{ scale: isActive ? 1.1 : 1 }}
+                  transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                >
+                  <item.icon className={cn("w-5 h-5", isActive && "text-primary")} />
+                </motion.div>
+                <span className={cn(
+                  "text-[10px] mt-1 font-medium",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+          
+          {/* More button for other pages */}
+          <button
+            onClick={() => setShowMoreMenu(true)}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-colors",
+              isMoreActive ? "text-primary" : "text-muted-foreground"
+            )}
           >
-            <MoreHorizontal className={cn("w-5 h-5", isMoreActive && "text-primary")} />
-          </motion.div>
-          <span className={cn(
-            "text-[10px] mt-1 font-medium",
-            isMoreActive ? "text-primary" : "text-muted-foreground"
-          )}>
-            Mais
-          </span>
-        </button>
-      </div>
-    </motion.nav>
+            {isMoreActive && (
+              <motion.div
+                layoutId="bottomNavIndicator"
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-b-full"
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: isMoreActive ? 1.1 : 1 }}
+              transition={{ type: "spring", damping: 15, stiffness: 300 }}
+            >
+              <MoreHorizontal className={cn("w-5 h-5", isMoreActive && "text-primary")} />
+            </motion.div>
+            <span className={cn(
+              "text-[10px] mt-1 font-medium",
+              isMoreActive ? "text-primary" : "text-muted-foreground"
+            )}>
+              Mais
+            </span>
+          </button>
+        </div>
+      </motion.nav>
+
+      {/* More Menu Sheet */}
+      <Sheet open={showMoreMenu} onOpenChange={setShowMoreMenu}>
+        <SheetContent side="bottom" className="h-auto max-h-[80vh] rounded-t-3xl px-4 pb-safe-bottom">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-left">Mais opções</SheetTitle>
+          </SheetHeader>
+          
+          <div className="grid grid-cols-2 gap-3 pb-6">
+            {moreMenuItems.map((item) => {
+              const isActive = currentPath === item.href;
+              return (
+                <motion.button
+                  key={item.href}
+                  onClick={() => handleMoreItemClick(item.href)}
+                  className={cn(
+                    "flex flex-col items-start p-4 rounded-xl border transition-all text-left",
+                    isActive 
+                      ? "bg-primary/10 border-primary/50" 
+                      : "bg-card border-border/50 hover:bg-muted/50"
+                  )}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className={cn("p-2 rounded-lg bg-muted mb-2", isActive && "bg-primary/20")}>
+                    <item.icon className={cn("w-5 h-5", item.color, isActive && "text-primary")} />
+                  </div>
+                  <span className={cn(
+                    "font-medium text-sm",
+                    isActive ? "text-primary" : "text-foreground"
+                  )}>
+                    {item.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground line-clamp-1">
+                    {item.description}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

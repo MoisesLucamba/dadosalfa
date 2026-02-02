@@ -6,6 +6,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle, Header, Footer, ImageRun, PageNumber, NumberFormat } from 'docx';
+import { addCoverPageToPDF, getDefaultCoverPageData, getCoverPageExcelRows, CoverPageData } from './reportCoverPage';
 
 export interface ReportData {
   title: string;
@@ -20,6 +21,18 @@ export interface ReportData {
   }>;
   generatedAt: Date;
   aiGenerated: boolean;
+  // Optional: Requesting company/user info for cover page
+  requestingCompany?: {
+    name: string;
+    nif?: string;
+    sector?: string;
+    country?: string;
+  };
+  requestedBy?: {
+    name: string;
+    role?: string;
+    email?: string;
+  };
 }
 
 const COLORS = {
@@ -40,6 +53,7 @@ const getTypeName = (type: string): string => {
     exports: 'Exportações',
     risk: 'Riscos',
     predictions: 'Previsões IA',
+    general: 'Geral',
   };
   return types[type] || type;
 };
@@ -54,6 +68,24 @@ export const generatePDFReport = (data: ReportData): void => {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     let yPos = margin;
+
+    // Add cover page first
+    const defaultCoverData = getDefaultCoverPageData();
+    const coverPageData: CoverPageData = {
+      ...defaultCoverData,
+      reportTitle: data.title || 'Relatório AlphaData',
+      reportType: getTypeName(data.type),
+      reportPeriod: data.period || 'Actual',
+      generatedAt: data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt),
+      isAiGenerated: data.aiGenerated || false,
+      requestingCompany: data.requestingCompany,
+      requestedBy: data.requestedBy,
+    };
+    
+    addCoverPageToPDF(doc, coverPageData);
+    
+    // Add new page for content
+    doc.addPage();
 
     const checkNewPage = (requiredSpace: number) => {
       if (yPos + requiredSpace > pageHeight - 25) {
@@ -395,9 +427,252 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
     });
   };
 
+  // Get default cover page data
+  const defaultCoverData = getDefaultCoverPageData();
+
   // Create document sections
   const children: any[] = [];
 
+  // ===== COVER PAGE SECTION =====
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: '═══════════════════════════════════════════════════════════',
+          color: '1E293B',
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: 'α ALPHADATA',
+          bold: true,
+          size: 56,
+          color: 'DC2626',
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 400, after: 100 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: 'PÁGINA INFORMATIVA',
+          bold: true,
+          size: 24,
+          color: '64748B',
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+    }),
+
+    // Report Info Box
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `📋 ${data.title}`,
+          bold: true,
+          size: 28,
+        }),
+      ],
+      spacing: { after: 200 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Tipo: ', bold: true, size: 22 }),
+        new TextRun({ text: getTypeName(data.type), size: 22 }),
+        new TextRun({ text: '    |    Período: ', bold: true, size: 22 }),
+        new TextRun({ text: data.period || 'Actual', size: 22 }),
+        new TextRun({ text: '    |    Gerado: ', bold: true, size: 22 }),
+        new TextRun({ text: formatDate(data.generatedAt), size: 22 }),
+        data.aiGenerated ? new TextRun({ text: '    ✨ Gerado com IA', color: '1E40AF', size: 22 }) : new TextRun({ text: '' }),
+      ],
+      spacing: { after: 400 },
+    }),
+
+    // Generating Company Section
+    new Paragraph({
+      children: [
+        new TextRun({ text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', color: 'DC2626' }),
+      ],
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: '🏢 EMPRESA GERADORA', bold: true, size: 24, color: '1E293B' }),
+      ],
+      spacing: { before: 200, after: 100 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: defaultCoverData.generatingCompany.fullName, bold: true, size: 22 }),
+      ],
+      spacing: { after: 100 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: defaultCoverData.generatingCompany.description, size: 20, color: '64748B' }),
+      ],
+      spacing: { after: 100 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: `📧 ${defaultCoverData.generatingCompany.contact}  |  🌐 ${defaultCoverData.generatingCompany.website}  |  📍 ${defaultCoverData.generatingCompany.address}`, size: 18, color: '64748B' }),
+      ],
+      spacing: { after: 300 },
+    }),
+
+    // Data Sources Section
+    new Paragraph({
+      children: [
+        new TextRun({ text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', color: '1E40AF' }),
+      ],
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: '📊 FONTES DE DADOS', bold: true, size: 24, color: '1E293B' }),
+      ],
+      spacing: { before: 200, after: 100 },
+    }),
+  );
+
+  // Add data sources
+  defaultCoverData.dataSources.forEach((source) => {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `• ${source.name}`, bold: true, size: 20 }),
+          new TextRun({ text: ` [${source.type}]`, size: 18, color: '64748B' }),
+        ],
+        spacing: { after: 50 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: `  ${source.description}`, size: 18, color: '64748B', italics: true }),
+        ],
+        spacing: { after: 100 },
+      }),
+    );
+  });
+
+  // Country Info Section
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', color: '22C55E' }),
+      ],
+      spacing: { before: 200 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: '🌍 INFORMAÇÕES DO PAÍS', bold: true, size: 24, color: '1E293B' }),
+      ],
+      spacing: { before: 200, after: 100 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'País: ', bold: true, size: 20 }),
+        new TextRun({ text: defaultCoverData.countryInfo.name, size: 20 }),
+        new TextRun({ text: '  |  Região: ', bold: true, size: 20 }),
+        new TextRun({ text: defaultCoverData.countryInfo.region, size: 20 }),
+      ],
+      spacing: { after: 50 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Moeda: ', bold: true, size: 20 }),
+        new TextRun({ text: defaultCoverData.countryInfo.currency, size: 20 }),
+        new TextRun({ text: '  |  Idioma: ', bold: true, size: 20 }),
+        new TextRun({ text: defaultCoverData.countryInfo.language, size: 20 }),
+        new TextRun({ text: '  |  Fuso: ', bold: true, size: 20 }),
+        new TextRun({ text: defaultCoverData.countryInfo.timezone, size: 20 }),
+      ],
+      spacing: { after: 300 },
+    }),
+  );
+
+  // Requesting Company Section (if available)
+  if (data.requestingCompany) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', color: 'B48232' }),
+        ],
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: '🏛️ EMPRESA SOLICITANTE', bold: true, size: 24, color: '1E293B' }),
+        ],
+        spacing: { before: 200, after: 100 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Empresa: ', bold: true, size: 20 }),
+          new TextRun({ text: data.requestingCompany.name, size: 20 }),
+          data.requestingCompany.nif ? new TextRun({ text: `  |  NIF: ${data.requestingCompany.nif}`, size: 20 }) : new TextRun({ text: '' }),
+        ],
+        spacing: { after: 50 },
+      }),
+      new Paragraph({
+        children: [
+          data.requestingCompany.sector ? new TextRun({ text: `Sector: ${data.requestingCompany.sector}`, size: 20 }) : new TextRun({ text: '' }),
+          data.requestingCompany.country ? new TextRun({ text: `  |  País: ${data.requestingCompany.country}`, size: 20 }) : new TextRun({ text: '' }),
+        ],
+        spacing: { after: 300 },
+      }),
+    );
+  }
+
+  // Requested By Section (if available)
+  if (data.requestedBy) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', color: '6464B4' }),
+        ],
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: '👤 SOLICITADO POR', bold: true, size: 24, color: '1E293B' }),
+        ],
+        spacing: { before: 200, after: 100 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Nome: ', bold: true, size: 20 }),
+          new TextRun({ text: data.requestedBy.name, size: 20 }),
+          data.requestedBy.role ? new TextRun({ text: `  |  Cargo: ${data.requestedBy.role}`, size: 20 }) : new TextRun({ text: '' }),
+          data.requestedBy.email ? new TextRun({ text: `  |  Email: ${data.requestedBy.email}`, size: 20 }) : new TextRun({ text: '' }),
+        ],
+        spacing: { after: 300 },
+      }),
+    );
+  }
+
+  // Page Break before content
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: '═══════════════════════════════════════════════════════════', color: '1E293B' }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 400 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'FIM DA PÁGINA INFORMATIVA', size: 18, color: '64748B', italics: true }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+    }),
+    new Paragraph({
+      pageBreakBefore: true,
+    }),
+  );
+
+  // ===== REPORT CONTENT =====
   // Title
   children.push(
     new Paragraph({
@@ -702,6 +977,21 @@ export const generateExcelReport = (data: ReportData): void => {
   };
 
   let rows: string[] = [];
+
+  // Add cover page content first
+  const defaultCoverData = getDefaultCoverPageData();
+  const coverPageData: CoverPageData = {
+    ...defaultCoverData,
+    reportTitle: data.title || 'Relatório AlphaData',
+    reportType: getTypeName(data.type),
+    reportPeriod: data.period || 'Actual',
+    generatedAt: data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt),
+    isAiGenerated: data.aiGenerated || false,
+    requestingCompany: data.requestingCompany,
+    requestedBy: data.requestedBy,
+  };
+  
+  rows.push(...getCoverPageExcelRows(coverPageData));
 
   // Header rows with branding
   rows.push(`<Row>
