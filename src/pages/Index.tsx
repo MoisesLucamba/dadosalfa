@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -188,7 +189,7 @@ const Index = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header activeItem="/" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 scrollbar-thin">
             <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
               {/* Page Header */}
               <div className="mb-4 md:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -361,6 +362,8 @@ const Index = () => {
             </div>
           </main>
         </div>
+        
+        <MobileBottomNav />
       </div>
     </>
   );
