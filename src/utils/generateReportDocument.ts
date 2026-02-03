@@ -63,6 +63,12 @@ const getTypeName = (type: string): string => {
  */
 export const generatePDFReport = (data: ReportData): void => {
   try {
+    // Memory optimization: Check if report is too large
+    const isGeneralReport = data.type === 'general';
+    if (isGeneralReport) {
+      console.log('Generating large general report - optimizing memory usage');
+    }
+
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -239,14 +245,15 @@ export const generatePDFReport = (data: ReportData): void => {
   // Data content
   if (data.content) {
     addSectionTitle(`Dados de ${getTypeName(data.type)}`);
-    
+
     // Handle different content types
     if (data.content.data) {
       const contentData = data.content.data;
-      
-      // Production data
+
+      // Production data - limit to prevent memory issues
       if (contentData.production && Array.isArray(contentData.production)) {
-        const tableData = contentData.production.slice(0, 15).map((item: any) => [
+        const maxRows = data.type === 'general' ? 10 : 15; // Reduce for general reports
+        const tableData = contentData.production.slice(0, maxRows).map((item: any) => [
           item.operator || '-',
           item.block || '-',
           item.field || '-',
@@ -255,6 +262,7 @@ export const generatePDFReport = (data: ReportData): void => {
         ]);
 
         if (tableData.length > 0) {
+          checkNewPage(80); // Ensure enough space for table
           autoTable(doc, {
             startY: yPos,
             head: [['Operador', 'Bloco', 'Campo', 'Produção', 'Status']],
@@ -409,7 +417,20 @@ export const generatePDFReport = (data: ReportData): void => {
     doc.save(fileName);
   } catch (error) {
     console.error('Error generating PDF:', error);
-    throw new Error(`Falha ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+
+    // Enhanced error handling for large reports
+    if (isGeneralReport) {
+      console.error('Large report generation failed - this may be due to memory constraints');
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+
+    // Provide more specific error messages
+    if (errorMessage.includes('memory') || errorMessage.includes('heap')) {
+      throw new Error('Relatório muito grande para gerar PDF. Tente reduzir a quantidade de dados ou use Excel.');
+    }
+
+    throw new Error(`Falha ao gerar PDF: ${errorMessage}`);
   }
 };
 

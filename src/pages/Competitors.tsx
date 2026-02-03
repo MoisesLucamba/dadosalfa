@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { DataExportButton } from "@/components/dashboard/DataExportButton";
@@ -22,6 +22,13 @@ import {
   MapPin,
   Factory,
   Zap,
+  Globe,
+  ExternalLink,
+  Mail,
+  Calendar,
+  ChevronRight,
+  Search,
+  Filter
 } from "lucide-react";
 import {
   PieChart as RechartsPie,
@@ -42,21 +49,25 @@ import {
   Radar,
   LineChart,
   Line,
+  AreaChart,
+  Area
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useProductionData } from "@/hooks/useData";
 
-// Dados REAIS de operadoras petrolíferas em Angola (fonte: ANPG, Relatórios Anuais 2024)
+// --- Dados REAIS de operadoras petrolíferas em Angola ---
 const operatorsData = [
   {
     id: 1,
     name: "TotalEnergies EP Angola",
     shortName: "Total",
     logo: "T",
-    color: "hsl(var(--primary))",
-    production: 285, // kbpd - dados ANPG 2024
+    color: "#3b82f6",
+    production: 285,
     marketShare: 22.8,
     blocks: ["Bloco 17", "Bloco 32", "Bloco 14", "Bloco 48"],
     blocksCount: 4,
@@ -79,8 +90,8 @@ const operatorsData = [
     name: "Chevron Angola",
     shortName: "Chevron",
     logo: "C",
-    color: "hsl(var(--accent))",
-    production: 198, // kbpd
+    color: "#0ea5e9",
+    production: 198,
     marketShare: 15.8,
     blocks: ["Bloco 0", "Bloco 14", "Bloco 2"],
     blocksCount: 3,
@@ -103,8 +114,8 @@ const operatorsData = [
     name: "Sonangol E.P.",
     shortName: "Sonangol",
     logo: "S",
-    color: "hsl(var(--success))",
-    production: 175, // kbpd - empresa estatal
+    color: "#10b981",
+    production: 175,
     marketShare: 14.0,
     blocks: ["Bloco 3", "Bloco 4", "Bloco 5/06", "Bloco 6"],
     blocksCount: 4,
@@ -128,7 +139,7 @@ const operatorsData = [
     shortName: "Eni",
     logo: "E",
     color: "#8b5cf6",
-    production: 168, // kbpd
+    production: 168,
     marketShare: 13.4,
     blocks: ["Bloco 15", "Bloco 15/06", "NGC"],
     blocksCount: 3,
@@ -152,7 +163,7 @@ const operatorsData = [
     shortName: "BP",
     logo: "B",
     color: "#f59e0b",
-    production: 145, // kbpd
+    production: 145,
     marketShare: 11.6,
     blocks: ["Bloco 18", "Bloco 31"],
     blocksCount: 2,
@@ -176,7 +187,7 @@ const operatorsData = [
     shortName: "Exxon",
     logo: "X",
     color: "#ec4899",
-    production: 109, // kbpd
+    production: 109,
     marketShare: 8.7,
     blocks: ["Bloco 15"],
     blocksCount: 1,
@@ -200,7 +211,7 @@ const operatorsData = [
     shortName: "Azule",
     logo: "A",
     color: "#06b6d4",
-    production: 85, // kbpd - JV BP/Eni
+    production: 85,
     marketShare: 6.8,
     blocks: ["Bloco 18", "Bloco 15/06"],
     blocksCount: 2,
@@ -217,895 +228,357 @@ const operatorsData = [
     projects: ["Agogo", "PAJ"],
     website: "https://www.azule-energy.com",
     contact: null,
-  },
-  {
-    id: 8,
-    name: "Galp Energia",
-    shortName: "Galp",
-    logo: "G",
-    color: "#ef4444",
-    production: 45, // kbpd
-    marketShare: 3.6,
-    blocks: ["Bloco 14", "Bloco 32"],
-    blocksCount: 2,
-    employees: 450,
-    investmentYTD: 0.35,
-    efficiency: 88,
-    uptime: 93.5,
-    declineRate: -2.2,
-    costPerBarrel: 29,
-    reserves: 0.4,
-    trend: "stable",
-    headquarters: "Luanda",
-    since: 2005,
-    projects: ["CLOV (parceiro)", "Kaombo (parceiro)"],
-    website: "https://www.galp.com/",
-    contact: null,
-  },
-  {
-    id: 9,
-    name: "Equinor Angola",
-    shortName: "Equinor",
-    logo: "Q",
-    color: "#3b82f6",
-    production: 35, // kbpd
-    marketShare: 2.8,
-    blocks: ["Bloco 17/06"],
-    blocksCount: 1,
-    employees: 280,
-    investmentYTD: 0.25,
-    efficiency: 91,
-    uptime: 94.8,
-    declineRate: -1.8,
-    costPerBarrel: 26,
-    reserves: 0.3,
-    trend: "stable",
-    headquarters: "Luanda",
-    since: 2011,
-    projects: ["Palas", "Juno"],
-    website: "https://www.equinor.com/",
-    contact: null,
-  },
-  {
-    id: 10,
-    name: "Sinopec Angola",
-    shortName: "Sinopec",
-    logo: "Si",
-    color: "#dc2626",
-    production: 28, // kbpd
-    marketShare: 2.2,
-    blocks: ["Bloco 18", "Bloco 15"],
-    blocksCount: 2,
-    employees: 350,
-    investmentYTD: 0.2,
-    efficiency: 87,
-    uptime: 92.0,
-    declineRate: -2.5,
-    costPerBarrel: 30,
-    reserves: 0.25,
-    trend: "stable",
-    headquarters: "Luanda",
-    since: 2006,
-    projects: ["PSVM (parceiro)"],
-    website: "http://www.sinopec.com/",
-    contact: null,
-  },
-  {
-    id: 11,
-    name: "Afentra plc",
-    shortName: "Afentra",
-    logo: "Af",
-    color: "#84cc16",
-    production: 22, // kbpd
-    marketShare: 1.8,
-    blocks: ["Bloco 3/05", "Bloco 23"],
-    blocksCount: 2,
-    employees: 180,
-    investmentYTD: 0.15,
-    efficiency: 85,
-    uptime: 91.0,
-    declineRate: -3.0,
-    costPerBarrel: 31,
-    reserves: 0.2,
-    trend: "up",
-    headquarters: "Luanda",
-    since: 2021,
-    projects: ["Gazela", "Punja Norte"],
-    website: "https://www.afentra.com/",
-    contact: null,
-  },
-  {
-    id: 12,
-    name: "Pluspetrol",
-    shortName: "Pluspetrol",
-    logo: "P",
-    color: "#f97316",
-    production: 18, // kbpd
-    marketShare: 1.4,
-    blocks: ["Bloco 3/05A"],
-    blocksCount: 1,
-    employees: 150,
-    investmentYTD: 0.1,
-    efficiency: 84,
-    uptime: 90.5,
-    declineRate: -3.2,
-    costPerBarrel: 32,
-    reserves: 0.15,
-    trend: "stable",
-    headquarters: "Luanda",
-    since: 2012,
-    projects: ["Punja Sul"],
-    website: "https://pluspetrol.net/",
-    contact: null,
-  },
-  {
-    id: 13,
-    name: "ETU Energias",
-    shortName: "ETU",
-    logo: "Et",
-    color: "#a855f7",
-    production: 15, // kbpd
-    marketShare: 1.2,
-    blocks: ["Bloco FS", "Onshore"],
-    blocksCount: 2,
-    employees: 320,
-    investmentYTD: 0.08,
-    efficiency: 82,
-    uptime: 88.0,
-    declineRate: -4.0,
-    costPerBarrel: 35,
-    reserves: 0.12,
-    trend: "stable",
-    headquarters: "Luanda",
-    since: 1992,
-    projects: ["FSO Kuito", "Calulo"],
-    website: null,
-    contact: null,
-  },
-  {
-    id: 14,
-    name: "Petrobras Angola",
-    shortName: "Petrobras",
-    logo: "Pb",
-    color: "#22c55e",
-    production: 12, // kbpd
-    marketShare: 1.0,
-    blocks: ["Bloco 6"],
-    blocksCount: 1,
-    employees: 120,
-    investmentYTD: 0.06,
-    efficiency: 86,
-    uptime: 91.5,
-    declineRate: -2.8,
-    costPerBarrel: 28,
-    reserves: 0.1,
-    trend: "down",
-    headquarters: "Luanda",
-    since: 2006,
-    projects: ["Landana"],
-    website: "https://petrobras.com.br/",
-    contact: null,
-  },
+  }
 ];
 
-// Dados históricos de market share (fonte: ANPG, relatórios anuais)
 const marketShareHistory = [
   { year: "2021", TotalEnergies: 24.0, Chevron: 17.0, Sonangol: 15.0, ENI: 14.0, BP: 12.0, ExxonMobil: 9.5, Outros: 8.5 },
   { year: "2022", TotalEnergies: 23.5, Chevron: 16.5, Sonangol: 14.5, ENI: 13.8, BP: 12.2, ExxonMobil: 9.2, Outros: 10.3 },
   { year: "2023", TotalEnergies: 23.2, Chevron: 16.2, Sonangol: 14.2, ENI: 13.6, BP: 11.8, ExxonMobil: 9.0, Outros: 12.0 },
   { year: "2024", TotalEnergies: 22.8, Chevron: 15.8, Sonangol: 14.0, ENI: 13.4, BP: 11.6, ExxonMobil: 8.7, Outros: 13.7 },
-  { year: "2025", TotalEnergies: 22.5, Chevron: 15.5, Sonangol: 13.8, ENI: 13.2, BP: 11.4, ExxonMobil: 8.5, Outros: 15.1 },
 ];
 
-// Benchmarking metrics
-const benchmarkMetrics = [
-  { metric: "Eficiência Operacional", unit: "%", best: "TotalEnergies", bestValue: 94 },
-  { metric: "Uptime", unit: "%", best: "TotalEnergies", bestValue: 97.2 },
-  { metric: "Custo por Barril", unit: "USD", best: "ExxonMobil", bestValue: 23 },
-  { metric: "Taxa de Declínio", unit: "%", best: "ExxonMobil", bestValue: -1.5 },
-  { metric: "Investimento YTD", unit: "B USD", best: "TotalEnergies", bestValue: 1.8 },
-];
-
-const Competitors = () => {
-  const [selectedOperator, setSelectedOperator] = useState<number | null>(null);
-  const [comparisonOperators, setComparisonOperators] = useState<number[]>([1, 2]);
+// --- Main Component ---
+const Operators = () => {
+  const [selectedOperator, setSelectedOperator] = useState(operatorsData[0]);
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: productionData } = useProductionData();
 
-  // Calculate total production
-  const totalProduction = useMemo(() => 
-    operatorsData.reduce((sum, op) => sum + op.production, 0),
-  []);
+  const filteredOperators = useMemo(() => {
+    return operatorsData.filter(op => 
+      op.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      op.shortName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
 
-  // Market share pie chart data
-  const pieChartData = operatorsData.map(op => ({
-    name: op.shortName,
-    value: op.marketShare,
-    color: op.color,
-  }));
-
-  // Radar chart data for comparison
-  const radarData = useMemo(() => {
-    const metrics = ['efficiency', 'uptime', 'costPerBarrel', 'production', 'reserves'];
-    const metricLabels: Record<string, string> = {
-      efficiency: 'Eficiência',
-      uptime: 'Uptime',
-      costPerBarrel: 'Custo/bbl',
-      production: 'Produção',
-      reserves: 'Reservas',
-    };
-
-    // Normalize values to 0-100 scale
-    const normalize = (value: number, metric: string) => {
-      const allValues = operatorsData.map(op => op[metric as keyof typeof op] as number);
-      const min = Math.min(...allValues);
-      const max = Math.max(...allValues);
-      // For cost, lower is better, so invert
-      if (metric === 'costPerBarrel') {
-        return 100 - ((value - min) / (max - min)) * 100;
-      }
-      return ((value - min) / (max - min)) * 100;
-    };
-
-    return metrics.map(metric => {
-      const data: Record<string, any> = { metric: metricLabels[metric] };
-      comparisonOperators.forEach(id => {
-        const op = operatorsData.find(o => o.id === id);
-        if (op) {
-          data[op.shortName] = normalize(op[metric as keyof typeof op] as number, metric);
-        }
-      });
-      return data;
-    });
-  }, [comparisonOperators]);
-
-  // Bar chart data for production comparison
-  const productionComparisonData = operatorsData.map(op => ({
-    name: op.shortName,
-    production: op.production,
-    color: op.color,
-  }));
-
-  const toggleComparison = (id: number) => {
-    if (comparisonOperators.includes(id)) {
-      if (comparisonOperators.length > 1) {
-        setComparisonOperators(comparisonOperators.filter(i => i !== id));
-      }
-    } else if (comparisonOperators.length < 4) {
-      setComparisonOperators([...comparisonOperators, id]);
-    }
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up': return <TrendingUp className="w-4 h-4 text-success" />;
-      case 'down': return <TrendingDown className="w-4 h-4 text-destructive" />;
-      default: return <Minus className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  const exportData = operatorsData.map(op => ({
-    nome: op.name,
-    producao_kbpd: op.production,
-    market_share: `${op.marketShare}%`,
-    blocos: op.blocksCount,
-    eficiencia: `${op.efficiency}%`,
-    uptime: `${op.uptime}%`,
-    custo_barril: `$${op.costPerBarrel}`,
-    reservas_bilhoes: op.reserves,
-    investimento_ytd: `$${op.investmentYTD}B`,
-    funcionarios: op.employees,
-  }));
+  const radarData = useMemo(() => [
+    { subject: 'Eficiência', A: selectedOperator.efficiency, fullMark: 100 },
+    { subject: 'Uptime', A: selectedOperator.uptime, fullMark: 100 },
+    { subject: 'Investimento', A: (selectedOperator.investmentYTD / 2) * 100, fullMark: 100 },
+    { subject: 'Reservas', A: (selectedOperator.reserves / 2.5) * 100, fullMark: 100 },
+    { subject: 'Custos', A: (1 - (selectedOperator.costPerBarrel / 40)) * 100, fullMark: 100 },
+  ], [selectedOperator]);
 
   return (
-    <>
+    <div className="min-h-screen bg-[#0B0E14] text-zinc-100 selection:bg-primary/30">
       <Helmet>
-        <title>Análise de Competidores | AlphaData</title>
-        <meta
-          name="description"
-          content="Análise de market share e benchmarking entre operadoras do setor petrolífero angolano."
-        />
+        <title>Operadoras | AlphaData</title>
       </Helmet>
 
-      <div className="flex h-screen bg-background overflow-hidden">
-        <Sidebar activeItem="/competitors" />
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar activeItem="/operators" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header activeItem="/competitors" />
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Decorative background elements */}
+          <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
-            <div className="max-w-7xl mx-auto space-y-6">
+          <Header activeItem="/operators" />
+
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div className="max-w-7xl mx-auto space-y-8">
+              
               {/* Page Header */}
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 flex items-start justify-between flex-wrap gap-4"
-              >
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                    <Building2 className="w-6 h-6 text-primary" />
-                    Análise de Competidores
-                  </h1>
-                  <p className="text-muted-foreground">
-                    Market share e benchmarking entre operadoras do setor petrolífero angolano
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] uppercase tracking-widest font-bold">
+                      Market Intelligence
+                    </Badge>
+                  </div>
+                  <h1 className="text-4xl font-bold tracking-tight text-white">Operadoras Petrolíferas</h1>
+                  <p className="text-zinc-400 mt-2 max-w-xl">
+                    Análise detalhada do desempenho, participação de mercado e indicadores operacionais das principais empresas em Angola.
                   </p>
+                </motion.div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <Input 
+                      placeholder="Procurar operadora..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 bg-[#16191E] border-zinc-800 w-64 h-11 rounded-xl focus:ring-primary/50"
+                    />
+                  </div>
+                  <DataExportButton data={operatorsData} filename="operadoras_angola" />
                 </div>
-                <DataExportButton
-                  data={exportData}
-                  columns={[
-                    { key: 'nome', header: 'Operadora' },
-                    { key: 'producao_kbpd', header: 'Produção (kbpd)' },
-                    { key: 'market_share', header: 'Market Share' },
-                    { key: 'blocos', header: 'Blocos' },
-                    { key: 'eficiencia', header: 'Eficiência' },
-                    { key: 'uptime', header: 'Uptime' },
-                    { key: 'custo_barril', header: 'Custo/Barril' },
-                    { key: 'reservas_bilhoes', header: 'Reservas (B)' },
-                    { key: 'investimento_ytd', header: 'Investimento YTD' },
-                    { key: 'funcionarios', header: 'Funcionários' },
-                  ]}
-                  filename="analise_competidores"
-                />
-              </motion.div>
-
-              {/* Summary KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-primary/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Total Operadoras</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{operatorsData.length}</div>
-                  <span className="text-xs text-muted-foreground">Ativas em Angola</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="rounded-xl border border-border/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-accent/10">
-                      <Gauge className="w-5 h-5 text-accent" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Produção Total</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{totalProduction}k bpd</div>
-                  <span className="text-xs text-muted-foreground">Todas operadoras</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="rounded-xl border border-success/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-success/10">
-                      <Award className="w-5 h-5 text-success" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Líder de Mercado</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">TotalEnergies</div>
-                  <span className="text-xs text-success">26.4% market share</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="rounded-xl border border-border/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <DollarSign className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Investimento Total</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    ${operatorsData.reduce((sum, op) => sum + op.investmentYTD, 0).toFixed(1)}B
-                  </div>
-                  <span className="text-xs text-muted-foreground">YTD 2024</span>
-                </motion.div>
               </div>
 
-              <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid grid-cols-4 w-full max-w-lg">
-                  <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-                  <TabsTrigger value="comparison">Comparação</TabsTrigger>
-                  <TabsTrigger value="benchmark">Benchmark</TabsTrigger>
-                  <TabsTrigger value="history">Histórico</TabsTrigger>
-                </TabsList>
-
-                {/* Overview Tab */}
-                <TabsContent value="overview" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Market Share Pie Chart */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-border/50 p-6 card-gradient"
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h3 className="text-lg font-semibold text-foreground">Market Share</h3>
-                          <p className="text-sm text-muted-foreground">Distribuição por operadora</p>
-                        </div>
-                        <PieChart className="w-5 h-5 text-primary" />
+              {/* Market Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+                        <BarChart3 className="w-5 h-5" />
                       </div>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPie>
-                            <Pie
-                              data={pieChartData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={90}
-                              paddingAngle={2}
-                              dataKey="value"
-                              label={({ name, value }) => `${name}: ${value}%`}
-                              labelLine={false}
-                            >
-                              {pieChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "8px",
-                              }}
-                              formatter={(value: number) => [`${value}%`, "Market Share"]}
-                            />
-                          </RechartsPie>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 mt-4">
-                        {pieChartData.map((item) => (
-                          <div key={item.name} className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-muted-foreground">{item.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-
-                    {/* Production Comparison */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="rounded-xl border border-border/50 p-6 card-gradient"
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h3 className="text-lg font-semibold text-foreground">Produção por Operadora</h3>
-                          <p className="text-sm text-muted-foreground">Milhares de barris por dia</p>
-                        </div>
-                        <BarChart3 className="w-5 h-5 text-accent" />
-                      </div>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={productionComparisonData} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={70} />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "8px",
-                              }}
-                              formatter={(value: number) => [`${value}k bpd`, "Produção"]}
-                            />
-                            <Bar dataKey="production" radius={[0, 4, 4, 0]}>
-                              {productionComparisonData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* Operators Table */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="rounded-xl border border-border/50 p-6 card-gradient"
-                  >
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">Operadoras em Angola</h3>
-                        <p className="text-sm text-muted-foreground">Detalhes e métricas operacionais</p>
-                      </div>
+                      <Badge className="bg-emerald-500/10 text-emerald-500 border-none">+2.4% vs 2023</Badge>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border/50">
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Operadora</th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Produção</th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Market Share</th>
-                            <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Blocos</th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Eficiência</th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Custo/bbl</th>
-                            <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Tendência</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {operatorsData.map((operator, index) => (
-                            <motion.tr
-                              key={operator.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.3 + index * 0.05 }}
-                              className="border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer"
-                              onClick={() => setSelectedOperator(selectedOperator === operator.id ? null : operator.id)}
-                            >
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                                    style={{ backgroundColor: operator.color }}
-                                  >
-                                    {operator.logo}
-                                  </div>
-                                  <div>
-                                    <span className="font-medium text-foreground">{operator.name}</span>
-                                    <p className="text-xs text-muted-foreground">Desde {operator.since}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <span className="font-semibold text-foreground">{operator.production}k bpd</span>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <Badge variant="outline" style={{ borderColor: operator.color, color: operator.color }}>
-                                  {operator.marketShare}%
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <span className="text-muted-foreground">{operator.blocksCount}</span>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <span className={operator.efficiency >= 90 ? 'text-success' : 'text-accent'}>
-                                  {operator.efficiency}%
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <span className="text-foreground">${operator.costPerBarrel}</span>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                {getTrendIcon(operator.trend)}
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="text-3xl font-bold text-white">1.25M <span className="text-sm font-normal text-zinc-500">bpd</span></div>
+                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Produção Total Nacional</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <Badge className="bg-blue-500/10 text-blue-500 border-none">14 Ativas</Badge>
                     </div>
-                  </motion.div>
-                </TabsContent>
+                    <div className="text-3xl font-bold text-white">TotalEnergies</div>
+                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Líder de Mercado (22.8%)</div>
+                  </CardContent>
+                </Card>
 
-                {/* Comparison Tab */}
-                <TabsContent value="comparison" className="space-y-6">
-                  {/* Operator Selection */}
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-sm text-muted-foreground mr-2 self-center">Comparar:</span>
-                    {operatorsData.map((op) => (
-                      <Button
-                        key={op.id}
-                        variant={comparisonOperators.includes(op.id) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleComparison(op.id)}
-                        className="gap-2"
-                        style={comparisonOperators.includes(op.id) ? { backgroundColor: op.color } : undefined}
-                      >
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: comparisonOperators.includes(op.id) ? 'white' : op.color }}
-                        />
-                        {op.shortName}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Radar Chart */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-border/50 p-6 card-gradient"
-                    >
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-foreground">Comparação Multidimensional</h3>
-                        <p className="text-sm text-muted-foreground">Análise radar normalizada</p>
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500">
+                        <Zap className="w-5 h-5" />
                       </div>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart data={radarData}>
-                            <PolarGrid stroke="hsl(var(--border))" />
-                            <PolarAngleAxis dataKey="metric" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                            {comparisonOperators.map((id) => {
-                              const op = operatorsData.find(o => o.id === id);
-                              if (!op) return null;
-                              return (
-                                <Radar
-                                  key={id}
-                                  name={op.shortName}
-                                  dataKey={op.shortName}
-                                  stroke={op.color}
-                                  fill={op.color}
-                                  fillOpacity={0.2}
-                                  strokeWidth={2}
-                                />
-                              );
-                            })}
-                            <Legend />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </motion.div>
-
-                    {/* Comparison Table */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="rounded-xl border border-border/50 p-6 card-gradient"
-                    >
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-foreground">Métricas Detalhadas</h3>
-                        <p className="text-sm text-muted-foreground">Comparação lado a lado</p>
-                      </div>
-                      <div className="space-y-4">
-                        {[
-                          { key: 'production', label: 'Produção', unit: 'k bpd' },
-                          { key: 'efficiency', label: 'Eficiência', unit: '%' },
-                          { key: 'uptime', label: 'Uptime', unit: '%' },
-                          { key: 'costPerBarrel', label: 'Custo/Barril', unit: 'USD', prefix: '$' },
-                          { key: 'reserves', label: 'Reservas', unit: 'B bbl' },
-                          { key: 'investmentYTD', label: 'Investimento YTD', unit: 'B USD', prefix: '$' },
-                        ].map((metric) => (
-                          <div key={metric.key} className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{metric.label}</span>
-                              <span className="text-xs text-muted-foreground">{metric.unit}</span>
-                            </div>
-                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${comparisonOperators.length}, 1fr)` }}>
-                              {comparisonOperators.map((id) => {
-                                const op = operatorsData.find(o => o.id === id);
-                                if (!op) return null;
-                                const value = op[metric.key as keyof typeof op];
-                                return (
-                                  <div
-                                    key={id}
-                                    className="p-2 rounded-lg text-center"
-                                    style={{ backgroundColor: `${op.color}20`, borderColor: op.color, borderWidth: 1 }}
-                                  >
-                                    <div className="text-xs text-muted-foreground mb-1">{op.shortName}</div>
-                                    <div className="font-bold text-foreground">
-                                      {metric.prefix || ''}{value}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-                </TabsContent>
-
-                {/* Benchmark Tab */}
-                <TabsContent value="benchmark" className="space-y-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl border border-border/50 p-6 card-gradient"
-                  >
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                          <Target className="w-5 h-5 text-primary" />
-                          Benchmarking Operacional
-                        </h3>
-                        <p className="text-sm text-muted-foreground">Melhores práticas do setor</p>
-                      </div>
+                      <Badge className="bg-purple-500/10 text-purple-500 border-none">Média 91%</Badge>
                     </div>
+                    <div className="text-3xl font-bold text-white">94.2%</div>
+                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Eficiência Operacional Média</div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {benchmarkMetrics.map((metric, index) => (
-                        <motion.div
-                          key={metric.metric}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 rounded-lg bg-success/10 border border-success/30"
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Left: Operators List */}
+                <div className="lg:col-span-4 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Lista de Operadoras</h3>
+                    <span className="text-[10px] text-zinc-600 font-bold">{filteredOperators.length} EMPRESAS</span>
+                  </div>
+                  <div className="space-y-2 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                    <AnimatePresence mode="popLayout">
+                      {filteredOperators.map((op) => (
+                        <motion.button
+                          key={op.id}
+                          layout
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          onClick={() => setSelectedOperator(op)}
+                          className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 group ${
+                            selectedOperator.id === op.id 
+                              ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                              : 'bg-[#16191E] text-zinc-400 hover:bg-[#1C2026] border border-zinc-800/50'
+                          }`}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-muted-foreground">{metric.metric}</span>
-                            <Award className="w-4 h-4 text-success" />
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+                              selectedOperator.id === op.id ? 'bg-white/20' : 'bg-zinc-800 text-zinc-500'
+                            }`}>
+                              {op.logo}
+                            </div>
+                            <div className="text-left">
+                              <div className={`font-bold text-sm ${selectedOperator.id === op.id ? 'text-white' : 'text-zinc-200'}`}>
+                                {op.shortName}
+                              </div>
+                              <div className={`text-[10px] uppercase tracking-wider font-medium ${selectedOperator.id === op.id ? 'text-white/70' : 'text-zinc-500'}`}>
+                                {op.production} kbpd • {op.marketShare}%
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-2xl font-bold text-foreground">
-                            {metric.unit === 'USD' ? '$' : ''}{metric.bestValue}{metric.unit === '%' ? '%' : ''}
-                            {metric.unit === 'B USD' ? 'B' : ''}
-                          </div>
-                          <div className="text-sm text-success font-medium">{metric.best}</div>
-                        </motion.div>
+                          <ChevronRight className={`w-4 h-4 transition-transform ${selectedOperator.id === op.id ? 'translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
+                        </motion.button>
                       ))}
-                    </div>
+                    </AnimatePresence>
+                  </div>
+                </div>
 
-                    {/* All operators benchmark */}
-                    <div className="mt-8 space-y-4">
-                      {[
-                        { key: 'efficiency', label: 'Eficiência Operacional', unit: '%', icon: Zap },
-                        { key: 'uptime', label: 'Uptime', unit: '%', icon: Gauge },
-                        { key: 'costPerBarrel', label: 'Custo por Barril', unit: 'USD', icon: DollarSign, inverted: true },
-                      ].map((metric) => {
-                        const sorted = [...operatorsData].sort((a, b) => {
-                          const aVal = a[metric.key as keyof typeof a] as number;
-                          const bVal = b[metric.key as keyof typeof b] as number;
-                          return metric.inverted ? aVal - bVal : bVal - aVal;
-                        });
-                        const best = sorted[0][metric.key as keyof typeof sorted[0]] as number;
-                        
-                        return (
-                          <div key={metric.key} className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                              <metric.icon className="w-4 h-4 text-muted-foreground" />
-                              {metric.label}
+                {/* Right: Operator Details */}
+                <div className="lg:col-span-8 space-y-6">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={selectedOperator.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4 }}
+                      className="space-y-6"
+                    >
+                      {/* Operator Header Card */}
+                      <Card className="bg-gradient-to-br from-[#16191E] to-[#0B0E14] border-zinc-800/50 rounded-3xl overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                          <Building2 className="w-32 h-32" />
+                        </div>
+                        <CardContent className="p-8">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-6">
+                              <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center text-white text-3xl font-black shadow-2xl shadow-primary/40">
+                                {selectedOperator.logo}
+                              </div>
+                              <div>
+                                <h2 className="text-3xl font-black text-white tracking-tight">{selectedOperator.name}</h2>
+                                <div className="flex flex-wrap items-center gap-4 mt-2">
+                                  <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
+                                    <MapPin className="w-3.5 h-3.5 text-primary" /> {selectedOperator.headquarters}, Angola
+                                  </span>
+                                  <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
+                                    <Calendar className="w-3.5 h-3.5 text-primary" /> Desde {selectedOperator.since}
+                                  </span>
+                                  {selectedOperator.website && (
+                                    <a href={selectedOperator.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-primary font-bold hover:underline">
+                                      <Globe className="w-3.5 h-3.5" /> Website <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              {sorted.map((op, idx) => {
-                                const value = op[metric.key as keyof typeof op] as number;
-                                const percentage = metric.inverted 
-                                  ? (best / value) * 100 
-                                  : (value / best) * 100;
-                                
-                                return (
-                                  <div key={op.id} className="flex items-center gap-3">
-                                    <span className="w-20 text-sm text-muted-foreground">{op.shortName}</span>
-                                    <div className="flex-1 h-6 bg-secondary/50 rounded-full overflow-hidden">
-                                      <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${percentage}%` }}
-                                        transition={{ duration: 0.8, delay: idx * 0.1 }}
-                                        className="h-full rounded-full flex items-center justify-end pr-2"
-                                        style={{ backgroundColor: op.color }}
-                                      >
-                                        <span className="text-xs font-medium text-white">
-                                          {metric.unit === 'USD' ? '$' : ''}{value}{metric.unit === '%' ? '%' : ''}
-                                        </span>
-                                      </motion.div>
-                                    </div>
-                                    {idx === 0 && <Award className="w-4 h-4 text-success" />}
-                                  </div>
-                                );
-                              })}
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tendência</div>
+                                <div className={`flex items-center justify-end gap-1 font-black ${
+                                  selectedOperator.trend === 'up' ? 'text-emerald-500' : 
+                                  selectedOperator.trend === 'down' ? 'text-rose-500' : 'text-blue-500'
+                                }`}>
+                                  {selectedOperator.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : 
+                                   selectedOperator.trend === 'down' ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                                  {selectedOperator.trend.toUpperCase()}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                </TabsContent>
 
-                {/* History Tab */}
-                <TabsContent value="history" className="space-y-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl border border-border/50 p-6 card-gradient"
-                  >
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">Evolução do Market Share</h3>
-                        <p className="text-sm text-muted-foreground">Últimos 5 anos</p>
-                      </div>
-                    </div>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={marketShareHistory}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                          <XAxis dataKey="year" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={[0, 35]} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                            }}
-                            formatter={(value: number) => [`${value}%`, "Market Share"]}
-                          />
-                          <Legend />
-                          {operatorsData.map((op) => (
-                            <Line
-                              key={op.id}
-                              type="monotone"
-                              dataKey={op.name.replace(' ', '')}
-                              stroke={op.color}
-                              strokeWidth={2}
-                              dot={{ fill: op.color, strokeWidth: 0, r: 4 }}
-                              name={op.shortName}
-                            />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </motion.div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-10">
+                            {[
+                              { label: "Produção", value: `${selectedOperator.production}k`, sub: "bpd", icon: Droplets, color: "text-blue-500" },
+                              { label: "Market Share", value: `${selectedOperator.marketShare}%`, sub: "Nacional", icon: PieChart, color: "text-emerald-500" },
+                              { label: "Investimento", value: `$${selectedOperator.investmentYTD}B`, sub: "YTD 2024", icon: DollarSign, color: "text-amber-500" },
+                              { label: "Eficiência", value: `${selectedOperator.efficiency}%`, sub: "Operacional", icon: Gauge, color: "text-purple-500" },
+                            ].map((stat, i) => (
+                              <div key={i} className="space-y-1">
+                                <div className="flex items-center gap-2 text-zinc-500 mb-1">
+                                  <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">{stat.label}</span>
+                                </div>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-2xl font-black text-white">{stat.value}</span>
+                                  <span className="text-[10px] font-bold text-zinc-500 uppercase">{stat.sub}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  {/* Key Insights */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="p-4 rounded-xl bg-success/10 border border-success/30"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <ArrowUpRight className="w-5 h-5 text-success" />
-                        <span className="font-semibold text-foreground">Maior Crescimento</span>
+                      {/* Detailed Stats Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Performance Radar */}
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Score de Performance</CardTitle>
+                          </CardHeader>
+                          <CardContent className="h-[300px] pt-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                <PolarGrid stroke="#1f2937" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 'bold' }} />
+                                <Radar
+                                  name={selectedOperator.shortName}
+                                  dataKey="A"
+                                  stroke={selectedOperator.color}
+                                  fill={selectedOperator.color}
+                                  fillOpacity={0.3}
+                                />
+                                <Tooltip 
+                                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </CardContent>
+                        </Card>
+
+                        {/* Market Share History */}
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Evolução Market Share</CardTitle>
+                          </CardHeader>
+                          <CardContent className="h-[300px] pt-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={marketShareHistory}>
+                                <defs>
+                                  <linearGradient id="colorMS" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={selectedOperator.color} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={selectedOperator.color} stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                                <XAxis dataKey="year" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                <Tooltip 
+                                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                />
+                                <Area 
+                                  type="monotone" 
+                                  dataKey={selectedOperator.shortName.replace(' ', '')} 
+                                  stroke={selectedOperator.color} 
+                                  strokeWidth={3}
+                                  fillOpacity={1} 
+                                  fill="url(#colorMS)" 
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </CardContent>
+                        </Card>
                       </div>
-                      <div className="text-xl font-bold text-success">ExxonMobil</div>
-                      <p className="text-sm text-muted-foreground">+2.1 pp desde 2020</p>
+
+                      {/* Projects & Blocks */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl">
+                          <CardHeader>
+                            <div className="flex items-center gap-2">
+                              <Factory className="w-4 h-4 text-primary" />
+                              <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Principais Projetos</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedOperator.projects.map((project, i) => (
+                                <Badge key={i} className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border-none py-1.5 px-3 rounded-lg">
+                                  {project}
+                                </Badge>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl">
+                          <CardHeader>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-emerald-500" />
+                              <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Blocos Operados</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedOperator.blocks.map((block, i) => (
+                                <Badge key={i} className="bg-emerald-500/10 text-emerald-500 border-none py-1.5 px-3 rounded-lg">
+                                  {block}
+                                </Badge>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="p-4 rounded-xl bg-primary/10 border border-primary/30"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Award className="w-5 h-5 text-primary" />
-                        <span className="font-semibold text-foreground">Mais Estável</span>
-                      </div>
-                      <div className="text-xl font-bold text-primary">ENI Angola</div>
-                      <p className="text-sm text-muted-foreground">±1.6 pp variação</p>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="p-4 rounded-xl bg-destructive/10 border border-destructive/30"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <ArrowDownRight className="w-5 h-5 text-destructive" />
-                        <span className="font-semibold text-foreground">Maior Declínio</span>
-                      </div>
-                      <div className="text-xl font-bold text-destructive">Chevron</div>
-                      <p className="text-sm text-muted-foreground">-1.7 pp desde 2020</p>
-                    </motion.div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                  </AnimatePresence>
+                </div>
+              </div>
             </div>
           </main>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
-export default Competitors;
+export default Operators;

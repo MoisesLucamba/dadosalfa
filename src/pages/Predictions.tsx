@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
@@ -18,7 +18,11 @@ import {
   RefreshCw,
   Loader2,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpRight,
+  Info,
+  Zap,
+  Activity
 } from "lucide-react";
 import {
   AreaChart,
@@ -33,7 +37,10 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// --- Interfaces ---
 interface PredictionModel {
   value: number;
   change_percent: number;
@@ -71,14 +78,15 @@ interface PredictionsData {
     exports_30d: PredictionModel;
     revenue_30d: PredictionModel;
   };
-  price_forecast?: { date: string; predicted: number; lower: number; upper: number }[];
-  production_forecast?: { month: string; predicted: number }[];
+  price_forecast?: { date: string; actual?: number | null; predicted: number | null; lower: number | null; upper: number | null }[];
+  production_forecast?: { month: string; actual?: number | null; predicted: number | null }[];
   insights: Insight[];
   risks?: Risk[];
   model_performance: ModelPerformance;
   generated_at?: string;
 }
 
+// --- Main Component ---
 const Predictions = () => {
   const [predictions, setPredictions] = useState<PredictionsData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -94,7 +102,7 @@ const Predictions = () => {
       if (data?.success && data?.predictions) {
         setPredictions(data.predictions);
         setLastUpdated(new Date().toLocaleString('pt-AO'));
-        toast.success("Previsões IA atualizadas com sucesso!");
+        toast.success("Previsões IA atualizadas!");
       } else {
         throw new Error(data?.error || "Erro ao gerar previsões");
       }
@@ -110,38 +118,29 @@ const Predictions = () => {
     fetchPredictions();
   }, []);
 
+  // --- Helpers ---
   const formatValue = (key: string, value: number) => {
     switch (key) {
-      case 'brent_30d':
-        return `$${value.toFixed(2)}`;
-      case 'production_30d':
-        return `${(value / 1000).toFixed(2)}M bpd`;
-      case 'exports_30d':
-        return `${value.toFixed(1)}M bbl`;
-      case 'revenue_30d':
-        return `$${value.toFixed(2)}B`;
-      default:
-        return value.toString();
+      case 'brent_30d': return `$${value.toFixed(2)}`;
+      case 'production_30d': return `${(value / 1000).toFixed(2)}M bpd`;
+      case 'exports_30d': return `${value.toFixed(1)}M bbl`;
+      case 'revenue_30d': return `$${value.toFixed(2)}B`;
+      default: return value.toString();
     }
   };
 
   const getModelName = (key: string) => {
-    switch (key) {
-      case 'brent_30d':
-        return 'Preço Brent (30d)';
-      case 'production_30d':
-        return 'Produção Angola (30d)';
-      case 'exports_30d':
-        return 'Exportações (30d)';
-      case 'revenue_30d':
-        return 'Receita Estimada (30d)';
-      default:
-        return key;
-    }
+    const names: Record<string, string> = {
+      brent_30d: 'Preço Brent (30d)',
+      production_30d: 'Produção Angola (30d)',
+      exports_30d: 'Exportações (30d)',
+      revenue_30d: 'Receita Estimada (30d)'
+    };
+    return names[key] || key;
   };
 
-  // Generate price forecast data for chart
-  const generatePriceForecast = () => {
+  // --- Chart Data Generation ---
+  const priceForecastData = useMemo(() => {
     if (predictions?.price_forecast) return predictions.price_forecast;
     
     const basePrice = predictions?.predictions?.brent_30d?.value || 78;
@@ -173,10 +172,9 @@ const Predictions = () => {
       }
     }
     return dates;
-  };
+  }, [predictions]);
 
-  // Generate production forecast data
-  const generateProductionForecast = () => {
+  const productionForecastData = useMemo(() => {
     if (predictions?.production_forecast) return predictions.production_forecast;
     
     const baseProd = predictions?.predictions?.production_30d?.value || 1100;
@@ -188,466 +186,297 @@ const Predictions = () => {
       actual: i <= currentMonth ? baseProd + (Math.random() - 0.5) * 50 : null,
       predicted: i >= currentMonth ? baseProd - i * 3 + (Math.random() - 0.5) * 20 : null,
     }));
-  };
+  }, [predictions]);
 
-  const priceForecastData = generatePriceForecast();
-  const productionForecastData = generateProductionForecast();
-
+  // --- Render ---
   return (
-    <>
+    <div className="min-h-screen bg-[#0F1115] text-zinc-100 selection:bg-primary/30">
       <Helmet>
         <title>Previsões IA | AlphaData</title>
-        <meta
-          name="description"
-          content="Previsões baseadas em IA para o setor petrolífero angolano. Projeções de preços, produção e exportações com intervalos de confiança."
-        />
+        <meta name="description" content="Previsões baseadas em IA para o setor petrolífero angolano." />
       </Helmet>
 
-      <div className="flex h-screen bg-background overflow-hidden">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar activeItem="/predictions" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+          
           <Header activeItem="/predictions" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 scrollbar-thin">
-            <div className="max-w-7xl mx-auto space-y-6">
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
+            <div className="max-w-7xl mx-auto space-y-8">
+              
               {/* Page Header */}
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-foreground">Previsões IA</h1>
-                    <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-primary/20 text-primary flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      Tempo Real
-                    </span>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Brain className="w-5 h-5" />
+                    </div>
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase tracking-tighter font-bold">
+                      AI Engine v2.0
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {lastUpdated && (
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        Atualizado: {lastUpdated}
-                      </span>
-                    )}
-                    <Button 
-                      onClick={fetchPredictions} 
-                      disabled={loading}
-                      className="gap-2"
-                    >
-                      {loading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      {loading ? "Gerando..." : "Atualizar Previsões"}
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-muted-foreground mt-2">
-                  Projeções 30/60/90 dias geradas por IA com dados reais do mercado angolano
-                </p>
-              </motion.div>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">Previsões Inteligentes</h1>
+                  <p className="text-zinc-400 mt-1">Projeções avançadas para o mercado de energia angolano.</p>
+                </motion.div>
 
-              {/* Prediction Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {loading ? (
-                  [...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-36 rounded-xl" />
-                  ))
-                ) : predictions?.predictions ? (
-                  Object.entries(predictions.predictions).map(([key, model], index) => (
-                    <motion.div
-                      key={key}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="rounded-xl border border-border/50 p-4 card-gradient relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                      <div className="flex items-center gap-2 mb-3">
-                        <Brain className="w-4 h-4 text-primary" />
-                        <span className="text-xs text-muted-foreground">{getModelName(key)}</span>
-                      </div>
-                      <div className="flex items-end justify-between mb-2">
-                        <span className="text-2xl font-bold text-foreground">
-                          {formatValue(key, model.value)}
-                        </span>
-                        <span className={`flex items-center gap-1 text-sm font-medium ${
-                          model.trend === 'up' ? 'text-success' : 'text-destructive'
-                        }`}>
-                          {model.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          {model.change_percent > 0 ? '+' : ''}{model.change_percent.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <Target className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            Confiança: {model.confidence.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${model.confidence}%` }}
-                          transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
-                        />
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                        {model.reasoning}
-                      </p>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="col-span-4 text-center py-8 text-muted-foreground">
-                    Clique em "Atualizar Previsões" para gerar análises
-                  </div>
-                )}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-4"
+                >
+                  {lastUpdated && (
+                    <div className="hidden md:flex flex-col items-end">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Última Sincronização</span>
+                      <span className="text-sm text-zinc-300 font-medium">{lastUpdated}</span>
+                    </div>
+                  )}
+                  <Button 
+                    onClick={fetchPredictions} 
+                    disabled={loading}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 h-11 px-6 rounded-xl transition-all active:scale-95"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    {loading ? "Processando..." : "Atualizar Dados"}
+                  </Button>
+                </motion.div>
               </div>
 
-              {/* Price Prediction Chart */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="rounded-xl border border-border/50 p-6 card-gradient"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Previsão Preço Brent</h3>
-                    <p className="text-sm text-muted-foreground">Dados reais vs previsão com intervalo de confiança</p>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-primary" />
-                      <span className="text-muted-foreground">Real</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-accent" />
-                      <span className="text-muted-foreground">Previsão</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-3 rounded bg-accent/20" />
-                      <span className="text-muted-foreground">Intervalo</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-72">
+              {/* Prediction Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <AnimatePresence mode="popLayout">
                   {loading ? (
-                    <Skeleton className="w-full h-full" />
-                  ) : (
+                    [...Array(4)].map((_, i) => (
+                      <Skeleton key={i} className="h-40 rounded-2xl bg-zinc-800/50 border border-zinc-700/30" />
+                    ))
+                  ) : predictions?.predictions ? (
+                    Object.entries(predictions.predictions).map(([key, model], index) => (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group relative p-5 rounded-2xl bg-[#16191E] border border-zinc-800/50 hover:border-primary/30 hover:bg-[#1C2026] transition-all duration-300"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{getModelName(key)}</span>
+                          <div className={`p-1.5 rounded-lg ${model.trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            {model.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="text-2xl font-bold text-white">{formatValue(key, model.value)}</h3>
+                          <span className={`text-xs font-bold ${model.trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {model.change_percent > 0 ? '+' : ''}{model.change_percent.toFixed(1)}%
+                          </span>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-zinc-800/50 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Target className="w-3 h-3 text-zinc-500" />
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase">Confiança</span>
+                          </div>
+                          <span className="text-xs font-bold text-primary">{model.confidence.toFixed(0)}%</span>
+                        </div>
+                        
+                        {/* Progress bar for confidence */}
+                        <div className="mt-2 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${model.confidence}%` }}
+                            className="h-full bg-primary"
+                          />
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : null}
+                </AnimatePresence>
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Price Forecast Chart */}
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-800/50 pb-4">
+                    <div>
+                      <CardTitle className="text-lg font-bold text-white">Projeção Brent</CardTitle>
+                      <p className="text-xs text-zinc-500">Intervalo de confiança de 95%</p>
+                    </div>
+                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none">USD/bbl</Badge>
+                  </CardHeader>
+                  <CardContent className="pt-6 h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={priceForecastData}>
                         <defs>
-                          <linearGradient id="confidenceGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                          <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={['auto', 'auto']} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                        <XAxis dataKey="date" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                          itemStyle={{ fontSize: '12px' }}
                         />
-                        <Area
-                          type="monotone"
-                          dataKey="upper"
-                          stroke="transparent"
-                          fill="url(#confidenceGradient)"
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="lower"
-                          stroke="transparent"
-                          fill="hsl(var(--background))"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="actual"
-                          stroke="hsl(var(--primary))"
-                          strokeWidth={2}
-                          dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 4 }}
-                          connectNulls={false}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="predicted"
-                          stroke="hsl(var(--accent))"
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          dot={{ fill: "hsl(var(--accent))", strokeWidth: 0, r: 4 }}
-                          connectNulls={false}
-                        />
+                        <Area type="monotone" dataKey="actual" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorActual)" />
+                        <Area type="monotone" dataKey="predicted" stroke="#10b981" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorPredicted)" />
+                        <Area type="monotone" dataKey="upper" stroke="transparent" fill="#10b981" fillOpacity={0.05} />
+                        <Area type="monotone" dataKey="lower" stroke="transparent" fill="#10b981" fillOpacity={0.05} />
                       </AreaChart>
                     </ResponsiveContainer>
-                  )}
-                </div>
-              </motion.div>
+                  </CardContent>
+                </Card>
 
-              {/* Production Forecast & AI Insights */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Production Forecast */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="lg:col-span-2 rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center justify-between mb-6">
+                {/* Production Forecast Chart */}
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-800/50 pb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground">Previsão de Produção</h3>
-                      <p className="text-sm text-muted-foreground">Milhares de barris por dia</p>
+                      <CardTitle className="text-lg font-bold text-white">Tendência de Produção</CardTitle>
+                      <p className="text-xs text-zinc-500">Histórico vs Projeção IA</p>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                      <TrendingDown className="w-4 h-4" />
-                      <span>Tendência de declínio</span>
-                    </div>
-                  </div>
-                  <div className="h-64">
-                    {loading ? (
-                      <Skeleton className="w-full h-full" />
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={productionForecastData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                          <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={['auto', 'auto']} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="actual"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 3 }}
-                            connectNulls={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="predicted"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={{ fill: "hsl(var(--accent))", strokeWidth: 0, r: 3 }}
-                            connectNulls={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </motion.div>
+                    <Badge className="bg-primary/10 text-primary border-none">kbpd</Badge>
+                  </CardHeader>
+                  <CardContent className="pt-6 h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={productionForecastData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                        <XAxis dataKey="month" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                        />
+                        <Line type="monotone" dataKey="actual" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} />
+                        <Line type="monotone" dataKey="predicted" stroke="#a855f7" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: '#a855f7' }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
 
+              {/* Insights & Risks Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* AI Insights */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.35 }}
-                  className="rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center gap-2 mb-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-semibold text-foreground">Insights IA</h3>
+                    <h3 className="text-lg font-bold text-white">Insights Estratégicos</h3>
                   </div>
-                  <div className="space-y-4">
-                    {loading ? (
-                      [...Array(3)].map((_, i) => (
-                        <Skeleton key={i} className="h-24 rounded-lg" />
-                      ))
-                    ) : predictions?.insights?.length ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {predictions?.insights && predictions.insights.length > 0 ? (
                       predictions.insights.map((insight, index) => (
                         <motion.div
                           key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + index * 0.1 }}
-                          className="p-3 rounded-lg bg-secondary/30 border border-border/30"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-5 rounded-2xl bg-[#16191E] border border-zinc-800/50 hover:bg-[#1C2026] transition-colors"
                         >
-                          <div className="flex items-start gap-2">
-                            {insight.type === 'alert' && <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />}
-                            {insight.type === 'opportunity' && <TrendingUp className="w-4 h-4 text-success mt-0.5" />}
-                            {insight.type === 'info' && <CheckCircle className="w-4 h-4 text-primary mt-0.5" />}
-                            <div className="flex-1">
-                              <h4 className="text-sm font-medium text-foreground mb-1">{insight.title}</h4>
-                              <p className="text-xs text-muted-foreground mb-2">{insight.description}</p>
-                              <div className="flex items-center gap-3 text-xs">
-                                <span className="text-muted-foreground">Confiança: {insight.confidence}%</span>
-                                <span className={`px-1.5 py-0.5 rounded text-xs ${
-                                  insight.impact === 'alto' ? 'bg-destructive/20 text-destructive' :
-                                  insight.impact === 'médio' ? 'bg-accent/20 text-accent' :
-                                  'bg-muted text-muted-foreground'
-                                }`}>
-                                  Impacto {insight.impact}
-                                </span>
-                              </div>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className={`p-2 rounded-xl ${
+                              insight.type === 'opportunity' ? 'bg-emerald-500/10 text-emerald-500' :
+                              insight.type === 'alert' ? 'bg-rose-500/10 text-rose-500' :
+                              'bg-blue-500/10 text-blue-500'
+                            }`}>
+                              {insight.type === 'opportunity' ? <Zap className="w-4 h-4" /> :
+                               insight.type === 'alert' ? <AlertCircle className="w-4 h-4" /> :
+                               <Info className="w-4 h-4" />}
                             </div>
+                            <Badge variant="outline" className="text-[10px] border-zinc-800 text-zinc-500">
+                              Impacto {insight.impact}
+                            </Badge>
                           </div>
+                          <h4 className="font-bold text-zinc-100 mb-1">{insight.title}</h4>
+                          <p className="text-xs text-zinc-400 leading-relaxed">{insight.description}</p>
                         </motion.div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum insight disponível
-                      </p>
+                      <div className="col-span-2 text-center py-12 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-2xl">
+                        <p className="text-zinc-500 text-sm">Nenhum insight disponível no momento.</p>
+                      </div>
                     )}
                   </div>
-                </motion.div>
-              </div>
+                </div>
 
-              {/* Risks Section */}
-              {predictions?.risks && predictions.risks.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                  className="rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center gap-2 mb-6">
-                    <Shield className="w-5 h-5 text-warning" />
-                    <h3 className="text-lg font-semibold text-foreground">Análise de Riscos</h3>
+                {/* Risks Analysis */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-lg font-bold text-white">Matriz de Riscos</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {predictions.risks.map((risk, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.45 + index * 0.1 }}
-                        className="p-4 rounded-lg bg-secondary/20 border border-border/30"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertTriangle className={`w-4 h-4 ${
-                            risk.impact_level === 'alto' ? 'text-destructive' :
-                            risk.impact_level === 'médio' ? 'text-warning' :
-                            'text-muted-foreground'
+                  <div className="space-y-3">
+                    {predictions?.risks?.map((risk, index) => (
+                      <div key={index} className="p-4 rounded-xl bg-[#16191E] border border-zinc-800/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{risk.category}</span>
+                          <div className={`w-2 h-2 rounded-full ${
+                            risk.impact_level === 'alto' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                            risk.impact_level === 'médio' ? 'bg-amber-500' : 'bg-blue-500'
                           }`} />
-                          <span className="text-xs font-medium text-muted-foreground uppercase">
-                            {risk.category}
-                          </span>
                         </div>
-                        <p className="text-sm text-foreground mb-3">{risk.description}</p>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            Probabilidade: {risk.probability}%
-                          </span>
-                          <span className={`px-2 py-0.5 rounded ${
-                            risk.impact_level === 'alto' ? 'bg-destructive/20 text-destructive' :
-                            risk.impact_level === 'médio' ? 'bg-warning/20 text-warning' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            {risk.impact_level}
-                          </span>
+                        <p className="text-xs text-zinc-300 font-medium mb-3">{risk.description}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-zinc-500">Probabilidade: <span className="text-zinc-300">{risk.probability}%</span></span>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                            risk.impact_level === 'alto' ? 'bg-rose-500/10 text-rose-500' :
+                            risk.impact_level === 'médio' ? 'bg-amber-500/10 text-amber-500' :
+                            'bg-blue-500/10 text-blue-500'
+                          }`}>{risk.impact_level}</span>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </div>
 
-              {/* Model Performance */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.45 }}
-                className="rounded-xl border border-border/50 p-6 card-gradient"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Performance dos Modelos</h3>
-                    <p className="text-sm text-muted-foreground">Métricas de precisão das previsões</p>
+              {/* Model Performance Metrics */}
+              <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-zinc-800/50">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg font-bold text-white">Performance do Modelo</CardTitle>
                   </div>
-                  {predictions?.model_performance?.last_updated && (
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Clock className="w-4 h-4" />
-                      <span>Última atualização: {predictions.model_performance.last_updated}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  {loading ? (
-                    [...Array(4)].map((_, i) => (
-                      <Skeleton key={i} className="h-24 rounded-xl" />
-                    ))
-                  ) : predictions?.model_performance ? (
-                    <>
-                      <div className="p-4 rounded-xl bg-secondary/30 border border-border/30">
-                        <span className="text-sm text-muted-foreground">MAPE</span>
-                        <div className="text-2xl font-bold text-foreground mt-1">
-                          {predictions.model_performance.mape.toFixed(1)}%
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[
+                      { label: "MAPE", value: `${predictions?.model_performance?.mape.toFixed(1)}%`, sub: "Erro Médio", color: "text-emerald-500" },
+                      { label: "Precisão (30d)", value: `${predictions?.model_performance?.accuracy_30d.toFixed(1)}%`, sub: "Taxa de Acerto", color: "text-primary" },
+                      { label: "R² Score", value: predictions?.model_performance?.r2_score.toFixed(2), sub: "Correlação", color: "text-amber-500" },
+                      { label: "Status", value: "Operacional", sub: "Sistema Ativo", color: "text-emerald-500", icon: CheckCircle }
+                    ].map((metric, i) => (
+                      <div key={i} className="flex flex-col">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{metric.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-2xl font-bold ${metric.color}`}>{metric.value}</span>
+                          {metric.icon && <metric.icon className={`w-5 h-5 ${metric.color}`} />}
                         </div>
-                        <span className="text-xs text-muted-foreground">Erro Médio Absoluto</span>
-                        <div className="mt-2 h-1.5 bg-background rounded-full">
-                          <div 
-                            className="h-full rounded-full bg-success" 
-                            style={{ width: `${100 - predictions.model_performance.mape * 10}%` }}
-                          />
-                        </div>
+                        <span className="text-xs text-zinc-500 mt-1">{metric.sub}</span>
                       </div>
-                      <div className="p-4 rounded-xl bg-secondary/30 border border-border/30">
-                        <span className="text-sm text-muted-foreground">Accuracy (30d)</span>
-                        <div className="text-2xl font-bold text-foreground mt-1">
-                          {predictions.model_performance.accuracy_30d.toFixed(1)}%
-                        </div>
-                        <span className="text-xs text-muted-foreground">Taxa de Acerto</span>
-                        <div className="mt-2 h-1.5 bg-background rounded-full">
-                          <div 
-                            className="h-full rounded-full bg-primary" 
-                            style={{ width: `${predictions.model_performance.accuracy_30d}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="p-4 rounded-xl bg-secondary/30 border border-border/30">
-                        <span className="text-sm text-muted-foreground">R² Score</span>
-                        <div className="text-2xl font-bold text-foreground mt-1">
-                          {predictions.model_performance.r2_score.toFixed(2)}
-                        </div>
-                        <span className="text-xs text-muted-foreground">Coef. Determinação</span>
-                        <div className="mt-2 h-1.5 bg-background rounded-full">
-                          <div 
-                            className="h-full rounded-full bg-accent" 
-                            style={{ width: `${predictions.model_performance.r2_score * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="p-4 rounded-xl bg-secondary/30 border border-border/30">
-                        <span className="text-sm text-muted-foreground">Status do Modelo</span>
-                        <div className="text-2xl font-bold text-success mt-1 flex items-center gap-2">
-                          <CheckCircle className="w-5 h-5" />
-                          Ativo
-                        </div>
-                        <span className="text-xs text-muted-foreground">Operacional</span>
-                        <div className="mt-2 h-1.5 bg-background rounded-full">
-                          <div className="h-full rounded-full bg-success w-full" />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="col-span-4 text-center py-4 text-muted-foreground">
-                      Métricas não disponíveis
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
             </div>
           </main>
         </div>
         
         <MobileBottomNav />
       </div>
-    </>
+    </div>
   );
 };
 

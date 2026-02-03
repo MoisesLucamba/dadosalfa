@@ -1,7 +1,25 @@
+import { useMemo, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { useNavigate } from "react-router-dom";
+import { 
+  BarChart3, 
+  DollarSign, 
+  Ship, 
+  RefreshCw, 
+  AlertTriangle, 
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  LayoutDashboard
+} from "lucide-react";
+import { toast } from "sonner";
+
+// Layout Components
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+
+// Dashboard Components
 import { KPICard } from "@/components/dashboard/KPICard";
 import { PriceCard } from "@/components/dashboard/PriceCard";
 import { ProductionChart } from "@/components/dashboard/ProductionChart";
@@ -9,32 +27,112 @@ import { ExportsMap } from "@/components/dashboard/ExportsMap";
 import { AIInsights } from "@/components/dashboard/AIInsights";
 import { OperatorsTable } from "@/components/dashboard/OperatorsTable";
 import { DataSourceIndicator, DATA_SOURCES } from "@/components/dashboard/DataSourceIndicator";
-import { BarChart3, DollarSign, Ship, Gauge, RefreshCw, AlertTriangle, Zap } from "lucide-react";
-import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
-import { useLatestDataUpdates, formatLastUpdate, getSourceShortName } from "@/hooks/useDataUpdates";
-import { useMemo, useState } from "react";
+
+// UI Components
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+
+// Hooks & Integrations
+import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
+import { useLatestDataUpdates, formatLastUpdate, getSourceShortName } from "@/hooks/useDataUpdates";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
+/**
+ * UTILITIES: Number Formatting
+ */
+const formatVolume = (value: number) => {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M bpd`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K bpd`;
+  return `${value.toFixed(0)} bpd`;
+};
+
+const formatCurrency = (value: number, compact = false) => {
+  if (compact) {
+    if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: value >= 1000 ? 0 : 2
+  }).format(value);
+};
+
+/**
+ * CUSTOM HOOK: Dashboard KPI Logic
+ * Encapsulates complex calculations for better readability
+ */
+const useDashboardKPIs = (productionData: any[], priceData: any[], exportData: any[]) => {
+  return useMemo(() => {
+    // 1. Production KPIs
+    const latestDate = productionData?.[0]?.data_date;
+    const latestProd = productionData?.filter(p => p.data_date === latestDate) || [];
+    const totalDailyProd = latestProd.reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
+    
+    const prevProdData = productionData?.filter(p => p.data_date !== latestDate) || [];
+    const prevDate = [...new Set(prevProdData.map(p => p.data_date))].sort().reverse()[0];
+    const prevTotalProd = prevProdData
+      .filter(p => p.data_date === prevDate)
+      .reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
+
+    const prodChange = prevTotalProd > 0 ? ((totalDailyProd - prevTotalProd) / prevTotalProd) * 100 : 0;
+
+    // 2. Price KPIs (Brent)
+    const brent = priceData?.find(p => p.crude_type.toLowerCase().includes("brent"));
+    const brentPrice = brent?.price || 0;
+    const brentChange = brent?.change_percent || 0;
+
+    // 3. Export KPIs
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentExports = exportData?.filter(e => e.data_date.startsWith(currentMonth)) || [];
+    const totalExportVol = currentExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
+    
+    const prevMonthDate = new Date();
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonth = prevMonthDate.toISOString().slice(0, 7);
+    const prevExports = exportData?.filter(e => e.data_date.startsWith(prevMonth)) || [];
+    const prevExportVol = prevExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
+    
+    const exportChange = prevExportVol > 0 ? ((totalExportVol - prevExportVol) / prevExportVol) * 100 : 0;
+
+    // 4. Revenue KPIs
+    const totalExportVal = currentExports.reduce((sum, e) => sum + Number(e.value_usd || 0), 0);
+    const estRevenue = totalExportVal > 0 ? totalExportVal : totalExportVol * brentPrice;
+    const prevRevenue = prevExportVol * (brentPrice * (1 - brentChange / 100));
+    const revChange = prevRevenue > 0 ? ((estRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+    return {
+      production: { value: totalDailyProd, change: prodChange, formatted: formatVolume(totalDailyProd) },
+      brent: { value: brentPrice, change: brentChange, formatted: formatCurrency(brentPrice) },
+      exports: { value: totalExportVol, change: exportChange, formatted: `${(totalExportVol/1000000).toFixed(1)}M bbl` },
+      revenue: { value: estRevenue, change: revChange, formatted: formatCurrency(estRevenue, true) }
+    };
+  }, [productionData, priceData, exportData]);
+};
+
+/**
+ * MAIN COMPONENT: Index
+ */
 const Index = () => {
   const navigate = useNavigate();
-  const { data: productionData, isLoading: loadingProduction, refetch: refetchProduction } = useProductionData();
-  const { data: priceData, isLoading: loadingPrice, refetch: refetchPrice } = usePriceData();
-  const { data: exportData, isLoading: loadingExport, refetch: refetchExport } = useExportData();
-  const { data: dataUpdates } = useLatestDataUpdates();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Data Fetching
+  const { data: prodData, isLoading: loadProd, refetch: refetchProd } = useProductionData();
+  const { data: priceData, isLoading: loadPrice, refetch: refetchPrice } = usePriceData();
+  const { data: exportData, isLoading: loadExport, refetch: refetchExport } = useExportData();
+  const { data: updates } = useLatestDataUpdates();
   const { data: isAdmin } = useIsAdmin();
-  const [isSyncingPrices, setIsSyncingPrices] = useState(false);
 
-  const isLoading = loadingProduction || loadingPrice || loadingExport;
+  const isLoading = loadProd || loadPrice || loadExport;
+  const kpis = useDashboardKPIs(prodData || [], priceData || [], exportData || []);
 
-  // Fetch real-time prices from AI
-  const syncRealTimePrices = async () => {
-    setIsSyncingPrices(true);
+  // Handlers
+  const handleSyncPrices = useCallback(async () => {
+    setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-oil-prices", {
         body: { action: "sync" }
@@ -43,329 +141,195 @@ const Index = () => {
       if (error) throw error;
 
       if (data?.success) {
-        toast.success("Preços atualizados com sucesso!", {
-          description: data.data?.source || "Dados sincronizados com o mercado"
+        toast.success("Mercado Sincronizado", {
+          description: data.data?.source || "Preços atualizados em tempo real"
         });
         refetchPrice();
       } else {
-        throw new Error(data?.error || "Falha ao sincronizar preços");
+        throw new Error(data?.error || "Falha na sincronização");
       }
-    } catch (error: any) {
-      console.error("Error syncing prices:", error);
-      if (error.message?.includes("429") || error.message?.includes("Rate limit")) {
-        toast.error("Limite de requisições excedido", {
-          description: "Aguarde alguns minutos antes de tentar novamente"
-        });
-      } else {
-        toast.error("Erro ao atualizar preços", {
-          description: error.message || "Tente novamente mais tarde"
-        });
-      }
+    } catch (err: any) {
+      const isRateLimit = err.message?.includes("429") || err.message?.includes("Rate limit");
+      toast.error(isRateLimit ? "Limite atingido" : "Erro de conexão", {
+        description: isRateLimit ? "Aguarde um momento" : "Não foi possível atualizar os preços"
+      });
     } finally {
-      setIsSyncingPrices(false);
+      setIsSyncing(false);
     }
+  }, [refetchPrice]);
+
+  const handleRefreshAll = () => {
+    Promise.all([refetchProd(), refetchPrice(), refetchExport()]);
+    toast.info("Atualizando dashboard...");
   };
 
-  // Calculate KPIs from real data
-  const kpis = useMemo(() => {
-    // Total Production (sum of daily production from latest date)
-    const latestProductionDate = productionData?.[0]?.data_date;
-    const latestProduction = productionData?.filter(p => p.data_date === latestProductionDate) || [];
-    const totalDailyProduction = latestProduction.reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
-    
-    // Previous month production for comparison
-    const previousProduction = productionData?.filter(p => p.data_date !== latestProductionDate) || [];
-    const previousDates = [...new Set(previousProduction.map(p => p.data_date))].sort().reverse();
-    const prevDate = previousDates[0];
-    const prevProduction = previousProduction.filter(p => p.data_date === prevDate);
-    const prevTotalProduction = prevProduction.reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
-    const productionChange = prevTotalProduction > 0 
-      ? ((totalDailyProduction - prevTotalProduction) / prevTotalProduction) * 100 
-      : 0;
-
-    // Brent Price (latest)
-    const brentPrice = priceData?.find(p => p.crude_type.toLowerCase().includes("brent"));
-    const brentPriceValue = brentPrice?.price || 0;
-    const brentChange = brentPrice?.change_percent || 0;
-
-    // Exports (sum of volume from current month)
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const currentMonthExports = exportData?.filter(e => e.data_date.startsWith(currentMonth)) || [];
-    const totalExportVolume = currentMonthExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
-    
-    // Previous month exports
-    const prevMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
-    const prevMonthExports = exportData?.filter(e => e.data_date.startsWith(prevMonth)) || [];
-    const prevExportVolume = prevMonthExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
-    const exportChange = prevExportVolume > 0 
-      ? ((totalExportVolume - prevExportVolume) / prevExportVolume) * 100 
-      : 0;
-
-    // Estimated Revenue (exports * brent price)
-    const totalExportValue = currentMonthExports.reduce((sum, e) => sum + Number(e.value_usd || 0), 0);
-    const estimatedRevenue = totalExportValue > 0 ? totalExportValue : totalExportVolume * brentPriceValue;
-    const prevRevenue = prevExportVolume * (brentPriceValue * (1 - brentChange / 100));
-    const revenueChange = prevRevenue > 0 
-      ? ((estimatedRevenue - prevRevenue) / prevRevenue) * 100 
-      : 0;
-
-    return {
-      production: {
-        value: totalDailyProduction,
-        change: productionChange,
-        formatted: totalDailyProduction >= 1000000 
-          ? `${(totalDailyProduction / 1000000).toFixed(2)}M bpd`
-          : totalDailyProduction >= 1000 
-            ? `${(totalDailyProduction / 1000).toFixed(0)}K bpd`
-            : `${totalDailyProduction.toFixed(0)} bpd`
-      },
-      brentPrice: {
-        value: brentPriceValue,
-        change: brentChange,
-        formatted: `$${brentPriceValue.toFixed(2)}`
-      },
-      exports: {
-        value: totalExportVolume,
-        change: exportChange,
-        formatted: totalExportVolume >= 1000000 
-          ? `${(totalExportVolume / 1000000).toFixed(0)}M bbl`
-          : totalExportVolume >= 1000 
-            ? `${(totalExportVolume / 1000).toFixed(0)}K bbl`
-            : `${totalExportVolume.toFixed(0)} bbl`
-      },
-      revenue: {
-        value: estimatedRevenue,
-        change: revenueChange,
-        formatted: estimatedRevenue >= 1000000000 
-          ? `$${(estimatedRevenue / 1000000000).toFixed(1)}B`
-          : estimatedRevenue >= 1000000 
-            ? `$${(estimatedRevenue / 1000000).toFixed(1)}M`
-            : `$${estimatedRevenue.toFixed(0)}`
-      }
-    };
-  }, [productionData, priceData, exportData]);
-
-  // Get price cards data
-  const priceCards = useMemo(() => {
-    const crudeTypes = ["Brent", "Cabinda", "Girassol", "Nemba", "Dalia"];
-    return crudeTypes.map(type => {
-      const priceEntry = priceData?.find(p => 
-        p.crude_type.toLowerCase().includes(type.toLowerCase())
-      );
-      return {
-        name: type === "Brent" ? "Brent Crude" : type,
-        price: priceEntry?.price || 0,
-        change: priceEntry?.change_percent || 0
-      };
-    }).filter(p => p.price > 0).slice(0, 3);
+  // Derived Data
+  const topPriceCards = useMemo(() => {
+    const types = ["Brent", "Cabinda", "Girassol"];
+    return types.map(t => {
+      const entry = priceData?.find(p => p.crude_type.toLowerCase().includes(t.toLowerCase()));
+      return { name: t, price: entry?.price || 0, change: entry?.change_percent || 0 };
+    }).filter(p => p.price > 0);
   }, [priceData]);
 
-  const hasNoData = !isLoading && (
-    (!productionData || productionData.length === 0) &&
-    (!priceData || priceData.length === 0) &&
-    (!exportData || exportData.length === 0)
-  );
-
-  const handleRefresh = () => {
-    refetchProduction();
-    refetchPrice();
-    refetchExport();
-    toast.success("Dados atualizados");
-  };
+  const hasNoData = !isLoading && (!prodData?.length && !priceData?.length && !exportData?.length);
 
   return (
-    <>
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-background overflow-hidden font-sans">
       <Helmet>
-        <title>AlphaData | Market Intelligence para o Setor Petrolífero de Angola</title>
-        <meta
-          name="description"
-          content="Plataforma de Market Intelligence e Previsão com IA para o setor petrolífero angolano. Dashboards interativos, relatórios inteligentes e previsões baseadas em IA."
-        />
+        <title>AlphaData | Intelligence Hub</title>
       </Helmet>
 
-      <div className="flex h-screen bg-background overflow-hidden">
-        <Sidebar activeItem="/" />
+      <Sidebar activeItem="/" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header activeItem="/" />
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        <Header activeItem="/" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 scrollbar-thin">
-            <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
-              {/* Page Header */}
-              <div className="mb-4 md:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard Principal</h1>
-                  <p className="text-sm md:text-base text-muted-foreground">Visão geral do mercado petrolífero angolano</p>
+<main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 scroll-smooth bg-black text-white">
+          <div className="max-w-7xl mx-auto space-y-8">
+            
+            {/* Header Section */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-primary mb-1">
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Visão Geral</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={syncRealTimePrices}
-                    disabled={isSyncingPrices}
-                    className="gap-2"
-                  >
-                    <Zap className={`h-4 w-4 ${isSyncingPrices ? 'animate-pulse' : ''}`} />
-                    <span className="hidden sm:inline">{isSyncingPrices ? "Atualizando..." : "Preços em Tempo Real"}</span>
-                    <span className="sm:hidden">{isSyncingPrices ? "..." : "Preços"}</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRefresh}
-                    disabled={isLoading}
-                    className="gap-2"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">Atualizar</span>
-                  </Button>
-                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                  Dashboard Principal
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md">
+                  Monitoramento em tempo real do ecossistema petrolífero de Angola.
+                </p>
               </div>
 
-              {/* No Data Alert */}
-              {hasNoData && (
-                <Alert className="border-warning/50 bg-warning/10">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  <AlertDescription className="flex items-center justify-between flex-wrap gap-4">
-                    <span className="text-sm">
-                      Não há dados disponíveis. {isAdmin ? "Adicione dados no painel administrativo." : "Aguarde a inserção de dados pelo administrador."}
-                    </span>
-                    {isAdmin && (
-                      <Button size="sm" variant="outline" onClick={() => navigate("/admin")}>
-                        Ir para Admin
-                      </Button>
-                    )}
-                  </AlertDescription>
-                </Alert>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={handleSyncPrices}
+                  disabled={isSyncing}
+                  className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 hover:border-primary/50 transition-all"
+                >
+                  <Zap className={`w-4 h-4 mr-2 text-amber-500 ${isSyncing ? 'animate-pulse' : ''}`} />
+                  {isSyncing ? "Sincronizando..." : "Live Prices"}
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleRefreshAll}
+                  disabled={isLoading}
+                  className="shadow-md shadow-primary/20"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
+              </div>
+            </header>
+
+            {/* Alerts */}
+            {hasNoData && (
+              <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-900/30">
+                <AlertTriangle className="h-5 w-5" />
+                <AlertDescription className="flex items-center justify-between w-full">
+                  <span>Nenhum dado encontrado para o período atual.</span>
+                  {isAdmin && (
+                    <Button size="sm" variant="ghost" onClick={() => navigate("/admin")} className="hover:bg-red-100">
+                      Configurar Dados
+                    </Button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* KPI Grid */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {isLoading ? (
+                Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl shadow-sm" />)
+              ) : (
+                <>
+                  <KPICard
+                    title="Produção Diária"
+                    value={kpis.production.formatted}
+                    change={kpis.production.change}
+                    icon={<TrendingUp className="w-5 h-5" />}
+                    source={updates?.production ? getSourceShortName(updates.production.source) : "ANPG"}
+                    lastUpdate={updates?.production ? formatLastUpdate(updates.production.created_at) : ""}
+                  />
+                  <KPICard
+                    title="Brent Crude"
+                    value={kpis.brent.formatted}
+                    change={kpis.brent.change}
+                    variant="accent"
+                    icon={<DollarSign className="w-5 h-5" />}
+                    source={updates?.price ? getSourceShortName(updates.price.source) : "Market"}
+                    lastUpdate={updates?.price ? formatLastUpdate(updates.price.created_at) : ""}
+                  />
+                  <KPICard
+                    title="Exportações"
+                    value={kpis.exports.formatted}
+                    change={kpis.exports.change}
+                    icon={<Ship className="w-5 h-5" />}
+                    source={updates?.export ? getSourceShortName(updates.export.source) : "Customs"}
+                    lastUpdate={updates?.export ? formatLastUpdate(updates.export.created_at) : ""}
+                  />
+                  <KPICard
+                    title="Receita Est."
+                    value={kpis.revenue.formatted}
+                    change={kpis.revenue.change}
+                    variant="primary"
+                    icon={<BarChart3 className="w-5 h-5" />}
+                    source="Calculado"
+                    lastUpdate={updates?.price ? formatLastUpdate(updates.price.created_at) : ""}
+                  />
+                </>
               )}
+            </section>
 
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {isLoading ? (
-                  <>
-                    {[...Array(4)].map((_, i) => (
-                      <Skeleton key={i} className="h-32 rounded-xl" />
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <KPICard
-                      title="Produção Total"
-                      value={kpis.production.formatted}
-                      change={Number(kpis.production.change.toFixed(1))}
-                      changeLabel="vs. período anterior"
-                      icon={<Gauge className="w-5 h-5" />}
-                      delay={0}
-                      source={dataUpdates?.production ? getSourceShortName(dataUpdates.production.source) : undefined}
-                      lastUpdate={dataUpdates?.production ? formatLastUpdate(dataUpdates.production.created_at) : undefined}
-                    />
-                    <KPICard
-                      title="Preço Brent"
-                      value={kpis.brentPrice.formatted}
-                      change={Number(kpis.brentPrice.change.toFixed(1))}
-                      changeLabel="vs. ontem"
-                      icon={<DollarSign className="w-5 h-5" />}
-                      variant="accent"
-                      delay={0.05}
-                      source={dataUpdates?.price ? getSourceShortName(dataUpdates.price.source) : undefined}
-                      lastUpdate={dataUpdates?.price ? formatLastUpdate(dataUpdates.price.created_at) : undefined}
-                    />
-                    <KPICard
-                      title="Exportações (Mês)"
-                      value={kpis.exports.formatted}
-                      change={Number(kpis.exports.change.toFixed(1))}
-                      changeLabel="vs. mês anterior"
-                      icon={<Ship className="w-5 h-5" />}
-                      delay={0.1}
-                      source={dataUpdates?.export ? getSourceShortName(dataUpdates.export.source) : undefined}
-                      lastUpdate={dataUpdates?.export ? formatLastUpdate(dataUpdates.export.created_at) : undefined}
-                    />
-                    <KPICard
-                      title="Receita Estimada"
-                      value={kpis.revenue.formatted}
-                      change={Number(kpis.revenue.change.toFixed(1))}
-                      changeLabel="vs. mês anterior"
-                      icon={<BarChart3 className="w-5 h-5" />}
-                      variant="primary"
-                      delay={0.15}
-                      source="Calculado"
-                      lastUpdate={dataUpdates?.price ? formatLastUpdate(dataUpdates.price.created_at) : undefined}
-                    />
-                  </>
-                )}
-              </div>
+            {/* Secondary Prices */}
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {isLoading ? (
+                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+              ) : (
+                topPriceCards.map((card, i) => (
+                  <PriceCard key={card.name} {...card} delay={0.1 * i} />
+                ))
+              )}
+            </section>
 
-              {/* Price Cards Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {isLoading ? (
-                  <>
-                    {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-20 rounded-lg" />
-                    ))}
-                  </>
-                ) : priceCards.length > 0 ? (
-                  priceCards.map((card, index) => (
-                    <PriceCard 
-                      key={card.name}
-                      name={card.name} 
-                      price={card.price} 
-                      change={card.change} 
-                      delay={0.2 + index * 0.05} 
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-3 text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-                    <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Sem dados de preços disponíveis</p>
-                    {isAdmin && (
-                      <Button 
-                        variant="link" 
-                        size="sm" 
-                        onClick={() => navigate("/admin")}
-                        className="mt-2"
-                      >
-                        Adicionar preços
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8">
+                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
                   <ProductionChart />
                 </div>
-                <div>
-                  <ExportsMap />
-                </div>
-              </div>
-
-              {/* AI Insights & Operators */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
                   <OperatorsTable />
                 </div>
-                <div>
+              </div>
+              
+              <div className="space-y-8">
+                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                  <ExportsMap />
+                </div>
+                <div className="bg-gradient-to-br from-primary/5 to-transparent p-1 rounded-3xl border border-primary/10">
                   <AIInsights />
                 </div>
               </div>
-
-              {/* Data Sources */}
-              <DataSourceIndicator 
-                sources={[
-                  ...DATA_SOURCES.prices,
-                  ...DATA_SOURCES.production,
-                  ...DATA_SOURCES.exports,
-                ]} 
-              />
             </div>
-          </main>
-        </div>
-        
-        <MobileBottomNav />
+
+            {/* Footer Info */}
+            <footer className="pt-8 border-t border-slate-200 dark:border-slate-800">
+              <DataSourceIndicator 
+                sources={[...DATA_SOURCES.prices, ...DATA_SOURCES.production, ...DATA_SOURCES.exports]} 
+              />
+            </footer>
+          </div>
+        </main>
       </div>
-    </>
+      
+      <MobileBottomNav />
+    </div>
   );
 };
 

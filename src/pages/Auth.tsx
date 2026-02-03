@@ -1,727 +1,399 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Home } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { 
+  Home, 
   Eye, 
   EyeOff, 
   Mail, 
   Lock, 
   ArrowLeft,
-  Sparkles,
   ChevronRight,
   BarChart3,
   Globe,
-  Zap,
-  MapPin
+  ShieldCheck,
+  Building2,
+  User,
+  ExternalLink,
+  CheckCircle2
 } from "lucide-react";
-import alphadataLogo from "@/assets/alphadata-logo.png";
 import { z } from "zod";
+import { toast } from "sonner";
+
+// Integrations & UI
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { AccountTypeSelector } from "@/components/auth/AccountTypeSelector";
 import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
 import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
-import { Database } from "@/integrations/supabase/types";
+import alphadataLogo from "@/assets/alphadata-logo.png";
 
-type CompanyType = Database["public"]["Enums"]["company_type"];
-
+/**
+ * SCHEMAS: Validation
+ */
 const loginSchema = z.object({
-  email: z.string().trim().email({ message: "Email inválido" }),
-  password: z.string().min(6, { message: "Password deve ter pelo menos 6 caracteres" }),
+  email: z.string().trim().email({ message: "Email institucional inválido" }),
+  password: z.string().min(6, { message: "A senha deve conter no mínimo 6 caracteres" }),
 });
 
-const forgotPasswordSchema = z.object({
-  email: z.string().trim().email({ message: "Email inválido" }),
-});
-
-type AuthView = "login" | "signup" | "forgot-password";
-type AccountType = "personal" | "organization";
-
+/**
+ * COMPONENT: Auth
+ * Institutional-grade authentication portal
+ */
 export default function Auth() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [authView, setAuthView] = useState<AuthView>("login");
-  const [accountType, setAccountType] = useState<AccountType>("personal");
-  const [loading, setLoading] = useState(false);
-  const [signupLoading, setSignupLoading] = useState(false);
-  const [signupError, setSignupError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   
-  // Login fields
+  // View States
+  const [authView, setAuthView] = useState<"login" | "signup" | "forgot-password">("login");
+  const [accountType, setAccountType] = useState<"personal" | "organization">("personal");
+  
+  // UI States
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Auth Session Management
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate("/");
-      }
-    });
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) navigate("/");
+    };
+    checkSession();
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate("/");
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) navigate("/");
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  /**
+   * HANDLER: Login
+   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const validation = loginSchema.safeParse({ email, password });
+    
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
       return;
     }
 
     setLoading(true);
-    
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        toast.error("Email ou password incorretos");
-      } else {
-        toast.error(error.message);
-      }
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
 
-    // Check if user's profile and organization are approved
-    if (authData.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("account_type, is_approved, organization_id")
-        .eq("id", authData.user.id)
-        .maybeSingle();
+      if (authData.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_approved, account_type, organization_id")
+          .eq("id", authData.user.id)
+          .maybeSingle();
 
-      if (profile) {
-        // Check if user profile is approved
-        if (!profile.is_approved) {
+        if (profile && !profile.is_approved) {
           await supabase.auth.signOut();
-          toast.error(t('auth.accountPendingApproval', 'A sua conta aguarda aprovação do administrador.'));
+          toast.error("Acesso Pendente", {
+            description: "Sua conta está em processo de revisão pela nossa equipe de conformidade."
+          });
           setLoading(false);
           return;
         }
-
-        // For personal accounts, check if their organization is approved
-        if (profile.account_type === "personal" && profile.organization_id) {
-          const { data: org } = await supabase
-            .from("organizations")
-            .select("is_approved, name")
-            .eq("id", profile.organization_id)
-            .maybeSingle();
-
-          if (org && !org.is_approved) {
-            await supabase.auth.signOut();
-            toast.error(
-              t('auth.organizationPendingApproval', `A organização "${org.name}" ainda não foi aprovada. Contacte o administrador.`)
-            );
-            setLoading(false);
-            return;
-          }
-        }
+        toast.success("Acesso autorizado", { description: "Bem-vindo ao AlphaData Intelligence." });
       }
-
-      toast.success("Login efetuado com sucesso!");
+    } catch (err: any) {
+      toast.error("Falha na autenticação", { description: err.message });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const validation = forgotPasswordSchema.safeParse({ email });
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth`,
-    });
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Email de recuperação enviado! Verifique a sua caixa de entrada.");
-      setAuthView("login");
-    }
-    
-    setLoading(false);
-  };
-
-  const resetForm = () => {
+  const switchView = (view: typeof authView) => {
     setEmail("");
     setPassword("");
-    setAccountType("personal");
-    setSignupError(null);
-  };
-
-  const switchView = (view: AuthView) => {
-    resetForm();
     setAuthView(view);
   };
 
-  // Personal signup handler
-  const handlePersonalSignup = async (data: {
-    contactName: string;
-    jobTitle: string;
-    phone?: string;
-    email: string;
-    password: string;
-    acceptTerms: boolean;
-    acceptNda: boolean;
-    companyId: string;
-    companyName: string;
-    emailDomain: string;
-  }) => {
-    setSignupLoading(true);
-    setSignupError(null);
-
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email.trim(),
-      password: data.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (authError) {
-      if (authError.message.includes("already registered")) {
-        setSignupError("Este email já está registado");
-      } else {
-        setSignupError(authError.message);
-      }
-      setSignupLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      // Find organization by email domain to link
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("email_domain", data.emailDomain)
-        .eq("is_approved", true)
-        .single();
-
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        account_type: "personal",
-        company_name: data.companyName,
-        company_type: "operadora" as CompanyType, // Will be updated based on org
-        nif: "N/A", // Personal accounts don't have NIF
-        contact_name: data.contactName,
-        contact_role: data.jobTitle,
-        contact_phone: data.phone || null,
-        job_title: data.jobTitle,
-        accepted_terms: data.acceptTerms,
-        accepted_nda: data.acceptNda,
-        organization_id: org?.id || null,
-      });
-
-      if (profileError) {
-        setSignupError("Erro ao criar perfil: " + profileError.message);
-      } else {
-        toast.success("Conta criada com sucesso! A sua conta aguarda aprovação.");
-        switchView("login");
-      }
-    }
-
-    setSignupLoading(false);
-  };
-
-  // Organization signup handler
-  const handleOrganizationSignup = async (data: {
-    companyName: string;
-    nif: string;
-    sector: string;
-    country: string;
-    emailDomain: string;
-    contactEmail: string;
-    contactPhone?: string;
-    contactName: string;
-    contactRole: string;
-    password: string;
-    acceptTerms: boolean;
-    acceptNda: boolean;
-  }) => {
-    setSignupLoading(true);
-    setSignupError(null);
-
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.contactEmail.trim(),
-      password: data.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (authError) {
-      if (authError.message.includes("already registered")) {
-        setSignupError("Este email já está registado");
-      } else {
-        setSignupError(authError.message);
-      }
-      setSignupLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      // Create the organization first
-      const { data: org, error: orgError } = await supabase.from("organizations").insert({
-        name: data.companyName.trim(),
-        nif: data.nif.trim(),
-        sector: data.sector,
-        country: data.country,
-        email_domain: data.emailDomain.trim(),
-        contact_email: data.contactEmail.trim(),
-        contact_phone: data.contactPhone || null,
-        is_approved: false, // Requires admin approval
-      }).select().single();
-
-      if (orgError) {
-        setSignupError("Erro ao criar organização: " + orgError.message);
-        setSignupLoading(false);
-        return;
-      }
-
-      // Create the user profile linked to the organization
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        account_type: "organization",
-        company_name: data.companyName.trim(),
-        company_type: data.sector as CompanyType,
-        nif: data.nif.trim(),
-        contact_name: data.contactName.trim(),
-        contact_role: data.contactRole.trim(),
-        contact_phone: data.contactPhone || null,
-        accepted_terms: data.acceptTerms,
-        accepted_nda: data.acceptNda,
-        organization_id: org.id,
-      });
-
-      if (profileError) {
-        setSignupError("Erro ao criar perfil: " + profileError.message);
-      } else {
-        toast.success("Organização registada com sucesso! Aguarde a aprovação do administrador.");
-        switchView("login");
-      }
-    }
-
-    setSignupLoading(false);
-  };
-
   return (
-    <div className="min-h-screen bg-background flex overflow-hidden relative">
-      {/* Top Bar - Home Link & Language Selector */}
-      <div className="fixed top-4 left-4 z-50">
+    <div className="min-h-screen bg-white flex overflow-hidden font-sans selection:bg-primary/10">
+      
+      {/* Navigation Overlays */}
+      <nav className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
         <Link 
           to="/landing" 
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-card transition-all"
+          className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all shadow-sm"
         >
-          <Home className="h-4 w-4" />
-          <span className="text-sm font-medium">{t('common.back')}</span>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-xs font-bold uppercase tracking-widest">Portal</span>
         </Link>
-      </div>
-      <div className="fixed top-4 right-4 z-50">
-        <LanguageSelector />
-      </div>
-
-      {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
+        <div className="pointer-events-auto scale-90 origin-right">
+          <LanguageSelector />
         </div>
-        
-        {/* Grid Pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
-            backgroundSize: '60px 60px'
-          }}
+      </nav>
+
+      {/* LEFT PANEL: Institutional Branding & Trust */}
+      <section className="hidden lg:flex lg:w-[45%] xl:w-[40%] bg-[#0F172A] relative overflow-hidden border-r border-white/5">
+        {/* Abstract Data Pattern */}
+        <div className="absolute inset-0 opacity-20" 
+          style={{ backgroundImage: `radial-gradient(#334155 1px, transparent 1px)`, backgroundSize: '32px 32px' }} 
         />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
         
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <img src={alphadataLogo} alt="AlphaData" className="h-12 w-auto mb-12" />
-            </motion.div>
-            
+        <div className="relative z-10 flex flex-col justify-between p-16 w-full">
+          <header>
+            <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto brightness-0 invert opacity-90" />
+          </header>
+
+          <div className="space-y-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.6 }}
+              className="space-y-6"
             >
-              <div className="flex flex-wrap items-center gap-3 mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
-                  <Sparkles className="h-4 w-4" />
-                  {t('auth.poweredByAI')}
-                </div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium">
-                  <Globe className="h-4 w-4" />
-                  {t('auth.panAfricanCoverage')}
-                </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary-foreground/80 text-[10px] font-bold uppercase tracking-[0.2em]">
+                <ShieldCheck className="h-3 w-3" />
+                Enterprise Intelligence
               </div>
-              <h1 className="text-5xl font-bold text-foreground mb-4 leading-tight">
-                {t('auth.heroTitle')}
-                <br />
-                <span className="text-gradient-primary">{t('auth.heroSubtitle')}</span>
+              <h1 className="text-4xl xl:text-5xl font-semibold text-white leading-[1.1] tracking-tight">
+                Decisões baseadas em <span className="text-primary">dados reais</span> para o setor de energia.
               </h1>
-              <p className="text-lg text-muted-foreground max-w-md leading-relaxed mb-4">
-                {t('auth.heroDescription')}
+              <p className="text-slate-400 text-lg leading-relaxed max-w-md">
+                Acesse a plataforma líder em inteligência de mercado para o setor petrolífero africano.
               </p>
-              
-              {/* African Countries Stats */}
-              <div className="flex items-center gap-6 mt-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary">25+</div>
-                  <div className="text-xs text-muted-foreground">{t('auth.countriesCovered')}</div>
-                </div>
-                <div className="h-10 w-px bg-border" />
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-accent">7.5M</div>
-                  <div className="text-xs text-muted-foreground">{t('auth.barrelsPerDay')}</div>
-                </div>
-                <div className="h-10 w-px bg-border" />
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-[hsl(var(--success))]">$200B+</div>
-                  <div className="text-xs text-muted-foreground">{t('auth.annualVolume')}</div>
-                </div>
-              </div>
             </motion.div>
+
+            {/* Trust Indicators */}
+            <div className="grid grid-cols-1 gap-4">
+              {[
+                { icon: Globe, title: "Cobertura Pan-Africana", desc: "Dados consolidados de mais de 25 nações." },
+                { icon: BarChart3, title: "Análise Preditiva", desc: "Modelos de IA treinados no mercado local." },
+                { icon: CheckCircle2, title: "Conformidade Regulatória", desc: "Processos auditados e seguros." }
+              ].map((item, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + (i * 0.1) }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                >
+                  <item.icon className="h-6 w-6 text-primary mt-1 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <h3 className="text-white font-medium text-sm">{item.title}</h3>
+                    <p className="text-slate-500 text-xs mt-1">{item.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
 
-          <motion.div 
-            className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            {/* African Focus Badge */}
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">{t('auth.mainRegions')}</span>
-              <span className="text-sm text-muted-foreground">{t('auth.westAfrica')} • {t('auth.opecAfrica')} • {t('auth.northAfrica')}</span>
+          <footer className="flex items-center justify-between text-[10px] text-slate-500 font-medium uppercase tracking-widest">
+            <span>© 2026 ALPHADATA INTEL</span>
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-white transition-colors">Privacidade</a>
+              <a href="#" className="hover:text-white transition-colors">Termos</a>
             </div>
-            
-            <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Globe className="h-7 w-7 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">{t('auth.panAfricanCoverageTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('auth.panAfricanCoverageDesc')}</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
-            
-            <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Zap className="h-7 w-7 text-accent" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">{t('auth.aiAnalysisTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('auth.aiAnalysisDesc')}</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-colors" />
-            </div>
-            
-            <div className="group flex items-center gap-4 p-5 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 cursor-default">
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-success/20 to-success/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <BarChart3 className="h-7 w-7 text-[hsl(var(--success))]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">{t('auth.realTimeDataTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('auth.realTimeDataDesc')}</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-[hsl(var(--success))] transition-colors" />
-            </div>
-          </motion.div>
-
-          <motion.div 
-            className="space-y-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-          >
-            <p className="text-lg font-medium text-foreground italic">
-              "{t('auth.quote')}"
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {t('auth.copyright')}
-            </p>
-          </motion.div>
+          </footer>
         </div>
-      </div>
+      </section>
 
-      {/* Right Panel - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-8 lg:p-12">
+      {/* RIGHT PANEL: Authentication Form */}
+      <section className="flex-1 flex items-center justify-center p-8 bg-slate-50/50">
         <motion.div 
-          className="w-full max-w-md"
-          initial={{ opacity: 0, scale: 0.95 }}
+          className="w-full max-w-[440px]"
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
         >
-          <div className="lg:hidden mb-8 text-center">
-            <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">{t('auth.mobileSubtitle')}</p>
+          {/* Mobile Logo */}
+          <div className="lg:hidden mb-10 text-center">
+            <img src={alphadataLogo} alt="AlphaData" className="h-8 w-auto mx-auto" />
           </div>
 
-          <div className="bg-card border border-border rounded-3xl p-8 shadow-[var(--shadow-elevated)]">
+          <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <AnimatePresence mode="wait">
-              {authView === "login" && (
+              {authView === "login" ? (
                 <motion.div
                   key="login"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.25 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-8"
                 >
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">{t('auth.welcomeBack')}</h2>
-                    <p className="text-muted-foreground">{t('auth.enterAccount')}</p>
-                  </div>
+                  <header className="text-center space-y-2">
+                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Acesso ao Portal</h2>
+                    <p className="text-slate-500 text-sm">Insira suas credenciais corporativas para continuar.</p>
+                  </header>
 
-                  <form onSubmit={handleLogin} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email" className="text-foreground font-medium">{t('common.email')}</Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder={t('auth.emailPlaceholder')}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-12 h-12 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-500">E-mail Profissional</Label>
+                        <div className="relative group">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="exemplo@empresa.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="pl-10 h-11 border-slate-200 rounded-lg focus:ring-primary/20 focus:border-primary transition-all"
+                            required
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password" className="text-foreground font-medium">{t('common.password')}</Label>
-                      <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <Input
-                          id="login-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder={t('auth.passwordPlaceholder')}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-12 pr-12 h-12 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-slate-500">Senha</Label>
+                          <button 
+                            type="button" 
+                            onClick={() => switchView("forgot-password")}
+                            className="text-[11px] font-bold text-primary hover:underline uppercase tracking-tighter"
+                          >
+                            Esqueceu a senha?
+                          </button>
+                        </div>
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="pl-10 pr-10 h-11 border-slate-200 rounded-lg focus:ring-primary/20 focus:border-primary transition-all"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => switchView("forgot-password")}
-                        className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                      >
-                        {t('auth.forgotPassword')}
-                      </button>
                     </div>
 
                     <Button 
                       type="submit" 
-                      className="w-full h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all" 
+                      className="w-full h-11 bg-[#0F172A] hover:bg-slate-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-slate-200"
                       disabled={loading}
                     >
-                      {loading ? (
-                        <span className="flex items-center gap-2">
-                          <motion.div
-                            className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          />
-                          {t('auth.loggingIn')}
-                        </span>
-                      ) : (
-                        t('auth.loginButton')
-                      )}
+                      {loading ? "Verificando..." : "Entrar no Sistema"}
                     </Button>
                   </form>
 
-                  <div className="mt-8 pt-6 border-t border-border">
-                    <p className="text-center text-muted-foreground">
-                      {t('auth.noAccount')}{" "}
-                      <button
-                        onClick={() => switchView("signup")}
-                        className="text-primary hover:text-primary/80 font-semibold transition-colors"
-                      >
-                        {t('auth.registerCompany')}
-                      </button>
-                    </p>
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
+                    <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-bold">
+                      <span className="bg-white px-4 text-slate-400">Novo por aqui?</span>
+                    </div>
                   </div>
-                </motion.div>
-              )}
 
-              {authView === "forgot-password" && (
-                <motion.div
-                  key="forgot-password"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <button
-                    onClick={() => switchView("login")}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-11 border-slate-200 text-slate-600 hover:bg-slate-50 font-medium rounded-lg"
+                    onClick={() => switchView("signup")}
                   >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="text-sm font-medium">{t('auth.backToLogin')}</span>
-                  </button>
-
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 mb-4">
-                      <Mail className="h-8 w-8 text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-foreground mb-2">{t('auth.recoverPassword')}</h2>
-                    <p className="text-muted-foreground">{t('auth.recoverDescription')}</p>
-                  </div>
-
-                  <form onSubmit={handleForgotPassword} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="forgot-email" className="text-foreground font-medium">{t('common.email')}</Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <Input
-                          id="forgot-email"
-                          type="email"
-                          placeholder={t('auth.emailPlaceholder')}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-12 h-12 bg-secondary/30 border-border/50 rounded-xl focus:bg-background focus:border-primary transition-all"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all" 
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <span className="flex items-center gap-2">
-                          <motion.div
-                            className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          />
-                          {t('auth.sending')}
-                        </span>
-                      ) : (
-                        t('auth.sendRecoveryEmail')
-                      )}
-                    </Button>
-                  </form>
-
-                  <div className="mt-8 pt-6 border-t border-border">
-                    <p className="text-center text-muted-foreground">
-                      {t('auth.rememberPassword')}{" "}
-                      <button
-                        onClick={() => switchView("login")}
-                        className="text-primary hover:text-primary/80 font-semibold transition-colors"
-                      >
-                        {t('auth.backToLogin')}
-                      </button>
-                    </p>
-                  </div>
+                    Solicitar Acesso Institucional
+                  </Button>
                 </motion.div>
-              )}
-
-              {authView === "signup" && (
+              ) : authView === "signup" ? (
                 <motion.div
                   key="signup"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.25 }}
+                  className="space-y-8"
                 >
-                  <button
-                    onClick={() => switchView("login")}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="text-sm font-medium">{t('auth.backToLogin')}</span>
-                  </button>
+                  <header className="space-y-2">
+                    <button 
+                      onClick={() => switchView("login")}
+                      className="flex items-center gap-1 text-xs font-bold text-primary uppercase tracking-widest hover:gap-2 transition-all"
+                    >
+                      <ArrowLeft className="h-3 w-3" /> Voltar ao Login
+                    </button>
+                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Registro de Conta</h2>
+                    <p className="text-slate-500 text-sm">Selecione o perfil que melhor descreve sua atuação.</p>
+                  </header>
 
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">{t('auth.createAccount')}</h2>
-                    <p className="text-muted-foreground">{t('auth.selectAccountType', 'Selecione o tipo de conta')}</p>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => setAccountType("personal")}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${accountType === "personal" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200"}`}
+                      >
+                        <User className={`h-5 w-5 mb-2 ${accountType === "personal" ? "text-primary" : "text-slate-400"}`} />
+                        <span className="block text-sm font-bold text-slate-900">Individual</span>
+                        <span className="text-[10px] text-slate-500 leading-tight">Consultores e analistas independentes.</span>
+                      </button>
+                      <button 
+                        onClick={() => setAccountType("organization")}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${accountType === "organization" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200"}`}
+                      >
+                        <Building2 className={`h-5 w-5 mb-2 ${accountType === "organization" ? "text-primary" : "text-slate-400"}`} />
+                        <span className="block text-sm font-bold text-slate-900">Corporativo</span>
+                        <span className="text-[10px] text-slate-500 leading-tight">Empresas, ONGs e órgãos governamentais.</span>
+                      </button>
+                    </div>
+
+                    <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                      {accountType === "personal" ? (
+                        <PersonalSignupForm onSuccess={() => switchView("login")} />
+                      ) : (
+                        <OrganizationSignupForm onSuccess={() => switchView("login")} />
+                      )}
+                    </div>
                   </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="forgot"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-8"
+                >
+                  <header className="text-center space-y-2">
+                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Recuperar Senha</h2>
+                    <p className="text-slate-500 text-sm">Enviaremos instruções para o seu e-mail cadastrado.</p>
+                  </header>
 
-                  {/* Account Type Selector */}
-                  <div className="mb-6">
-                    <AccountTypeSelector value={accountType} onChange={setAccountType} />
-                  </div>
-
-                  {/* Conditional Form Based on Account Type */}
-                  <div className="max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin">
-                    {accountType === "personal" ? (
-                      <PersonalSignupForm 
-                        onSubmit={handlePersonalSignup} 
-                        isLoading={signupLoading}
-                        error={signupError}
-                      />
-                    ) : (
-                      <OrganizationSignupForm 
-                        onSubmit={handleOrganizationSignup} 
-                        isLoading={signupLoading}
-                        error={signupError}
-                      />
-                    )}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">E-mail de Recuperação</Label>
+                      <Input placeholder="seu@email.com" className="h-11 border-slate-200" />
+                    </div>
+                    <Button className="w-full h-11 bg-primary text-white font-semibold">Enviar Link de Redefinição</Button>
+                    <Button variant="ghost" className="w-full text-slate-500 text-xs" onClick={() => switchView("login")}>Cancelar e Voltar</Button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            {t('auth.securityNote')}
-          </p>
+          {/* External Links */}
+          <div className="mt-8 flex justify-center gap-6">
+            <a href="#" className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest">
+              Suporte Técnico <ExternalLink className="h-3 w-3" />
+            </a>
+            <a href="#" className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest">
+              Documentação <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </motion.div>
-      </div>
+      </section>
     </div>
   );
 }

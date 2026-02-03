@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,7 +28,10 @@ import {
   FileSpreadsheet,
   FileType,
   Users,
-  Share2
+  Share2,
+  ArrowUpRight,
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,10 +59,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadReport, ReportData } from "@/utils/generateReportDocument";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { useWorkspaces, useWorkspaceReports } from "@/hooks/useWorkspaces";
 
+// --- Interfaces ---
 interface Report {
   id: string;
   title: string;
@@ -84,14 +90,35 @@ interface ScheduledReport {
   is_active: boolean;
 }
 
+// --- Constants & Helpers ---
 const reportCategories = [
-  { name: "Geral", type: "general", icon: FileText, color: "bg-primary" },
-  { name: "Produção", type: "production", icon: BarChart3, color: "bg-accent" },
-  { name: "Mercado", type: "market", icon: TrendingUp, color: "bg-success" },
-  { name: "Exportações", type: "exports", icon: Ship, color: "bg-warning" },
-  { name: "Risco", type: "risk", icon: AlertTriangle, color: "bg-destructive" },
+  { name: "Geral", type: "general", icon: FileText, color: "text-blue-400", bg: "bg-blue-400/10" },
+  { name: "Produção", type: "production", icon: BarChart3, color: "text-purple-400", bg: "bg-purple-400/10" },
+  { name: "Mercado", type: "market", icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+  { name: "Exportações", type: "exports", icon: Ship, color: "text-amber-400", bg: "bg-amber-400/10" },
+  { name: "Risco", type: "risk", icon: AlertTriangle, color: "text-rose-400", bg: "bg-rose-400/10" },
 ];
 
+const getTypeName = (type: string) => {
+  const cat = reportCategories.find(c => c.type === type);
+  return cat ? cat.name : type;
+};
+
+const getTypeIcon = (type: string) => {
+  const cat = reportCategories.find(c => c.type === type);
+  const Icon = cat ? cat.icon : FileText;
+  return <Icon className="w-4 h-4" />;
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+// --- Main Component ---
 const Reports = () => {
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
@@ -120,6 +147,7 @@ const Reports = () => {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const { shareReport } = useWorkspaceReports(selectedWorkspaceId);
 
+  // --- Data Fetching ---
   const fetchReports = async () => {
     setLoading(true);
     try {
@@ -132,6 +160,7 @@ const Reports = () => {
       setReports(data || []);
     } catch (error) {
       console.error('Error fetching reports:', error);
+      toast.error("Erro ao carregar relatórios");
     } finally {
       setLoading(false);
     }
@@ -156,6 +185,7 @@ const Reports = () => {
     fetchScheduledReports();
   }, []);
 
+  // --- Actions ---
   const generateReport = async () => {
     setGenerating(true);
     try {
@@ -194,15 +224,9 @@ const Reports = () => {
     try {
       const nextRun = new Date();
       switch (scheduleFrequency) {
-        case 'daily':
-          nextRun.setDate(nextRun.getDate() + 1);
-          break;
-        case 'weekly':
-          nextRun.setDate(nextRun.getDate() + 7);
-          break;
-        case 'monthly':
-          nextRun.setMonth(nextRun.getMonth() + 1);
-          break;
+        case 'daily': nextRun.setDate(nextRun.getDate() + 1); break;
+        case 'weekly': nextRun.setDate(nextRun.getDate() + 7); break;
+        case 'monthly': nextRun.setMonth(nextRun.getMonth() + 1); break;
       }
 
       const { error } = await supabase
@@ -230,26 +254,19 @@ const Reports = () => {
 
   const handleDownload = async (report: Report, format: 'pdf' | 'docx' | 'excel') => {
     const loadingToast = toast.loading(`A gerar ${format.toUpperCase()}...`);
-    
     try {
-      // Validate report data before generation
-      if (!report) {
-        throw new Error('Relatório não encontrado');
-      }
+      if (!report) throw new Error('Relatório não encontrado');
 
-      // Record download
       await supabase.from('report_downloads').insert({
         report_id: report.id,
         user_id: user?.id,
       });
 
-      // Update download count
       await supabase
         .from('reports')
         .update({ download_count: (report.download_count || 0) + 1 })
         .eq('id', report.id);
 
-      // Prepare report data for generation with safe defaults
       const reportData: ReportData = {
         title: report.title || 'Relatório AlphaData',
         type: report.type || 'production',
@@ -261,38 +278,20 @@ const Reports = () => {
         aiGenerated: report.ai_generated || false,
       };
 
-      // Generate and download in selected format
       await downloadReport(reportData, format);
-
       toast.dismiss(loadingToast);
       toast.success(`Download ${format.toUpperCase()} concluído!`);
       fetchReports();
     } catch (error) {
       toast.dismiss(loadingToast);
       console.error('Error downloading:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast.error(`Erro no download: ${errorMessage}`, {
-        description: 'Por favor, tente novamente ou contacte o suporte.'
-      });
-    }
-  };
-
-  const handleShareToWorkspace = async (report: Report, workspaceId: string) => {
-    setSelectedWorkspaceId(workspaceId);
-    try {
-      await shareReport.mutateAsync(report.id);
-    } catch (error) {
-      console.error('Error sharing to workspace:', error);
+      toast.error(`Erro no download: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
   const deleteScheduledReport = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('scheduled_reports')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('scheduled_reports').delete().eq('id', id);
       if (error) throw error;
       toast.success("Agendamento removido");
       fetchScheduledReports();
@@ -302,23 +301,12 @@ const Reports = () => {
     }
   };
 
-  // Filter reports
+  // --- Computed Data ---
   const filteredReports = useMemo(() => {
     let filtered = reports;
-
-    // Filter by tab
-    if (activeTab === 'ai') {
-      filtered = filtered.filter(r => r.ai_generated);
-    } else if (activeTab === 'normal') {
-      filtered = filtered.filter(r => !r.ai_generated);
-    }
-
-    // Filter by category
-    if (selectedCategory) {
-      filtered = filtered.filter(r => r.type === selectedCategory);
-    }
-
-    // Filter by search
+    if (activeTab === 'ai') filtered = filtered.filter(r => r.ai_generated);
+    else if (activeTab === 'normal') filtered = filtered.filter(r => !r.ai_generated);
+    if (selectedCategory) filtered = filtered.filter(r => r.type === selectedCategory);
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(r => 
@@ -327,545 +315,474 @@ const Reports = () => {
         r.period?.toLowerCase().includes(query)
       );
     }
-
     return filtered;
   }, [reports, activeTab, selectedCategory, searchQuery]);
 
-  // Calculate stats
   const stats = useMemo(() => {
-    const totalReports = reports.length;
-    const totalDownloads = reports.reduce((sum, r) => sum + (r.download_count || 0), 0);
-    const aiReports = reports.filter(r => r.ai_generated).length;
-    const aiPercentage = totalReports > 0 ? Math.round((aiReports / totalReports) * 100) : 0;
-    const activeSchedules = scheduledReports.filter(s => s.is_active).length;
+    const total = reports.length;
+    const aiGenerated = reports.filter(r => r.ai_generated).length;
+    const downloads = reports.reduce((acc, r) => acc + (r.download_count || 0), 0);
+    const aiPercentage = total > 0 ? Math.round((aiGenerated / total) * 100) : 0;
+    return { total, aiGenerated, downloads, aiPercentage };
+  }, [reports]);
 
-    return { totalReports, totalDownloads, aiPercentage, activeSchedules };
-  }, [reports, scheduledReports]);
-
-  // Category counts
   const categoryCounts = useMemo(() => {
     return reportCategories.map(cat => ({
       ...cat,
-      count: reports.filter(r => r.type === cat.type).length,
+      count: reports.filter(r => r.type === cat.type).length
     }));
   }, [reports]);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "production": return <BarChart3 className="w-4 h-4" />;
-      case "market": return <TrendingUp className="w-4 h-4" />;
-      case "exports": return <Ship className="w-4 h-4" />;
-      case "risk": return <AlertTriangle className="w-4 h-4" />;
-      default: return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  const getTypeName = (type: string) => {
-    switch (type) {
-      case "general": return "Geral";
-      case "production": return "Produção";
-      case "market": return "Mercado";
-      case "exports": return "Exportações";
-      case "risk": return "Risco";
-      case "predictions": return "Previsões";
-      default: return type;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('pt-AO', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  // Report highlights from recent reports
   const reportHighlights = useMemo(() => {
-    return reports
-      .filter(r => r.content?.highlights)
-      .slice(0, 3)
-      .flatMap(r => (r.content?.highlights || []).map((h: any) => ({
-        ...h,
-        source: r.title,
-      })));
+    const highlights: any[] = [];
+    reports.slice(0, 3).forEach(report => {
+      if (report.content?.highlights && Array.isArray(report.content.highlights)) {
+        report.content.highlights.slice(0, 1).forEach((h: any) => {
+          highlights.push({ ...h, source: report.title });
+        });
+      }
+    });
+    return highlights;
   }, [reports]);
 
+  // --- Render ---
   return (
-    <>
+    <div className="min-h-screen bg-[#050505] text-zinc-100 selection:bg-primary/30">
       <Helmet>
         <title>Relatórios | AlphaData</title>
-        <meta
-          name="description"
-          content="Relatórios inteligentes e automatizados sobre o setor petrolífero angolano. PDFs mensais com insights e análises."
-        />
       </Helmet>
 
-      <div className="flex h-screen bg-background overflow-hidden">
-        <Sidebar activeItem="/reports" />
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Subtle background glow */}
+          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header activeItem="/reports" />
+          <Header />
+          
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div className="max-w-7xl mx-auto space-y-8">
+              
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold">
+                      Analytics Hub
+                    </Badge>
+                  </div>
+                  <h1 className="text-4xl font-bold tracking-tight text-white">Relatórios</h1>
+                  <p className="text-zinc-400 mt-2 max-w-md">
+                    Gerencie, visualize e automatize seus insights baseados em dados com inteligência artificial.
+                  </p>
+                </motion.div>
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
-            <div className="max-w-7xl mx-auto space-y-6">
-              {/* Page Header */}
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 flex items-start justify-between flex-wrap gap-4"
-              >
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">Relatórios Inteligentes</h1>
-                  <p className="text-muted-foreground">Análises automatizadas e insights gerados por IA</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-3"
+                >
+                  <Button 
+                    variant="outline" 
                     onClick={() => setShowWorkspacePanel(true)}
-                    className="gap-2"
+                    className="bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300"
                   >
-                    <Users className="w-4 h-4" />
+                    <Users className="w-4 h-4 mr-2" />
                     Workspaces
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowScheduleDialog(true)}
-                    className="gap-2"
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Agendar
-                  </Button>
-                  <Button
+                  <Button 
                     onClick={() => setShowGenerateDialog(true)}
-                    className="gap-2"
+                    className="bg-white text-black hover:bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300"
                   >
-                    <Sparkles className="w-4 h-4" />
-                    Gerar Novo Relatório
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Relatório
                   </Button>
-                </div>
-              </motion.div>
-
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-border/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Relatórios Gerados</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{stats.totalReports}</div>
-                  <span className="text-xs text-muted-foreground">este mês</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="rounded-xl border border-primary/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Download className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Downloads</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{stats.totalDownloads}</div>
-                  <span className="text-xs text-muted-foreground">total</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="rounded-xl border border-accent/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-accent/10">
-                      <Calendar className="w-5 h-5 text-accent" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Agendados</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{stats.activeSchedules}</div>
-                  <span className="text-xs text-muted-foreground">relatórios activos</span>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="rounded-xl border border-border/50 p-4 card-gradient"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Sparkles className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">Gerados por IA</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{stats.aiPercentage}%</div>
-                  <span className="text-xs text-muted-foreground">dos relatórios</span>
                 </motion.div>
               </div>
 
-              {/* Categories & Search */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Categories */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Categorias</h3>
-                  <div className="space-y-3">
-                    <motion.div
-                      onClick={() => setSelectedCategory(null)}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
-                        !selectedCategory ? 'bg-primary/20 border border-primary/30' : 'bg-secondary/30 hover:bg-secondary/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/20">
-                          <FileText className="w-4 h-4 text-primary" />
-                        </div>
-                        <span className="text-sm font-medium text-foreground">Todos</span>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "Total de Relatórios", value: stats.total, icon: FileText, color: "text-blue-400" },
+                  { label: "Downloads Realizados", value: stats.downloads, icon: Download, color: "text-emerald-400" },
+                  { label: "Análises de IA", value: stats.aiGenerated, icon: Sparkles, color: "text-purple-400" },
+                  { label: "Eficiência IA", value: `${stats.aiPercentage}%`, icon: BarChart3, color: "text-amber-400" },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="group p-5 rounded-2xl bg-[#0A0A0A] border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`p-2 rounded-xl bg-zinc-900 group-hover:scale-110 transition-transform duration-300 ${stat.color}`}>
+                        <stat.icon className="w-5 h-5" />
                       </div>
-                      <span className="text-xs text-muted-foreground">{reports.length}</span>
-                    </motion.div>
-                    {categoryCounts.map((category, index) => (
-                      <motion.div
-                        key={category.name}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.25 + index * 0.05 }}
-                        onClick={() => setSelectedCategory(selectedCategory === category.type ? null : category.type)}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer group ${
-                          selectedCategory === category.type ? 'bg-primary/20 border border-primary/30' : 'bg-secondary/30 hover:bg-secondary/50'
+                      <ArrowUpRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                    </div>
+                    <div className="text-2xl font-bold text-white">{stat.value}</div>
+                    <div className="text-xs text-zinc-500 mt-1 font-medium uppercase tracking-wider">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Left Column: Categories & Filters */}
+                <div className="lg:col-span-3 space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-6 rounded-2xl bg-[#0A0A0A] border border-zinc-800/50"
+                  >
+                    <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-6">Categorias</h3>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => setSelectedCategory(null)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
+                          !selectedCategory ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${category.color}/20`}>
-                            <category.icon className={`w-4 h-4 ${category.color.replace('bg-', 'text-')}`} />
+                          <FileText className="w-4 h-4" />
+                          <span className="text-sm font-medium">Todos</span>
+                        </div>
+                        <span className="text-xs opacity-60">{reports.length}</span>
+                      </button>
+                      
+                      {categoryCounts.map((cat) => (
+                        <button
+                          key={cat.type}
+                          onClick={() => setSelectedCategory(selectedCategory === cat.type ? null : cat.type)}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group ${
+                            selectedCategory === cat.type ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-lg ${cat.bg} ${cat.color}`}>
+                              <cat.icon className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-medium">{cat.name}</span>
                           </div>
-                          <span className="text-sm font-medium text-foreground">{category.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{category.count}</span>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
+                          <span className="text-xs opacity-60 group-hover:opacity-100">{cat.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
 
-                {/* Recent Reports */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.25 }}
-                  className="lg:col-span-3 rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-foreground">Relatórios Recentes</h3>
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  {/* Quick Insights */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <h3 className="text-sm font-bold text-white uppercase tracking-widest">IA Insights</h3>
+                    </div>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Seus relatórios gerados por IA aumentaram <span className="text-primary font-bold">12%</span> este mês. A precisão dos dados está em <span className="text-white font-bold">98.4%</span>.
+                    </p>
+                  </motion.div>
+                </div>
+
+                {/* Right Column: Reports List */}
+                <div className="lg:col-span-9 space-y-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                      <TabsList className="bg-[#0A0A0A] border border-zinc-800 p-1 h-11 rounded-xl">
+                        <TabsTrigger value="all" className="rounded-lg px-6 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Todos</TabsTrigger>
+                        <TabsTrigger value="ai" className="rounded-lg px-6 gap-2 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+                          <Sparkles className="w-3 h-3" /> IA
+                        </TabsTrigger>
+                        <TabsTrigger value="normal" className="rounded-lg px-6 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Padrão</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:w-64">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                         <Input 
-                          placeholder="Pesquisar..." 
+                          placeholder="Pesquisar relatórios..." 
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9 h-9 w-48 bg-secondary/50 border-border/50"
+                          className="pl-10 bg-[#0A0A0A] border-zinc-800 focus:ring-primary/50 h-11 rounded-xl"
                         />
                       </div>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         onClick={fetchReports}
-                        className="gap-2"
+                        className="h-11 w-11 bg-[#0A0A0A] border-zinc-800 hover:bg-zinc-900 rounded-xl"
                       >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Tabs */}
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
-                    <TabsList className="bg-secondary/50">
-                      <TabsTrigger value="all">Todos</TabsTrigger>
-                      <TabsTrigger value="ai" className="gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        IA
-                      </TabsTrigger>
-                      <TabsTrigger value="normal">Normais</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {loading ? (
-                      [...Array(5)].map((_, i) => (
-                        <Skeleton key={i} className="h-20 rounded-lg" />
-                      ))
-                    ) : filteredReports.length > 0 ? (
-                      filteredReports.map((report, index) => (
-                        <motion.div
-                          key={report.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border/30 hover:bg-secondary/50 transition-colors group"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                              {getTypeIcon(report.type)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-foreground">{report.title}</h4>
-                                {report.ai_generated && (
-                                  <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-primary/20 text-primary">
-                                    <Sparkles className="w-3 h-3" />
-                                    IA
+                  <div className="space-y-3">
+                    <AnimatePresence mode="popLayout">
+                      {loading ? (
+                        [...Array(4)].map((_, i) => (
+                          <Skeleton key={i} className="h-24 w-full rounded-2xl bg-zinc-900/50" />
+                        ))
+                      ) : filteredReports.length > 0 ? (
+                        filteredReports.map((report, index) => (
+                          <motion.div
+                            key={report.id}
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-[#0A0A0A] border border-zinc-800/50 hover:border-zinc-700 hover:bg-[#0D0D0D] transition-all duration-300"
+                          >
+                            <div className="flex items-center gap-5">
+                              <div className={`hidden sm:flex p-3 rounded-xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 transition-colors`}>
+                                {getTypeIcon(report.type)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-3">
+                                  <h4 className="font-semibold text-zinc-100 group-hover:text-white transition-colors">{report.title}</h4>
+                                  {report.ai_generated && (
+                                    <Badge className="bg-primary/10 text-primary border-none text-[10px] h-5 px-1.5">
+                                      <Sparkles className="w-2.5 h-2.5 mr-1" /> IA
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-zinc-500">
+                                  <span className="flex items-center gap-1.5">
+                                    <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                                    {getTypeName(report.type)}
                                   </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                <span>{getTypeName(report.type)}</span>
-                                <span>•</span>
-                                <span>{report.period}</span>
-                                {report.pages && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{report.pages} páginas</span>
-                                  </>
-                                )}
-                                {report.download_count > 0 && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{report.download_count} downloads</span>
-                                  </>
-                                )}
+                                  <span className="flex items-center gap-1.5">
+                                    <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                                    {report.period}
+                                  </span>
+                                  {report.pages && (
+                                    <span className="flex items-center gap-1.5">
+                                      <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                                      {report.pages} pág.
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1.5">
+                                    <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                                    {formatDate(report.created_at)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {report.status === 'ready' ? (
-                              <>
-                                <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
-                                <button 
-                                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                  onClick={() => toast.info(report.summary || "Sem resumo disponível")}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button 
-                                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleDownload(report, 'pdf')}>
-                                      <FileText className="w-4 h-4 mr-2 text-red-500" />
-                                      Baixar PDF
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleDownload(report, 'docx')}>
-                                      <FileType className="w-4 h-4 mr-2 text-blue-500" />
-                                      Baixar DOCX
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleDownload(report, 'excel')}>
-                                      <FileSpreadsheet className="w-4 h-4 mr-2 text-green-500" />
-                                      Baixar Excel
-                                    </DropdownMenuItem>
-                                    {workspaces.length > 0 && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        {workspaces.map(ws => (
-                                          <DropdownMenuItem 
-                                            key={ws.id}
-                                            onClick={() => handleShareToWorkspace(report, ws.id)}
-                                          >
-                                            <Share2 className="w-4 h-4 mr-2" />
-                                            Partilhar: {ws.name}
-                                          </DropdownMenuItem>
-                                        ))}
-                                      </>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </>
-                            ) : (
-                              <span className="flex items-center gap-2 text-xs text-accent">
-                                <Clock className="w-3 h-3 animate-spin" />
-                                A processar...
-                              </span>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Nenhum relatório encontrado</p>
-                        <Button
-                          variant="outline"
-                          className="mt-4"
-                          onClick={() => setShowGenerateDialog(true)}
+
+                            <div className="flex items-center gap-3 mt-4 sm:mt-0 ml-auto sm:ml-0">
+                              {report.status === 'ready' ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => toast.info(report.summary || "Sem resumo disponível")}
+                                    className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        className="h-9 px-4 bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg gap-2"
+                                      >
+                                        <Download className="w-4 h-4" />
+                                        <span className="text-xs font-medium">Baixar</span>
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-[#0A0A0A] border-zinc-800 text-zinc-300 w-48 p-1">
+                                      <DropdownMenuItem onClick={() => handleDownload(report, 'pdf')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
+                                        <FileText className="w-4 h-4 mr-3 text-red-500" /> PDF
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDownload(report, 'docx')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
+                                        <FileType className="w-4 h-4 mr-3 text-blue-500" /> DOCX
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDownload(report, 'excel')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
+                                        <FileSpreadsheet className="w-4 h-4 mr-3 text-emerald-500" /> Excel
+                                      </DropdownMenuItem>
+                                      {workspaces.length > 0 && (
+                                        <>
+                                          <DropdownMenuSeparator className="bg-zinc-800" />
+                                          {workspaces.map(ws => (
+                                            <DropdownMenuItem 
+                                              key={ws.id}
+                                              onClick={() => handleShareToWorkspace(report, ws.id)}
+                                              className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5"
+                                            >
+                                              <Share2 className="w-4 h-4 mr-3 text-zinc-500" /> Partilhar: {ws.name}
+                                            </DropdownMenuItem>
+                                          ))}
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-2 py-1 px-3">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Processando
+                                </Badge>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-center py-20 bg-[#0A0A0A] border border-dashed border-zinc-800 rounded-3xl"
                         >
-                          Gerar primeiro relatório
-                        </Button>
-                      </div>
-                    )}
+                          <div className="p-4 rounded-full bg-zinc-900 w-fit mx-auto mb-4">
+                            <FileText className="w-8 h-8 text-zinc-700" />
+                          </div>
+                          <h3 className="text-lg font-medium text-zinc-300">Nenhum relatório encontrado</h3>
+                          <p className="text-sm text-zinc-500 mt-1">Tente ajustar seus filtros ou crie um novo relatório.</p>
+                          <Button
+                            variant="outline"
+                            className="mt-6 bg-zinc-900 border-zinc-800 hover:bg-zinc-800"
+                            onClick={() => setShowGenerateDialog(true)}
+                          >
+                            Gerar primeiro relatório
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </motion.div>
+                </div>
               </div>
 
-              {/* Scheduled Reports & Highlights */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Bottom Section: Schedules & Highlights */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Scheduled Reports */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.35 }}
-                  className="rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center justify-between mb-6">
+                <Card className="bg-[#0A0A0A] border-zinc-800/50 rounded-3xl overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-800/50 pb-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground">Relatórios Agendados</h3>
-                      <p className="text-sm text-muted-foreground">Geração automática configurada</p>
+                      <CardTitle className="text-lg font-bold text-white">Agendamentos</CardTitle>
+                      <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wider">Automação de dados</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setShowScheduleDialog(true)}>
-                      <Plus className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => setShowScheduleDialog(true)} className="hover:bg-zinc-800 rounded-xl">
+                      <Plus className="w-5 h-5" />
                     </Button>
-                  </div>
-                  <div className="space-y-4">
-                    {scheduledReports.length > 0 ? (
-                      scheduledReports.map((report, index) => (
-                        <motion.div
-                          key={report.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + index * 0.05 }}
-                          className="p-4 rounded-lg bg-secondary/30 border border-border/30"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-foreground">{report.name}</h4>
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary capitalize">
-                                {report.frequency === 'daily' ? 'Diário' : report.frequency === 'weekly' ? 'Semanal' : 'Mensal'}
-                              </span>
-                              <button 
-                                onClick={() => deleteScheduledReport(report.id)}
-                                className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      {scheduledReports.length > 0 ? (
+                        scheduledReports.map((report, index) => (
+                          <div key={report.id} className="p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50 flex items-center justify-between group">
+                            <div className="flex items-center gap-4">
+                              <div className="p-2.5 rounded-xl bg-zinc-900 text-primary">
+                                <Calendar className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-zinc-200">{report.name}</h4>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-[10px] font-bold uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    {report.frequency === 'daily' ? 'Diário' : report.frequency === 'weekly' ? 'Semanal' : 'Mensal'}
+                                  </span>
+                                  <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> Próximo: {report.next_run ? formatDate(report.next_run) : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => deleteScheduledReport(report.id)}
+                              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Próximo: {report.next_run ? formatDate(report.next_run) : 'N/A'}
-                            </span>
-                            <span>{report.recipients} destinatário(s)</span>
-                          </div>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Nenhum agendamento</p>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => setShowScheduleDialog(true)}
-                        >
-                          Criar agendamento
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-10">
+                          <Calendar className="w-10 h-10 mx-auto mb-3 text-zinc-800" />
+                          <p className="text-sm text-zinc-500">Nenhum agendamento ativo</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Report Highlights */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                  className="rounded-xl border border-border/50 p-6 card-gradient"
-                >
-                  <div className="flex items-center justify-between mb-6">
+                <Card className="bg-[#0A0A0A] border-zinc-800/50 rounded-3xl overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-800/50 pb-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground">Destaques Recentes</h3>
-                      <p className="text-sm text-muted-foreground">Principais insights dos relatórios</p>
+                      <CardTitle className="text-lg font-bold text-white">Destaques</CardTitle>
+                      <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wider">Insights Recentes</p>
                     </div>
-                    <Sparkles className="w-5 h-5 text-accent" />
-                  </div>
-                  <div className="space-y-4">
-                    {reportHighlights.length > 0 ? (
-                      reportHighlights.map((highlight, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.45 + index * 0.05 }}
-                          className="p-4 rounded-lg bg-secondary/30 border border-border/30"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`p-1.5 rounded-full ${
-                              highlight.trend === 'up' ? 'bg-success/20 text-success' :
-                              highlight.trend === 'down' ? 'bg-destructive/20 text-destructive' :
-                              'bg-muted text-muted-foreground'
+                    <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      {reportHighlights.length > 0 ? (
+                        reportHighlights.map((highlight, index) => (
+                          <div key={index} className="p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50 flex items-start gap-4">
+                            <div className={`p-2 rounded-xl ${
+                              highlight.trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' :
+                              highlight.trend === 'down' ? 'bg-rose-500/10 text-rose-500' :
+                              'bg-zinc-800 text-zinc-400'
                             }`}>
-                              {highlight.trend === 'up' ? <TrendingUp className="w-3 h-3" /> :
-                               highlight.trend === 'down' ? <TrendingDown className="w-3 h-3" /> :
-                               <BarChart3 className="w-3 h-3" />}
+                              {highlight.trend === 'up' ? <TrendingUp className="w-4 h-4" /> :
+                               highlight.trend === 'down' ? <TrendingDown className="w-4 h-4" /> :
+                               <BarChart3 className="w-4 h-4" />}
                             </div>
                             <div className="flex-1">
-                              <h4 className="text-sm font-medium text-foreground mb-1">{highlight.title}</h4>
-                              <p className="text-lg font-bold text-foreground">{highlight.value}</p>
-                              <span className="text-xs text-primary">{highlight.source}</span>
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{highlight.title}</h4>
+                                <span className="text-[10px] text-primary font-medium">{highlight.source}</span>
+                              </div>
+                              <p className="text-xl font-bold text-white mt-1">{highlight.value}</p>
                             </div>
                           </div>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Gere relatórios para ver destaques</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-10">
+                          <Sparkles className="w-10 h-10 mx-auto mb-3 text-zinc-800" />
+                          <p className="text-sm text-zinc-500">Gere relatórios para ver insights</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </main>
         </div>
       </div>
 
+      {/* --- Dialogs --- */}
+      
       {/* Generate Report Dialog */}
       <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-        <DialogContent>
+        <DialogContent className="bg-[#0A0A0A] border-zinc-800 text-white max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Gerar Novo Relatório</DialogTitle>
-            <DialogDescription>
-              Selecione o tipo de relatório e período para gerar
+            <DialogTitle className="text-xl font-bold">Gerar Novo Relatório</DialogTitle>
+            <DialogDescription className="text-zinc-500">
+              Configure os parâmetros para a análise de dados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tipo de Relatório</label>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tipo de Relatório</label>
               <Select value={selectedReportType} onValueChange={setSelectedReportType}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#0A0A0A] border-zinc-800 text-zinc-300">
                   <SelectItem value="general">📊 Relatório Geral (6+ páginas)</SelectItem>
                   <SelectItem value="production">Produção</SelectItem>
                   <SelectItem value="market">Mercado & Preços</SelectItem>
@@ -876,43 +793,41 @@ const Reports = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Período (opcional)</label>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Período</label>
               <Input
                 placeholder="Ex: Novembro 2024"
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary/50"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="aiGenerated"
-                checked={isAiGenerated}
-                onChange={(e) => setIsAiGenerated(e.target.checked)}
-                className="rounded"
-              />
-              <label htmlFor="aiGenerated" className="text-sm flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Gerar com análise de IA
-              </label>
+            <div 
+              onClick={() => setIsAiGenerated(!isAiGenerated)}
+              className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${
+                isAiGenerated ? 'bg-primary/10 border-primary/30' : 'bg-zinc-900/50 border-zinc-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${isAiGenerated ? 'bg-primary text-black' : 'bg-zinc-800 text-zinc-500'}`}>
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Análise Inteligente</p>
+                  <p className="text-[10px] text-zinc-500">Utilizar IA para gerar insights</p>
+                </div>
+              </div>
+              <div className={`w-10 h-5 rounded-full relative transition-colors ${isAiGenerated ? 'bg-primary' : 'bg-zinc-700'}`}>
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isAiGenerated ? 'left-6' : 'left-1'}`} />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>
+          <DialogFooter className="gap-3">
+            <Button variant="ghost" onClick={() => setShowGenerateDialog(false)} className="text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-xl">
               Cancelar
             </Button>
-            <Button onClick={generateReport} disabled={generating} className="gap-2">
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Gerar Relatório
-                </>
-              )}
+            <Button onClick={generateReport} disabled={generating} className="bg-white text-black hover:bg-zinc-200 rounded-xl px-8 font-bold">
+              {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {generating ? "Gerando..." : "Gerar Agora"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -920,66 +835,56 @@ const Reports = () => {
 
       {/* Schedule Report Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent>
+        <DialogContent className="bg-[#0A0A0A] border-zinc-800 text-white max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Agendar Relatório</DialogTitle>
-            <DialogDescription>
-              Configure a geração automática de relatórios
+            <DialogTitle className="text-xl font-bold">Agendar Relatório</DialogTitle>
+            <DialogDescription className="text-zinc-500">
+              Configure a geração automática recorrente.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nome do Agendamento</label>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nome do Agendamento</label>
               <Input
                 placeholder="Ex: Relatório Semanal de Preços"
                 value={scheduleName}
                 onChange={(e) => setScheduleName(e.target.value)}
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary/50"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tipo de Relatório</label>
-              <Select value={selectedReportType} onValueChange={setSelectedReportType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="production">Produção</SelectItem>
-                  <SelectItem value="market">Mercado & Preços</SelectItem>
-                  <SelectItem value="exports">Exportações</SelectItem>
-                  <SelectItem value="risk">Avaliação de Riscos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Frequência</label>
-              <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Diário</SelectItem>
-                  <SelectItem value="weekly">Semanal</SelectItem>
-                  <SelectItem value="monthly">Mensal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Destinatários</label>
-              <Input
-                type="number"
-                min={1}
-                value={scheduleRecipients}
-                onChange={(e) => setScheduleRecipients(parseInt(e.target.value) || 1)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Frequência</label>
+                <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                  <SelectTrigger className="bg-zinc-900 border-zinc-800 h-12 rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0A0A0A] border-zinc-800 text-zinc-300">
+                    <SelectItem value="daily">Diário</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Destinatários</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={scheduleRecipients}
+                  onChange={(e) => setScheduleRecipients(parseInt(e.target.value) || 1)}
+                  className="bg-zinc-900 border-zinc-800 h-12 rounded-xl"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
+            <Button variant="ghost" onClick={() => setShowScheduleDialog(false)} className="text-zinc-500 hover:text-white rounded-xl">
               Cancelar
             </Button>
-            <Button onClick={scheduleReport} className="gap-2">
-              <Calendar className="w-4 h-4" />
-              Agendar
+            <Button onClick={scheduleReport} className="bg-primary text-black hover:bg-primary/90 rounded-xl px-8 font-bold">
+              <Calendar className="w-4 h-4 mr-2" />
+              Confirmar Agendamento
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -990,7 +895,7 @@ const Reports = () => {
         isOpen={showWorkspacePanel} 
         onClose={() => setShowWorkspacePanel(false)} 
       />
-    </>
+    </div>
   );
 };
 

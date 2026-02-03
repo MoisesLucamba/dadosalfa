@@ -69,23 +69,25 @@ serve(async (req) => {
         break;
       case 'general':
         // RELATÓRIO GERAL - Contém TODAS as informações do setor
-        const [
-          generalProduction,
-          generalPrices,
-          generalExports,
-          generalRiskAlerts,
-          generalRiskData,
-          generalCountryRisk,
-          generalRegulatoryEvents,
-        ] = await Promise.all([
-          supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(100),
-          supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(100),
-          supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(100),
-          supabase.from('risk_alerts').select('*').eq('is_active', true).limit(30),
-          supabase.from('risk_data').select('*').order('data_date', { ascending: false }).limit(50),
-          supabase.from('country_risk').select('*').order('data_date', { ascending: false }).limit(20),
-          supabase.from('regulatory_events').select('*').order('created_at', { ascending: false }).limit(20),
-        ]);
+        // Otimizado para evitar sobrecarga de memória - reduzindo limites e processando sequencialmente
+        console.log('Fetching general report data...');
+
+        const generalProduction = await supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(50);
+        const generalPrices = await supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(50);
+        const generalExports = await supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(50);
+        const generalRiskAlerts = await supabase.from('risk_alerts').select('*').eq('is_active', true).limit(20);
+        const generalRiskData = await supabase.from('risk_data').select('*').order('data_date', { ascending: false }).limit(30);
+        const generalCountryRisk = await supabase.from('country_risk').select('*').order('data_date', { ascending: false }).limit(15);
+        const generalRegulatoryEvents = await supabase.from('regulatory_events').select('*').order('created_at', { ascending: false }).limit(15);
+
+        // Verificar se todas as consultas foram bem-sucedidas
+        if (generalProduction.error) console.error('Production data error:', generalProduction.error);
+        if (generalPrices.error) console.error('Prices data error:', generalPrices.error);
+        if (generalExports.error) console.error('Exports data error:', generalExports.error);
+        if (generalRiskAlerts.error) console.error('Risk alerts error:', generalRiskAlerts.error);
+        if (generalRiskData.error) console.error('Risk data error:', generalRiskData.error);
+        if (generalCountryRisk.error) console.error('Country risk error:', generalCountryRisk.error);
+        if (generalRegulatoryEvents.error) console.error('Regulatory events error:', generalRegulatoryEvents.error);
         
         // Lista de operadoras (14 principais de Angola)
         const operators = [
@@ -138,9 +140,9 @@ serve(async (req) => {
     let pages = reportType === 'general' ? Math.floor(Math.random() * 10) + 8 : Math.floor(Math.random() * 20) + 15;
 
     // Generate AI summary if requested
-    if (aiGenerated) {
+    if (aiGenerated && reportType !== 'general') {
       console.log('Generating AI summary...');
-      
+
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -152,22 +154,8 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: reportType === 'general' 
-                ? `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo COMPLETO (máximo 1500 palavras) para um RELATÓRIO GERAL do setor petrolífero angolano.
+              content: `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${reportType === 'production' ? 'produção' : reportType === 'market' ? 'mercado e preços' : reportType === 'exports' ? 'exportações' : reportType === 'risk' ? 'avaliação de riscos' : 'previsões'}.
 
-O relatório deve cobrir TODAS as áreas:
-1. PRODUÇÃO PETROLÍFERA: Volumes totais, produção por operadora, tendências de declínio, campos em destaque
-2. PREÇOS E MERCADO: Brent, crudes angolanos (Cabinda, Girassol, Dalia), comparação com período anterior
-3. EXPORTAÇÕES: Destinos principais (China, Europa, América), volumes, logística
-4. OPERADORAS: Análise das 14 principais operadoras em Angola (TotalEnergies, Chevron, Sonangol, Eni, BP, ExxonMobil, Azule Energy, Galp, Equinor, Sinopec, Afentra, Pluspetrol, ETU Energias, Petrobras)
-5. RISCOS GEOPOLÍTICOS: Situação política regional, impactos OPEP+, riscos fiscais
-6. REGULAMENTAÇÃO: Eventos regulatórios recentes, mudanças na legislação
-7. PREVISÕES: Projecções a curto e médio prazo
-8. RECOMENDAÇÕES ESTRATÉGICAS: Para investidores e operadores
-
-Responda em português de Portugal/Angola. Use linguagem profissional e técnica.`
-                : `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${reportType === 'production' ? 'produção' : reportType === 'market' ? 'mercado e preços' : reportType === 'exports' ? 'exportações' : reportType === 'risk' ? 'avaliação de riscos' : 'previsões'}. 
-              
 Inclua:
 1. Principais métricas e tendências
 2. Comparação com período anterior
@@ -178,22 +166,17 @@ Responda em português de Portugal/Angola.`
             },
             {
               role: 'user',
-              content: `Analise os seguintes dados e gere o resumo executivo:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}`
+              content: `Analise os seguintes dados e gere o resumo executivo:\n\n${JSON.stringify(reportData, null, 2).substring(0, 2000)}`
             }
           ],
           temperature: 0.7,
-          max_tokens: reportType === 'general' ? 3000 : 1000,
+          max_tokens: 1000,
         }),
       });
 
       if (response.ok) {
         const aiData = await response.json();
         summary = aiData.choices?.[0]?.message?.content || '';
-        content.summary = summary;
-        content.aiAnalysis = true;
-        pages = Math.floor(Math.random() * 15) + 20; // AI reports tend to be longer
-      }
-    }
 
     // Calculate highlights based on data
     const highlights = [];

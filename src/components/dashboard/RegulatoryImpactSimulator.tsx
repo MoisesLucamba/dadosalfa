@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Scale, 
   TrendingUp, 
@@ -9,10 +9,14 @@ import {
   AlertTriangle,
   Calculator,
   Percent,
-  Fuel,
   Building2,
   Leaf,
-  Globe
+  Globe,
+  Info,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Activity
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -25,18 +29,33 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
+  PieChart,
+  Pie,
   Cell,
 } from "recharts";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Tooltip as UITooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
 
 interface SimulationParams {
-  royaltyChange: number; // -10 to +10 percentage points
-  taxChange: number; // -10 to +10 percentage points
-  environmentalCompliance: number; // 0 to 100 (cost increase %)
-  opepQuotaChange: number; // -20 to +20 % production
-  brentPriceScenario: number; // 50 to 120 USD
-  currencyDevaluation: number; // 0 to 50%
+  royaltyChange: number;
+  taxChange: number;
+  environmentalCompliance: number;
+  opepQuotaChange: number;
+  brentPriceScenario: number;
+  currencyDevaluation: number;
 }
 
 interface SimulationResult {
@@ -46,6 +65,7 @@ interface SimulationResult {
   exportVolumeImpact: number;
   governmentTakeChange: number;
   breakEvenPrice: number;
+  viabilityScore: number; // 0 to 100
 }
 
 const DEFAULT_PARAMS: SimulationParams = {
@@ -57,462 +77,468 @@ const DEFAULT_PARAMS: SimulationParams = {
   currencyDevaluation: 0,
 };
 
-// Base values for Angola oil sector
 const BASE_VALUES = {
-  dailyProduction: 1100000, // bpd
-  currentRoyalty: 16, // %
-  currentTax: 50, // %
-  operatingCost: 25, // USD per barrel
-  currentBrent: 78, // USD
-  annualRevenue: 25000000000, // USD (billion)
+  dailyProduction: 1100000,
+  currentRoyalty: 16,
+  currentTax: 50,
+  operatingCost: 25,
+  currentBrent: 78,
+  annualRevenue: 25000000000,
 };
 
 export const RegulatoryImpactSimulator = () => {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
-  const [activeScenario, setActiveScenario] = useState<string>("custom");
+  const [activeScenario, setActiveScenario] = useState<string>("baseline");
 
   const scenarios = {
     optimistic: {
-      royaltyChange: -2,
-      taxChange: -3,
-      environmentalCompliance: 5,
-      opepQuotaChange: 5,
-      brentPriceScenario: 90,
-      currencyDevaluation: 5,
+      label: "Otimista",
+      description: "Preços altos e incentivos fiscais",
+      params: {
+        royaltyChange: -2,
+        taxChange: -3,
+        environmentalCompliance: 5,
+        opepQuotaChange: 5,
+        brentPriceScenario: 95,
+        currencyDevaluation: 5,
+      }
     },
-    baseline: DEFAULT_PARAMS,
+    baseline: {
+      label: "Base",
+      description: "Condições atuais de mercado",
+      params: DEFAULT_PARAMS
+    },
     pessimistic: {
-      royaltyChange: 3,
-      taxChange: 5,
-      environmentalCompliance: 20,
-      opepQuotaChange: -10,
-      brentPriceScenario: 65,
-      currencyDevaluation: 25,
+      label: "Pessimista",
+      description: "Queda de preços e custos elevados",
+      params: {
+        royaltyChange: 2,
+        taxChange: 3,
+        environmentalCompliance: 15,
+        opepQuotaChange: -5,
+        brentPriceScenario: 60,
+        currencyDevaluation: 20,
+      }
     },
     crisis: {
-      royaltyChange: 5,
-      taxChange: 8,
-      environmentalCompliance: 30,
-      opepQuotaChange: -20,
-      brentPriceScenario: 50,
-      currencyDevaluation: 40,
+      label: "Crise",
+      description: "Cenário de stress extremo",
+      params: {
+        royaltyChange: 5,
+        taxChange: 8,
+        environmentalCompliance: 30,
+        opepQuotaChange: -15,
+        brentPriceScenario: 45,
+        currencyDevaluation: 40,
+      }
     },
   };
 
-  const applyScenario = (scenarioName: string) => {
-    setActiveScenario(scenarioName);
-    if (scenarioName !== "custom" && scenarios[scenarioName as keyof typeof scenarios]) {
-      setParams(scenarios[scenarioName as keyof typeof scenarios]);
+  const applyScenario = (scenarioKey: string) => {
+    setActiveScenario(scenarioKey);
+    if (scenarioKey !== "custom") {
+      setParams(scenarios[scenarioKey as keyof typeof scenarios].params);
     }
   };
 
   const results = useMemo<SimulationResult>(() => {
-    // Calculate impacts
-    const priceRatio = params.brentPriceScenario / BASE_VALUES.currentBrent;
     const productionMultiplier = 1 + (params.opepQuotaChange / 100);
     const newProduction = BASE_VALUES.dailyProduction * productionMultiplier;
     
-    // Revenue impact
     const baseRevenue = BASE_VALUES.dailyProduction * BASE_VALUES.currentBrent * 365;
     const newRevenue = newProduction * params.brentPriceScenario * 365;
     const revenueImpact = ((newRevenue - baseRevenue) / baseRevenue) * 100;
 
-    // Cost impact (environmental + currency)
     const envCostIncrease = params.environmentalCompliance / 100;
-    const currencyCostIncrease = params.currencyDevaluation / 200; // Partial impact on local costs
+    const currencyCostIncrease = params.currencyDevaluation / 200;
     const newOperatingCost = BASE_VALUES.operatingCost * (1 + envCostIncrease + currencyCostIncrease);
     const productionCostImpact = ((newOperatingCost - BASE_VALUES.operatingCost) / BASE_VALUES.operatingCost) * 100;
 
-    // Government take change
     const currentGovTake = BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax;
     const newGovTake = (BASE_VALUES.currentRoyalty + params.royaltyChange) + (BASE_VALUES.currentTax + params.taxChange);
     const governmentTakeChange = newGovTake - currentGovTake;
 
-    // Net profit impact
     const currentMargin = BASE_VALUES.currentBrent - BASE_VALUES.operatingCost;
     const currentProfitPerBarrel = currentMargin * (1 - currentGovTake / 100);
     const newMargin = params.brentPriceScenario - newOperatingCost;
     const newProfitPerBarrel = newMargin * (1 - newGovTake / 100);
     const netProfitImpact = ((newProfitPerBarrel - currentProfitPerBarrel) / currentProfitPerBarrel) * 100;
 
-    // Export volume impact
-    const exportVolumeImpact = params.opepQuotaChange;
-
-    // Break-even price
     const breakEvenPrice = newOperatingCost / (1 - newGovTake / 100);
+
+    // Calculate viability score (0-100)
+    let score = 50;
+    score += (params.brentPriceScenario - breakEvenPrice) * 2;
+    score -= governmentTakeChange * 2;
+    score = Math.max(0, Math.min(100, score));
 
     return {
       revenueImpact,
       productionCostImpact,
       netProfitImpact,
-      exportVolumeImpact,
+      exportVolumeImpact: params.opepQuotaChange,
       governmentTakeChange,
       breakEvenPrice,
+      viabilityScore: score
     };
   }, [params]);
 
-  // Generate projection data for chart
   const projectionData = useMemo(() => {
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return months.map((month, index) => {
       const factor = 1 + (results.netProfitImpact / 100) * ((index + 1) / 12);
-      const baseLine = 100;
       return {
         month,
-        baseline: baseLine,
-        scenario: Math.round(baseLine * factor),
+        baseline: 100,
+        scenario: Math.round(100 * factor),
       };
     });
   }, [results.netProfitImpact]);
 
-  const impactMetrics = [
-    { label: 'Receita', value: results.revenueImpact, icon: DollarSign },
-    { label: 'Custos', value: results.productionCostImpact, icon: BarChart3, inverted: true },
-    { label: 'Lucro Líquido', value: results.netProfitImpact, icon: TrendingUp },
-    { label: 'Exportações', value: results.exportVolumeImpact, icon: Fuel },
-  ];
+  const getViabilityColor = (score: number) => {
+    if (score > 70) return "text-emerald-500";
+    if (score > 40) return "text-amber-500";
+    return "text-rose-500";
+  };
+
+  const getViabilityLabel = (score: number) => {
+    if (score > 70) return "Alta Atratividade";
+    if (score > 40) return "Risco Moderado";
+    return "Inviável / Crítico";
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border/50 p-6 card-gradient"
-    >
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-primary" />
-            Simulador de Impacto Regulatório
-          </h3>
-          <p className="text-sm text-muted-foreground">Simule cenários fiscais e regulatórios para o setor petrolífero angolano</p>
+    <div className="max-w-6xl mx-auto p-4 space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Calculator className="w-6 h-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">Simulador de Impacto Regulatório</h1>
+          </div>
+          <p className="text-muted-foreground">Análise preditiva para o setor petrolífero angolano</p>
         </div>
-        <Scale className="w-5 h-5 text-accent" />
+        
+        <div className="flex items-center gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
+          <div className="text-right">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Score de Viabilidade</p>
+            <p className={`text-xl font-bold ${getViabilityColor(results.viabilityScore)}`}>
+              {getViabilityLabel(results.viabilityScore)}
+            </p>
+          </div>
+          <div className="w-12 h-12 relative">
+             <svg className="w-full h-full" viewBox="0 0 36 36">
+                <path
+                  className="stroke-muted fill-none"
+                  strokeWidth="3"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className={`fill-none transition-all duration-500 ease-in-out ${
+                    results.viabilityScore > 70 ? 'stroke-emerald-500' : results.viabilityScore > 40 ? 'stroke-amber-500' : 'stroke-rose-500'
+                  }`}
+                  strokeWidth="3"
+                  strokeDasharray={`${results.viabilityScore}, 100`}
+                  strokeLinecap="round"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+             </svg>
+             <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
+                {Math.round(results.viabilityScore)}%
+             </div>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="params" className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="params">Parâmetros</TabsTrigger>
-          <TabsTrigger value="results">Resultados</TabsTrigger>
-          <TabsTrigger value="projection">Projeção</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="params" className="space-y-6">
-          {/* Scenario Presets */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.keys(scenarios).map((scenario) => (
-              <Button
-                key={scenario}
-                variant={activeScenario === scenario ? "default" : "outline"}
-                size="sm"
-                onClick={() => applyScenario(scenario)}
-                className="capitalize"
-              >
-                {scenario === 'baseline' ? 'Base' : 
-                 scenario === 'optimistic' ? 'Otimista' :
-                 scenario === 'pessimistic' ? 'Pessimista' : 'Crise'}
-              </Button>
-            ))}
-            <Button
-              variant={activeScenario === "custom" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveScenario("custom")}
-            >
-              Personalizado
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fiscal Parameters */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                Parâmetros Fiscais
-              </h4>
-              
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Alteração Royalties</span>
-                    <span className={`font-medium ${params.royaltyChange > 0 ? 'text-destructive' : params.royaltyChange < 0 ? 'text-success' : 'text-foreground'}`}>
-                      {params.royaltyChange > 0 ? '+' : ''}{params.royaltyChange}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[params.royaltyChange]}
-                    onValueChange={([v]) => { setParams({...params, royaltyChange: v}); setActiveScenario("custom"); }}
-                    min={-10}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>-10%</span>
-                    <span className="text-xs">Atual: {BASE_VALUES.currentRoyalty}%</span>
-                    <span>+10%</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Alteração Impostos</span>
-                    <span className={`font-medium ${params.taxChange > 0 ? 'text-destructive' : params.taxChange < 0 ? 'text-success' : 'text-foreground'}`}>
-                      {params.taxChange > 0 ? '+' : ''}{params.taxChange}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[params.taxChange]}
-                    onValueChange={([v]) => { setParams({...params, taxChange: v}); setActiveScenario("custom"); }}
-                    min={-10}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>-10%</span>
-                    <span className="text-xs">Atual: {BASE_VALUES.currentTax}%</span>
-                    <span>+10%</span>
-                  </div>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Controls */}
+        <div className="lg:col-span-4 space-y-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Activity className="w-4 h-4" /> Cenários Pré-definidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(scenarios).map(([key, scenario]) => (
+                  <Button
+                    key={key}
+                    variant={activeScenario === key ? "default" : "outline"}
+                    className="h-auto py-2 px-3 flex flex-col items-start gap-0.5 text-left"
+                    onClick={() => applyScenario(key)}
+                  >
+                    <span className="text-xs font-bold">{scenario.label}</span>
+                    <span className="text-[10px] opacity-70 font-normal leading-tight">{scenario.description}</span>
+                  </Button>
+                ))}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Environmental & Market */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Leaf className="w-4 h-4 text-success" />
-                Ambiente & Mercado
-              </h4>
-              
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Custos Ambientais</span>
-                    <span className={`font-medium ${params.environmentalCompliance > 10 ? 'text-destructive' : 'text-foreground'}`}>
-                      +{params.environmentalCompliance}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[params.environmentalCompliance]}
-                    onValueChange={([v]) => { setParams({...params, environmentalCompliance: v}); setActiveScenario("custom"); }}
-                    min={0}
-                    max={50}
-                    step={5}
-                    className="w-full"
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Ajustes de Parâmetros</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Fiscal Group */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  <Building2 className="w-3 h-3" /> Fiscalidade
+                </div>
+                <div className="space-y-4">
+                  <ParameterSlider 
+                    label="Royalties" 
+                    value={params.royaltyChange} 
+                    min={-10} max={10} 
+                    unit="pp"
+                    onChange={(v) => { setParams({...params, royaltyChange: v}); setActiveScenario("custom"); }}
+                  />
+                  <ParameterSlider 
+                    label="Imposto de Rendimento" 
+                    value={params.taxChange} 
+                    min={-10} max={10} 
+                    unit="pp"
+                    onChange={(v) => { setParams({...params, taxChange: v}); setActiveScenario("custom"); }}
                   />
                 </div>
+              </div>
 
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Preço Brent (USD)</span>
-                    <span className="font-medium text-foreground">${params.brentPriceScenario}</span>
-                  </div>
-                  <Slider
-                    value={[params.brentPriceScenario]}
-                    onValueChange={([v]) => { setParams({...params, brentPriceScenario: v}); setActiveScenario("custom"); }}
-                    min={40}
-                    max={120}
-                    step={5}
-                    className="w-full"
+              {/* Market Group */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  <Globe className="w-3 h-3" /> Mercado & Operação
+                </div>
+                <div className="space-y-4">
+                  <ParameterSlider 
+                    label="Preço Brent" 
+                    value={params.brentPriceScenario} 
+                    min={40} max={120} 
+                    unit="USD"
+                    onChange={(v) => { setParams({...params, brentPriceScenario: v}); setActiveScenario("custom"); }}
                   />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>$40</span>
-                    <span>$120</span>
-                  </div>
+                  <ParameterSlider 
+                    label="Quota OPEP+" 
+                    value={params.opepQuotaChange} 
+                    min={-20} max={20} 
+                    unit="%"
+                    onChange={(v) => { setParams({...params, opepQuotaChange: v}); setActiveScenario("custom"); }}
+                  />
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            {/* OPEP+ & Currency */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Globe className="w-4 h-4 text-accent" />
-                OPEP+ & Quotas
-              </h4>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Alteração Quota Produção</span>
-                  <span className={`font-medium ${params.opepQuotaChange < 0 ? 'text-destructive' : params.opepQuotaChange > 0 ? 'text-success' : 'text-foreground'}`}>
-                    {params.opepQuotaChange > 0 ? '+' : ''}{params.opepQuotaChange}%
-                  </span>
-                </div>
-                <Slider
-                  value={[params.opepQuotaChange]}
-                  onValueChange={([v]) => { setParams({...params, opepQuotaChange: v}); setActiveScenario("custom"); }}
-                  min={-20}
-                  max={20}
-                  step={5}
-                  className="w-full"
-                />
+        {/* Right Column: Results & Visualizations */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Top Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard 
+              label="Impacto na Receita" 
+              value={results.revenueImpact} 
+              icon={<DollarSign className="w-4 h-4" />}
+              trend={results.revenueImpact > 0 ? "up" : "down"}
+            />
+            <MetricCard 
+              label="Margem de Lucro" 
+              value={results.netProfitImpact} 
+              icon={<TrendingUp className="w-4 h-4" />}
+              trend={results.netProfitImpact > 0 ? "up" : "down"}
+            />
+            <MetricCard 
+              label="Break-even" 
+              value={results.breakEvenPrice} 
+              icon={<Scale className="w-4 h-4" />}
+              unit="$/bbl"
+              isAbsolute
+              status={results.breakEvenPrice > params.brentPriceScenario ? "danger" : "success"}
+            />
+          </div>
+
+          {/* Main Content Tabs */}
+          <Tabs defaultValue="analysis" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="analysis">Análise de Impacto</TabsTrigger>
+              <TabsTrigger value="projection">Projeção 12 Meses</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="analysis" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">Distribuição de Valor</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Gov Take', value: BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange },
+                            { name: 'Custos', value: (results.productionCostImpact / 100 + 1) * 25 },
+                            { name: 'Margem', value: Math.max(0, params.brentPriceScenario - results.breakEvenPrice) }
+                          ]}
+                          cx="50%" cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          <Cell fill="hsl(var(--primary))" />
+                          <Cell fill="hsl(var(--muted))" />
+                          <Cell fill="hsl(var(--accent))" />
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">Insights Estratégicos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InsightItem 
+                      condition={results.viabilityScore < 40}
+                      type="danger"
+                      text="Risco elevado de desinvestimento. A carga fiscal supera a viabilidade operacional."
+                    />
+                    <InsightItem 
+                      condition={results.breakEvenPrice > 65}
+                      type="warning"
+                      text="Vulnerabilidade alta a choques de preço externos. Necessário otimizar custos."
+                    />
+                    <InsightItem 
+                      condition={results.netProfitImpact > 15}
+                      type="success"
+                      text="Cenário altamente atrativo para novos investimentos e exploração."
+                    />
+                    <InsightItem 
+                      condition={true}
+                      type="info"
+                      text={`O Government Take atual situa-se em ${(BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange).toFixed(1)}%.`}
+                    />
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            </TabsContent>
 
-            {/* Currency */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Percent className="w-4 h-4 text-destructive" />
-                Risco Cambial
-              </h4>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Desvalorização Kwanza</span>
-                  <span className={`font-medium ${params.currencyDevaluation > 20 ? 'text-destructive' : 'text-foreground'}`}>
-                    +{params.currencyDevaluation}%
-                  </span>
-                </div>
-                <Slider
-                  value={[params.currencyDevaluation]}
-                  onValueChange={([v]) => { setParams({...params, currencyDevaluation: v}); setActiveScenario("custom"); }}
-                  min={0}
-                  max={50}
-                  step={5}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="results" className="space-y-4">
-          {/* Impact Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {impactMetrics.map((metric, index) => {
-              const Icon = metric.icon;
-              const isPositive = metric.inverted ? metric.value < 0 : metric.value > 0;
-              const isNegative = metric.inverted ? metric.value > 0 : metric.value < 0;
-              
-              return (
-                <motion.div
-                  key={metric.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="p-4 rounded-lg bg-secondary/30 border border-border/30"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{metric.label}</span>
+            <TabsContent value="projection">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={projectionData}>
+                        <defs>
+                          <linearGradient id="colorScenario" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="baseline" 
+                          stroke="hsl(var(--muted-foreground))" 
+                          fill="transparent" 
+                          strokeDasharray="5 5" 
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="scenario" 
+                          stroke="hsl(var(--primary))" 
+                          fillOpacity={1} 
+                          fill="url(#colorScenario)" 
+                          strokeWidth={3}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className={`text-xl font-bold flex items-center gap-1 ${
-                    isPositive ? 'text-success' : isNegative ? 'text-destructive' : 'text-foreground'
-                  }`}>
-                    {metric.value > 0 ? '+' : ''}{metric.value.toFixed(1)}%
-                    {isPositive && <TrendingUp className="w-4 h-4" />}
-                    {isNegative && <TrendingDown className="w-4 h-4" />}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-          {/* Additional Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-muted-foreground">Government Take</span>
-                  <div className="text-2xl font-bold text-foreground">
-                    {(BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange).toFixed(0)}%
-                  </div>
-                </div>
-                <div className={`text-sm font-medium ${results.governmentTakeChange > 0 ? 'text-destructive' : results.governmentTakeChange < 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                  {results.governmentTakeChange > 0 ? '+' : ''}{results.governmentTakeChange.toFixed(0)}pp
-                </div>
-              </div>
-            </div>
+// Helper Components
+const ParameterSlider = ({ label, value, min, max, unit, onChange }: any) => (
+  <div className="space-y-3">
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <Badge variant="secondary" className="font-mono">
+        {value > 0 && "+"}{value}{unit}
+      </Badge>
+    </div>
+    <Slider
+      value={[value]}
+      min={min}
+      max={max}
+      step={label.includes("Brent") ? 1 : 0.5}
+      onValueChange={([v]) => onChange(v)}
+      className="cursor-pointer"
+    />
+  </div>
+);
 
-            <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-muted-foreground">Break-Even Price</span>
-                  <div className="text-2xl font-bold text-foreground">
-                    ${results.breakEvenPrice.toFixed(0)}/bbl
-                  </div>
-                </div>
-                {results.breakEvenPrice > params.brentPriceScenario && (
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                )}
-              </div>
-              {results.breakEvenPrice > params.brentPriceScenario && (
-                <p className="text-xs text-destructive mt-2">
-                  ⚠️ Operação não viável neste cenário
-                </p>
-              )}
-            </div>
+const MetricCard = ({ label, value, icon, trend, unit = "%", isAbsolute = false, status }: any) => (
+  <Card className="overflow-hidden">
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="p-1.5 bg-secondary/50 rounded-md text-muted-foreground">
+          {icon}
+        </div>
+        {status === "danger" ? (
+          <Badge variant="destructive" className="animate-pulse">Crítico</Badge>
+        ) : trend && (
+          <div className={`flex items-center text-xs font-bold ${trend === "up" ? "text-emerald-500" : "text-rose-500"}`}>
+            {trend === "up" ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+            {trend === "up" ? "Alta" : "Queda"}
           </div>
+        )}
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-bold">
+          {!isAbsolute && value > 0 && "+"}{value.toFixed(1)}{unit}
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+);
 
-          {/* Impact Summary */}
-          <div className="p-4 rounded-lg bg-secondary/20 border border-border/30">
-            <h4 className="text-sm font-medium text-foreground mb-3">Resumo do Impacto</h4>
-            <div className="space-y-2 text-sm">
-              {results.netProfitImpact < -20 && (
-                <div className="flex items-start gap-2 text-destructive">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Cenário crítico: redução significativa da rentabilidade pode levar à suspensão de investimentos</span>
-                </div>
-              )}
-              {results.governmentTakeChange > 5 && (
-                <div className="flex items-start gap-2 text-accent">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Aumento do government take pode reduzir atratividade para IOCs</span>
-                </div>
-              )}
-              {results.breakEvenPrice > 60 && (
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Break-even elevado aumenta vulnerabilidade a quedas de preço</span>
-                </div>
-              )}
-              {results.netProfitImpact > 10 && (
-                <div className="flex items-start gap-2 text-success">
-                  <TrendingUp className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Cenário favorável: condições propícias para aumento de investimento</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </TabsContent>
+const InsightItem = ({ condition, type, text }: any) => {
+  if (!condition && type !== "info") return null;
+  
+  const styles = {
+    danger: "bg-rose-500/10 text-rose-600 border-rose-200",
+    warning: "bg-amber-500/10 text-amber-600 border-amber-200",
+    success: "bg-emerald-500/10 text-emerald-600 border-emerald-200",
+    info: "bg-blue-500/10 text-blue-600 border-blue-200"
+  };
 
-        <TabsContent value="projection" className="space-y-4">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={projectionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="baseline"
-                  name="Baseline"
-                  stroke="hsl(var(--muted-foreground))"
-                  fill="hsl(var(--muted))"
-                  fillOpacity={0.3}
-                  strokeDasharray="5 5"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="scenario"
-                  name="Cenário Simulado"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="text-xs text-muted-foreground text-center">
-            Projeção de rentabilidade relativa (base = 100) ao longo de 12 meses
-          </p>
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+  const icons = {
+    danger: <XCircle className="w-4 h-4" />,
+    warning: <AlertTriangle className="w-4 h-4" />,
+    success: <CheckCircle2 className="w-4 h-4" />,
+    info: <Info className="w-4 h-4" />
+  };
+
+  return (
+    <div className={`flex items-start gap-3 p-3 rounded-lg border text-xs font-medium ${styles[type as keyof typeof styles]}`}>
+      <div className="mt-0.5">{icons[type as keyof typeof icons]}</div>
+      <p className="leading-relaxed">{text}</p>
+    </div>
   );
 };
