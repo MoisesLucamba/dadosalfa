@@ -673,88 +673,127 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   );
 
   // ===== REPORT CONTENT =====
-  // Title
+  // Title - with proper spacing
   children.push(
     new Paragraph({
       children: [
         new TextRun({
           text: 'α ALPHADATA',
           bold: true,
-          size: 48,
+          size: 52,
           color: 'DC2626',
         }),
       ],
-      spacing: { after: 200 },
+      spacing: { after: 300 },
     }),
     new Paragraph({
       children: [
         new TextRun({
           text: 'Inteligência de Mercado Petrolífero Angolano',
-          size: 24,
+          size: 26,
           color: '64748B',
+          italics: true,
         }),
       ],
-      spacing: { after: 400 },
+      spacing: { after: 500 },
     }),
     new Paragraph({
       text: data.title,
       heading: HeadingLevel.HEADING_1,
+      spacing: { before: 200, after: 300 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: 'Tipo: ',
+          bold: true,
+          size: 22,
+        }),
+        new TextRun({
+          text: `${getTypeName(data.type)}`,
+          size: 22,
+        }),
+        new TextRun({
+          text: '    |    Período: ',
+          bold: true,
+          size: 22,
+        }),
+        new TextRun({
+          text: `${data.period || 'Atual'}`,
+          size: 22,
+        }),
+      ],
       spacing: { after: 200 },
     }),
     new Paragraph({
       children: [
         new TextRun({
-          text: `Tipo: ${getTypeName(data.type)} | Período: ${data.period || 'Atual'}`,
+          text: 'Gerado em: ',
+          bold: true,
           size: 20,
           color: '64748B',
         }),
-      ],
-      spacing: { after: 100 },
-    }),
-    new Paragraph({
-      children: [
         new TextRun({
-          text: `Gerado em: ${formatDate(data.generatedAt)}`,
-          size: 18,
+          text: formatDate(data.generatedAt),
+          size: 20,
           color: '64748B',
         }),
         data.aiGenerated ? new TextRun({
-          text: ' | Gerado com IA',
-          size: 18,
+          text: '    ✨ Gerado com Inteligência Artificial',
+          size: 20,
           color: '1E40AF',
+          bold: true,
         }) : new TextRun({ text: '' }),
       ],
-      spacing: { after: 400 },
+      spacing: { after: 500 },
     })
   );
 
-  // Summary
+  // Summary - with improved spacing for readability
   if (data.summary) {
     children.push(
       new Paragraph({
-        text: 'Sumário Executivo',
+        children: [
+          new TextRun({
+            text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            color: 'DC2626',
+          }),
+        ],
+        spacing: { before: 400 },
+      }),
+      new Paragraph({
+        text: 'SUMÁRIO EXECUTIVO',
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 200 },
+        spacing: { before: 300, after: 300 },
       }),
       new Paragraph({
         children: [
           new TextRun({
             text: data.summary,
-            size: 22,
+            size: 24,
           }),
         ],
-        spacing: { after: 300 },
+        spacing: { after: 400, line: 360 }, // 1.5 line spacing for better readability
       })
     );
   }
 
-  // Highlights
+  // Highlights - with better visual separation
   if (data.highlights && data.highlights.length > 0) {
     children.push(
       new Paragraph({
-        text: 'Destaques Principais',
+        children: [
+          new TextRun({
+            text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            color: '1E40AF',
+          }),
+        ],
+        spacing: { before: 400 },
+      }),
+      new Paragraph({
+        text: 'DESTAQUES PRINCIPAIS',
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 200 },
+        spacing: { before: 300, after: 300 },
       })
     );
 
@@ -814,13 +853,22 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
     );
   }
 
-  // Data section
+  // Data section - with improved headers
   if (data.content?.data) {
     children.push(
       new Paragraph({
-        text: `Dados de ${getTypeName(data.type)}`,
+        children: [
+          new TextRun({
+            text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            color: '22C55E',
+          }),
+        ],
+        spacing: { before: 500 },
+      }),
+      new Paragraph({
+        text: `DADOS DE ${getTypeName(data.type).toUpperCase()}`,
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: 400, after: 200 },
+        spacing: { before: 300, after: 300 },
       })
     );
 
@@ -902,10 +950,19 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
     })
   );
 
-  // Create document
+  // Create document with proper margins for better readability
   const doc = new Document({
     sections: [{
-      properties: {},
+      properties: {
+        page: {
+          margin: {
+            top: 1440, // 1 inch = 1440 twips
+            bottom: 1440,
+            left: 1800, // 1.25 inches for binding
+            right: 1440,
+          },
+        },
+      },
       headers: {
         default: new Header({
           children: [
@@ -915,13 +972,16 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
                   text: 'AlphaData | ',
                   color: 'DC2626',
                   bold: true,
+                  size: 20,
                 }),
                 new TextRun({
                   text: data.title,
                   color: '64748B',
+                  size: 20,
                 }),
               ],
               alignment: AlignmentType.RIGHT,
+              spacing: { after: 200 },
             }),
           ],
         }),
@@ -934,15 +994,17 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
                 new TextRun({
                   text: 'AlphaData - Inteligência de Mercado Petrolífero Angolano | ',
                   color: '64748B',
-                  size: 16,
+                  size: 18,
                 }),
                 new TextRun({
-                  text: 'Página ',
-                  color: '64748B',
-                  size: 16,
+                  text: 'CONFIDENCIAL',
+                  color: 'DC2626',
+                  bold: true,
+                  size: 18,
                 }),
               ],
               alignment: AlignmentType.CENTER,
+              spacing: { before: 200 },
             }),
           ],
         }),

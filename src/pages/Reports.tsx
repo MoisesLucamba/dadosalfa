@@ -85,9 +85,10 @@ interface ScheduledReport {
 }
 
 const reportCategories = [
-  { name: "Produção", type: "production", icon: BarChart3, color: "bg-primary" },
-  { name: "Mercado", type: "market", icon: TrendingUp, color: "bg-accent" },
-  { name: "Exportações", type: "exports", icon: Ship, color: "bg-success" },
+  { name: "Geral", type: "general", icon: FileText, color: "bg-primary" },
+  { name: "Produção", type: "production", icon: BarChart3, color: "bg-accent" },
+  { name: "Mercado", type: "market", icon: TrendingUp, color: "bg-success" },
+  { name: "Exportações", type: "exports", icon: Ship, color: "bg-warning" },
   { name: "Risco", type: "risk", icon: AlertTriangle, color: "bg-destructive" },
 ];
 
@@ -361,6 +362,7 @@ const Reports = () => {
 
   const getTypeName = (type: string) => {
     switch (type) {
+      case "general": return "Geral";
       case "production": return "Produção";
       case "market": return "Mercado";
       case "exports": return "Exportações";
@@ -864,6 +866,7 @@ const Reports = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="general">📊 Relatório Geral (6+ páginas)</SelectItem>
                   <SelectItem value="production">Produção</SelectItem>
                   <SelectItem value="market">Mercado & Preços</SelectItem>
                   <SelectItem value="exports">Exportações</SelectItem>
