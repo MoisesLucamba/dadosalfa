@@ -198,6 +198,7 @@ export type Database = {
           nif: string
           sector: string
           updated_at: string
+          website: string | null
         }
         Insert: {
           contact_email: string
@@ -211,6 +212,7 @@ export type Database = {
           nif: string
           sector: string
           updated_at?: string
+          website?: string | null
         }
         Update: {
           contact_email?: string
@@ -224,33 +226,43 @@ export type Database = {
           nif?: string
           sector?: string
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
       predefined_companies: {
         Row: {
+          contact_email: string | null
+          contact_info: string | null
           country: string
           created_at: string
           email_domain: string
           id: string
           name: string
           sector: string
+          website: string | null
         }
         Insert: {
+          contact_email?: string | null
+          contact_info?: string | null
           country?: string
           created_at?: string
           email_domain: string
           id?: string
           name: string
           sector: string
+          website?: string | null
         }
         Update: {
+          contact_email?: string | null
+          contact_info?: string | null
           country?: string
           created_at?: string
           email_domain?: string
           id?: string
           name?: string
           sector?: string
+          website?: string | null
         }
         Relationships: []
       }
