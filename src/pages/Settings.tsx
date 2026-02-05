@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +9,135 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserProfile, useUpdateProfile, useUpdateNotificationSettings, useUserNotificationSettings, useChangePassword, useExportUserData, useDeleteAccount } from "@/hooks/useSettings";
+import { 
+  useUserProfile, 
+  useUpdateProfile, 
+  useUpdateNotificationSettings, 
+  useUserNotificationSettings, 
+  useChangePassword, 
+  useExportUserData, 
+  useDeleteAccount 
+} from "@/hooks/useSettings";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, Bell, Shield, User, Building2, Key, Smartphone, Globe, Download, Trash2 } from "lucide-react";
+import { 
+  Loader2, Sun, Moon, Bell, Shield, User, 
+  Building2, Key, Smartphone, Globe, Download, 
+  Trash2, Save, CheckCircle2 
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// --- Types ---
+
+interface ProfileForm {
+  contact_name: string;
+  contact_phone: string;
+  contact_role: string;
+}
+
+interface CompanyForm {
+  company_name: string;
+  nif: string;
+  country: string;
+}
+
+// --- Sub-components ---
+
+const SettingsSection = ({ 
+  title, 
+  description, 
+  icon: Icon, 
+  children, 
+  delay = 0 
+}: { 
+  title: string; 
+  description: string; 
+  icon: any; 
+  children: React.ReactNode;
+  delay?: number;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+  >
+    <Card className="overflow-hidden border-border/50 shadow-sm">
+      <CardHeader className="bg-muted/30 pb-4">
+        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+          <Icon className="w-5 h-5 text-primary" />
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-6">
+        {children}
+      </CardContent>
+    </Card>
+  </motion.div>
+);
+
+const FormField = ({ label, id, description, children }: { label: string; id: string; description?: string; children: React.ReactNode }) => (
+  <div className="space-y-2">
+    <Label htmlFor={id} className="text-sm font-medium">{label}</Label>
+    {children}
+    {description && <p className="text-xs text-muted-foreground">{description}</p>}
+  </div>
+);
+
+const ToggleSetting = ({ 
+  label, 
+  description, 
+  checked, 
+  onCheckedChange, 
+  icon: Icon 
+}: { 
+  label: string; 
+  description: string; 
+  checked: boolean; 
+  onCheckedChange: (checked: boolean) => void;
+  icon?: any;
+}) => (
+  <div className="flex items-center justify-between gap-4 py-1">
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
+        <Label className="text-sm font-medium cursor-pointer" onClick={() => onCheckedChange(!checked)}>
+          {label}
+        </Label>
+      </div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+  </div>
+);
+
+// --- Main Component ---
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  
+  // Queries & Mutations
   const { data: profile, isLoading: loadingProfile } = useUserProfile();
   const { data: notificationSettings } = useUserNotificationSettings();
   const updateProfile = useUpdateProfile();
@@ -28,34 +146,27 @@ const Settings = () => {
   const exportData = useExportUserData();
   const deleteAccount = useDeleteAccount();
 
-  // Profile form state
-  const [profileForm, setProfileForm] = useState({
+  // Form States
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
     contact_name: "",
     contact_phone: "",
     contact_role: "",
   });
 
-  // Company form state
-  const [companyForm, setCompanyForm] = useState({
+  const [companyForm, setCompanyForm] = useState<CompanyForm>({
     company_name: "",
     nif: "",
     country: "",
   });
 
-  // Password form state
   const [passwordForm, setPasswordForm] = useState({
     newPassword: "",
     confirmPassword: "",
   });
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
-  // Notification states
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [priceAlerts, setPriceAlerts] = useState(true);
-  const [weeklyReports, setWeeklyReports] = useState(false);
-  const [whatsappAlerts, setWhatsappAlerts] = useState(false);
-
-  // Load profile data into forms
+  // Sync profile data
   useEffect(() => {
     if (profile) {
       setProfileForm({
@@ -71,65 +182,46 @@ const Settings = () => {
     }
   }, [profile]);
 
-  // Load notification settings
-  useEffect(() => {
-    if (notificationSettings) {
-      const emailSetting = notificationSettings.find(s => s.alert_type === "email_alerts");
-      const priceSetting = notificationSettings.find(s => s.alert_type === "price_alerts");
-      const weeklySetting = notificationSettings.find(s => s.alert_type === "weekly_reports");
-      const whatsappSetting = notificationSettings.find(s => s.alert_type === "whatsapp_alerts");
-      
-      if (emailSetting) setEmailAlerts(emailSetting.is_enabled ?? true);
-      if (priceSetting) setPriceAlerts(priceSetting.is_enabled ?? true);
-      if (weeklySetting) setWeeklyReports(weeklySetting.is_enabled ?? false);
-      if (whatsappSetting) setWhatsappAlerts(whatsappSetting.is_enabled ?? false);
-    }
-  }, [notificationSettings]);
-
-  const handleSaveProfile = () => {
-    updateProfile.mutate(profileForm);
-  };
-
-  const handleSaveCompany = () => {
-    updateProfile.mutate(companyForm);
-  };
-
-  const handleNotificationChange = (alertType: string, isEnabled: boolean) => {
+  // Notification Handlers
+  const handleNotificationToggle = useCallback((alertType: string, isEnabled: boolean) => {
     updateNotifications.mutate({ 
       alertType, 
       settings: { is_enabled: isEnabled } 
     });
+  }, [updateNotifications]);
+
+  const getNotificationStatus = (type: string) => {
+    return notificationSettings?.find(s => s.alert_type === type)?.is_enabled ?? false;
   };
 
-  const handleChangePassword = () => {
+  // Action Handlers
+  const handleSaveProfile = () => updateProfile.mutate(profileForm);
+  const handleSaveCompany = () => updateProfile.mutate(companyForm);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error("As senhas não coincidem");
-      return;
+      return toast.error("As senhas não coincidem");
     }
-    if (passwordForm.newPassword.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
-      return;
+    if (passwordForm.newPassword.length < 8) {
+      return toast.error("A senha deve ter pelo menos 8 caracteres para maior segurança");
     }
+    
     changePassword.mutate({ newPassword: passwordForm.newPassword }, {
       onSuccess: () => {
-        setPasswordDialogOpen(false);
+        setIsPasswordDialogOpen(false);
         setPasswordForm({ newPassword: "", confirmPassword: "" });
       }
     });
   };
 
-  const handleExportData = () => {
-    exportData.mutate();
-  };
-
-  const handleDeleteAccount = () => {
-    deleteAccount.mutate();
-  };
-
   if (loadingProfile) {
     return (
       <div className="flex h-screen bg-background items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Carregando suas configurações...</p>
+        </div>
       </div>
     );
   }
@@ -138,7 +230,6 @@ const Settings = () => {
     <>
       <Helmet>
         <title>Configurações | AlphaData</title>
-        <meta name="description" content="Configurações da plataforma AlphaData" />
       </Helmet>
 
       <div className="flex h-screen bg-background overflow-hidden">
@@ -147,436 +238,286 @@ const Settings = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header activeItem="/settings" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
+            <div className="max-w-4xl mx-auto space-y-8">
               {/* Page Header */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6 md:mb-8"
-              >
-                <h1 className="text-xl md:text-2xl font-bold text-foreground">Configurações</h1>
-                <p className="text-sm md:text-base text-muted-foreground">Gerencie suas preferências e configurações da conta</p>
-              </motion.div>
+              <header className="space-y-1">
+                <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+                <p className="text-muted-foreground">Gerencie as preferências da sua conta e da sua organização.</p>
+              </header>
 
-              {/* Theme Settings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      {theme === "dark" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                      Aparência
-                    </CardTitle>
-                    <CardDescription>Personalize a aparência da plataforma</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">Modo Escuro</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Alternar entre tema claro e escuro
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Sun className="w-4 h-4 text-muted-foreground" />
-                        <Switch
-                          checked={theme === "dark"}
-                          onCheckedChange={toggleTheme}
-                        />
-                        <Moon className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <div className="grid gap-8">
+                {/* Appearance */}
+                <SettingsSection 
+                  title="Aparência" 
+                  description="Personalize como a plataforma AlphaData aparece para você."
+                  icon={theme === "dark" ? Moon : Sun}
+                  delay={0.1}
+                >
+                  <ToggleSetting 
+                    label="Modo Escuro"
+                    description="Alternar entre o tema claro e escuro para melhor conforto visual."
+                    checked={theme === "dark"}
+                    onCheckedChange={toggleTheme}
+                  />
+                </SettingsSection>
 
-              {/* Notification Settings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      <Bell className="w-5 h-5" />
-                      Notificações
-                    </CardTitle>
-                    <CardDescription>Configure como deseja receber alertas</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">Alertas por Email</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Receber notificações importantes por email
-                        </p>
-                      </div>
-                      <Switch 
-                        checked={emailAlerts} 
-                        onCheckedChange={(checked) => {
-                          setEmailAlerts(checked);
-                          handleNotificationChange("email_alerts", checked);
-                        }}
-                      />
-                    </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">Alertas de Preço</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Notificar sobre mudanças significativas nos preços
-                        </p>
-                      </div>
-                      <Switch 
-                        checked={priceAlerts} 
-                        onCheckedChange={(checked) => {
-                          setPriceAlerts(checked);
-                          handleNotificationChange("price_alerts", checked);
-                        }}
-                      />
-                    </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">Relatórios Semanais</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Receber resumo semanal por email
-                        </p>
-                      </div>
-                      <Switch 
-                        checked={weeklyReports} 
-                        onCheckedChange={(checked) => {
-                          setWeeklyReports(checked);
-                          handleNotificationChange("weekly_reports", checked);
-                        }}
-                      />
-                    </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">WhatsApp Business</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Receber alertas via WhatsApp
-                        </p>
-                      </div>
-                      <Switch 
-                        checked={whatsappAlerts} 
-                        onCheckedChange={(checked) => {
-                          setWhatsappAlerts(checked);
-                          handleNotificationChange("whatsapp_alerts", checked);
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                {/* Notifications */}
+                <SettingsSection 
+                  title="Notificações" 
+                  description="Escolha quais alertas você deseja receber e por quais canais."
+                  icon={Bell}
+                  delay={0.15}
+                >
+                  <div className="space-y-4">
+                    <ToggleSetting 
+                      label="Alertas por Email"
+                      description="Receba notificações críticas e atualizações importantes no seu email."
+                      checked={getNotificationStatus("email_alerts")}
+                      onCheckedChange={(v) => handleNotificationToggle("email_alerts", v)}
+                    />
+                    <Separator className="opacity-50" />
+                    <ToggleSetting 
+                      label="Alertas de Preço"
+                      description="Seja notificado instantaneamente sobre mudanças significativas no mercado."
+                      checked={getNotificationStatus("price_alerts")}
+                      onCheckedChange={(v) => handleNotificationToggle("price_alerts", v)}
+                    />
+                    <Separator className="opacity-50" />
+                    <ToggleSetting 
+                      label="Relatórios Semanais"
+                      description="Receba um resumo executivo de toda a atividade da semana."
+                      checked={getNotificationStatus("weekly_reports")}
+                      onCheckedChange={(v) => handleNotificationToggle("weekly_reports", v)}
+                    />
+                    <Separator className="opacity-50" />
+                    <ToggleSetting 
+                      label="Alertas via WhatsApp"
+                      description="Receba alertas urgentes diretamente no seu telemóvel."
+                      checked={getNotificationStatus("whatsapp_alerts")}
+                      onCheckedChange={(v) => handleNotificationToggle("whatsapp_alerts", v)}
+                      icon={Smartphone}
+                    />
+                  </div>
+                </SettingsSection>
 
-              {/* Profile Settings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      <User className="w-5 h-5" />
-                      Perfil
-                    </CardTitle>
-                    <CardDescription>Informações da sua conta</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={user?.email || ""}
-                          disabled
-                          className="bg-secondary/50"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="name">Nome</Label>
-                          <Input 
-                            id="name" 
-                            placeholder="Seu nome" 
-                            value={profileForm.contact_name}
-                            onChange={(e) => setProfileForm({ ...profileForm, contact_name: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Telefone</Label>
-                          <Input 
-                            id="phone" 
-                            placeholder="+244 XXX XXX XXX" 
-                            value={profileForm.contact_phone}
-                            onChange={(e) => setProfileForm({ ...profileForm, contact_phone: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Cargo</Label>
+                {/* Profile Information */}
+                <SettingsSection 
+                  title="Perfil Pessoal" 
+                  description="Suas informações de contato e cargo na organização."
+                  icon={User}
+                  delay={0.2}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Nome de Contato" id="contact_name">
+                      <Input 
+                        id="contact_name"
+                        value={profileForm.contact_name}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, contact_name: e.target.value }))}
+                        placeholder="Seu nome completo"
+                      />
+                    </FormField>
+                    <FormField label="Telefone" id="contact_phone">
+                      <Input 
+                        id="contact_phone"
+                        value={profileForm.contact_phone}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, contact_phone: e.target.value }))}
+                        placeholder="+244 ..."
+                      />
+                    </FormField>
+                    <div className="md:col-span-2">
+                      <FormField label="Cargo / Função" id="contact_role">
                         <Input 
-                          id="role" 
-                          placeholder="Seu cargo" 
+                          id="contact_role"
                           value={profileForm.contact_role}
-                          onChange={(e) => setProfileForm({ ...profileForm, contact_role: e.target.value })}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, contact_role: e.target.value }))}
+                          placeholder="Ex: Gestor de Operações"
                         />
-                      </div>
+                      </FormField>
                     </div>
+                  </div>
+                  <div className="flex justify-end pt-2">
                     <Button 
-                      className="w-full sm:w-auto" 
-                      onClick={handleSaveProfile}
+                      onClick={handleSaveProfile} 
                       disabled={updateProfile.isPending}
+                      className="gap-2"
                     >
-                      {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {updateProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       Salvar Alterações
                     </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  </div>
+                </SettingsSection>
 
-              {/* Company Settings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      <Building2 className="w-5 h-5" />
-                      Empresa
-                    </CardTitle>
-                    <CardDescription>Dados da organização</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="company">Nome da Empresa</Label>
+                {/* Company Information */}
+                <SettingsSection 
+                  title="Dados da Empresa" 
+                  description="Informações fiscais e de localização da sua organização."
+                  icon={Building2}
+                  delay={0.25}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      <FormField label="Nome da Empresa" id="company_name">
                         <Input 
-                          id="company" 
-                          placeholder="Nome da empresa" 
+                          id="company_name"
                           value={companyForm.company_name}
-                          onChange={(e) => setCompanyForm({ ...companyForm, company_name: e.target.value })}
+                          onChange={(e) => setCompanyForm(prev => ({ ...prev, company_name: e.target.value }))}
                         />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nif">NIF</Label>
-                          <Input 
-                            id="nif" 
-                            placeholder="Número de Identificação Fiscal" 
-                            value={companyForm.nif}
-                            onChange={(e) => setCompanyForm({ ...companyForm, nif: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="country">País</Label>
-                          <Input 
-                            id="country" 
-                            value={companyForm.country}
-                            onChange={(e) => setCompanyForm({ ...companyForm, country: e.target.value })}
-                          />
-                        </div>
-                      </div>
+                      </FormField>
                     </div>
+                    <FormField label="NIF" id="nif">
+                      <Input 
+                        id="nif"
+                        value={companyForm.nif}
+                        onChange={(e) => setCompanyForm(prev => ({ ...prev, nif: e.target.value }))}
+                      />
+                    </FormField>
+                    <FormField label="País" id="country">
+                      <Input 
+                        id="country"
+                        value={companyForm.country}
+                        onChange={(e) => setCompanyForm(prev => ({ ...prev, country: e.target.value }))}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="flex justify-end pt-2">
                     <Button 
-                      className="w-full sm:w-auto"
-                      onClick={handleSaveCompany}
+                      onClick={handleSaveCompany} 
                       disabled={updateProfile.isPending}
+                      variant="outline"
+                      className="gap-2"
                     >
-                      {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salvar Dados da Empresa
+                      {updateProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      Atualizar Empresa
                     </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  </div>
+                </SettingsSection>
 
-              {/* Security Settings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      <Shield className="w-5 h-5" />
-                      Segurança
-                    </CardTitle>
-                    <CardDescription>Configurações de segurança da conta</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                          <Key className="w-4 h-4" />
-                          Alterar Senha
-                        </Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Atualizar sua senha de acesso
-                        </p>
-                      </div>
-                      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">Alterar</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Alterar Senha</DialogTitle>
-                            <DialogDescription>
-                              Digite sua nova senha abaixo.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="newPassword">Nova Senha</Label>
-                              <Input 
-                                id="newPassword" 
-                                type="password" 
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-                              <Input 
-                                id="confirmPassword" 
-                                type="password" 
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button 
-                              onClick={handleChangePassword}
-                              disabled={changePassword.isPending}
-                            >
-                              {changePassword.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              Salvar
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                {/* Security */}
+                <SettingsSection 
+                  title="Segurança" 
+                  description="Proteja sua conta alterando sua senha regularmente."
+                  icon={Shield}
+                  delay={0.3}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Senha de Acesso</p>
+                      <p className="text-xs text-muted-foreground">Recomendamos uma senha forte com pelo menos 8 caracteres.</p>
                     </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                          <Smartphone className="w-4 h-4" />
-                          Autenticação em Dois Fatores
-                        </Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Adicionar camada extra de segurança
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Em breve
-                      </Button>
-                    </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                          <Globe className="w-4 h-4" />
-                          Sessões Ativas
-                        </Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Ver e gerenciar dispositivos conectados
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Em breve
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                    <Button variant="outline" onClick={() => setIsPasswordDialogOpen(true)} className="gap-2">
+                      <Key className="w-4 h-4" />
+                      Alterar Senha
+                    </Button>
+                  </div>
+                </SettingsSection>
 
-              {/* Data & Export */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      <Download className="w-5 h-5" />
-                      Dados
-                    </CardTitle>
-                    <CardDescription>Exportação e gerenciamento de dados</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Data Management */}
+                <SettingsSection 
+                  title="Gestão de Dados" 
+                  description="Controle suas informações e a permanência da sua conta."
+                  icon={Download}
+                  delay={0.35}
+                >
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <Label className="text-sm font-medium">Exportar Dados</Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Baixar todos os seus dados em formato JSON
-                        </p>
+                        <p className="text-sm font-medium">Exportar Meus Dados</p>
+                        <p className="text-xs text-muted-foreground">Baixe uma cópia completa de todos os seus dados em formato JSON.</p>
                       </div>
                       <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleExportData}
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => exportData.mutate()}
                         disabled={exportData.isPending}
+                        className="gap-2"
                       >
-                        {exportData.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4 mr-2" />
-                        )}
+                        {exportData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         Exportar
                       </Button>
                     </div>
-                    <Separator />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    
+                    <Separator className="opacity-50" />
+                    
+                    <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <Label className="text-sm font-medium text-destructive flex items-center gap-2">
-                          <Trash2 className="w-4 h-4" />
-                          Excluir Conta
-                        </Label>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Remover permanentemente sua conta e dados
-                        </p>
+                        <p className="text-sm font-medium text-destructive">Zona de Perigo</p>
+                        <p className="text-xs text-muted-foreground">Excluir sua conta é uma ação permanente e irreversível.</p>
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">Excluir</Button>
+                          <Button variant="destructive" size="sm" className="gap-2">
+                            <Trash2 className="w-4 h-4" />
+                            Excluir Conta
+                          </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Esta ação não pode ser desfeita. Isso excluirá permanentemente sua conta e removerá seus dados de nossos servidores.
+                              Esta ação não pode ser desfeita. Isso excluirá permanentemente sua conta e removerá todos os seus dados de nossos servidores.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAccount}>
-                              Excluir Conta
+                            <AlertDialogAction 
+                              onClick={() => deleteAccount.mutate()}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Sim, Excluir Permanentemente
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  </div>
+                </SettingsSection>
+              </div>
             </div>
           </main>
         </div>
       </div>
+
+      {/* Password Change Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <form onSubmit={handleChangePassword}>
+            <DialogHeader>
+              <DialogTitle>Alterar Senha</DialogTitle>
+              <DialogDescription>Digite sua nova senha abaixo para atualizar o acesso.</DialogDescription>
+            </DialogHeader>
+            <div className="py-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nova Senha</Label>
+                <Input 
+                  id="new-password" 
+                  type="password" 
+                  required
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+                <Input 
+                  id="confirm-password" 
+                  type="password" 
+                  required
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setIsPasswordDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={changePassword.isPending}>
+                {changePassword.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Atualizar Senha
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

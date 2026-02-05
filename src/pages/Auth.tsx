@@ -1,52 +1,74 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslation } from "react-i18next";
 import { 
-  Home, 
   Eye, 
   EyeOff, 
   Mail, 
   Lock, 
   ArrowLeft,
-  ChevronRight,
   BarChart3,
   Globe,
   ShieldCheck,
   Building2,
   User,
-  ExternalLink,
-  CheckCircle2
+  ExternalLink
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 // Integrations & UI
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { LanguageSelector } from "@/components/LanguageSelector";
-import { AccountTypeSelector } from "@/components/auth/AccountTypeSelector";
-import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
-import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
 import alphadataLogo from "@/assets/alphadata-logo.png";
 
-/**
- * SCHEMAS: Validation
- */
+// Importação dos componentes de formulário solicitados
+import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
+import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
+
+// --- Institutional UI Components ---
+const Button = ({ children, className, variant, onClick, disabled, type, ...props }: any) => {
+  const baseStyles = "px-6 py-3 font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-xs";
+  const variants: any = {
+    primary: "bg-[#002855] hover:bg-black text-white shadow-lg hover:shadow-black/20",
+    secondary: "bg-[#C8102E] hover:bg-[#a30d25] text-white shadow-lg hover:shadow-[#C8102E]/20",
+    outline: "border-2 border-[#002855] text-[#002855] hover:bg-[#002855] hover:text-white",
+    ghost: "text-[#002855] hover:bg-gray-50",
+    link: "text-[#002855] hover:text-black p-0 h-auto font-bold underline-offset-4 hover:underline"
+  };
+  return (
+    <button 
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${baseStyles} ${variants[variant || 'primary']} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Input = ({ className, ...props }: any) => (
+  <input 
+    className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-[#002855] focus:bg-white outline-none transition-all font-medium text-black placeholder:text-gray-400 text-sm ${className}`}
+    {...props}
+  />
+);
+
+const Label = ({ children, className, ...props }: any) => (
+  <label className={`text-[11px] font-bold uppercase tracking-widest text-black mb-2 block ${className}`} {...props}>
+    {children}
+  </label>
+);
+
+// --- Validation Schemas ---
 const loginSchema = z.object({
   email: z.string().trim().email({ message: "Email institucional inválido" }),
   password: z.string().min(6, { message: "A senha deve conter no mínimo 6 caracteres" }),
 });
 
-/**
- * COMPONENT: Auth
- * Institutional-grade authentication portal
- */
 export default function Auth() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   
   // View States
   const [authView, setAuthView] = useState<"login" | "signup" | "forgot-password">("login");
@@ -55,6 +77,8 @@ export default function Auth() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -73,9 +97,6 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  /**
-   * HANDLER: Login
-   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const validation = loginSchema.safeParse({ email, password });
@@ -125,274 +146,249 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex overflow-hidden font-sans selection:bg-primary/10">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans selection:bg-[#002855]/10">
       
-      {/* Navigation Overlays */}
-      <nav className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
-        <Link 
-          to="/landing" 
-          className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all shadow-sm"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-xs font-bold uppercase tracking-widest">Portal</span>
-        </Link>
-        <div className="pointer-events-auto scale-90 origin-right">
-          <LanguageSelector />
-        </div>
-      </nav>
-
-      {/* LEFT PANEL: Institutional Branding & Trust */}
-      <section className="hidden lg:flex lg:w-[45%] xl:w-[40%] bg-[#0F172A] relative overflow-hidden border-r border-white/5">
-        {/* Abstract Data Pattern */}
-        <div className="absolute inset-0 opacity-20" 
-          style={{ backgroundImage: `radial-gradient(#334155 1px, transparent 1px)`, backgroundSize: '32px 32px' }} 
+      {/* LEFT PANEL: Institutional Branding */}
+      <section className="lg:w-[45%] bg-[#002855] flex flex-col justify-between p-12 lg:p-20 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.03]" 
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} 
         />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
         
-        <div className="relative z-10 flex flex-col justify-between p-16 w-full">
-          <header>
-            <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto brightness-0 invert opacity-90" />
-          </header>
+        <div className="relative z-10">
+          <Link to="/" className="inline-block mb-24">
+            <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto brightness-0 invert" />
+          </Link>
 
-          <div className="space-y-10">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-6"
-            >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary-foreground/80 text-[10px] font-bold uppercase tracking-[0.2em]">
-                <ShieldCheck className="h-3 w-3" />
-                Enterprise Intelligence
-              </div>
-              <h1 className="text-4xl xl:text-5xl font-semibold text-white leading-[1.1] tracking-tight">
-                Decisões baseadas em <span className="text-primary">dados reais</span> para o setor de energia.
-              </h1>
-              <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-                Acesse a plataforma líder em inteligência de mercado para o setor petrolífero africano.
-              </p>
-            </motion.div>
-
-            {/* Trust Indicators */}
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                { icon: Globe, title: "Cobertura Pan-Africana", desc: "Dados consolidados de mais de 25 nações." },
-                { icon: BarChart3, title: "Análise Preditiva", desc: "Modelos de IA treinados no mercado local." },
-                { icon: CheckCircle2, title: "Conformidade Regulatória", desc: "Processos auditados e seguros." }
-              ].map((item, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + (i * 0.1) }}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
-                >
-                  <item.icon className="h-6 w-6 text-primary mt-1 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <h3 className="text-white font-medium text-sm">{item.title}</h3>
-                    <p className="text-slate-500 text-xs mt-1">{item.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          <footer className="flex items-center justify-between text-[10px] text-slate-500 font-medium uppercase tracking-widest">
-            <span>© 2026 ALPHADATA INTEL</span>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-              <a href="#" className="hover:text-white transition-colors">Termos</a>
-            </div>
-          </footer>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="space-y-8"
+          >
+            <div className="h-1.5 w-16 bg-[#C8102E]" />
+            <h1 className="text-4xl xl:text-6xl font-black text-white leading-tight tracking-tight uppercase">
+              Inteligência <br />
+              <span className="text-[#C8102E]">Auditável</span>
+            </h1>
+            <p className="text-blue-100/60 text-xl leading-relaxed max-w-md font-light">
+              Plataforma institucional de monitorização e análise regulatória para o setor energético africano.
+            </p>
+          </motion.div>
         </div>
+
+        <div className="relative z-10 grid grid-cols-1 gap-8 mt-12">
+          {[
+            { icon: Globe, title: "Cobertura Continental", desc: "Dados de 25+ jurisdições africanas." },
+            { icon: ShieldCheck, title: "Conformidade Total", desc: "Segurança de nível governamental." }
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-5">
+              <div className="w-12 h-12 border border-white/20 flex items-center justify-center text-[#C8102E] bg-white/5">
+                <item.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-xs uppercase tracking-widest">{item.title}</h3>
+                <p className="text-blue-200/40 text-[11px] mt-1">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <footer className="relative z-10 pt-12 flex items-center justify-between text-[10px] text-blue-300/30 font-bold uppercase tracking-[0.3em]">
+          <span>© 2026 ALPHADATA</span>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
+            <a href="#" className="hover:text-white transition-colors">Termos</a>
+          </div>
+        </footer>
       </section>
 
       {/* RIGHT PANEL: Authentication Form */}
-      <section className="flex-1 flex items-center justify-center p-8 bg-slate-50/50">
-        <motion.div 
-          className="w-full max-w-[440px]"
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          {/* Mobile Logo */}
-          <div className="lg:hidden mb-10 text-center">
-            <img src={alphadataLogo} alt="AlphaData" className="h-8 w-auto mx-auto" />
-          </div>
+      <section className="flex-1 flex items-center justify-center p-8 lg:p-24 bg-white">
+        <div className="w-full max-w-[440px]">
+          <AnimatePresence mode="wait">
+            {authView === "login" ? (
+              <motion.div
+                key="login"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-10"
+              >
+                <header className="space-y-4">
+                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Portal do Cliente</h2>
+                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
+                    Insira suas credenciais corporativas para aceder ao terminal de inteligência.
+                  </p>
+                </header>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-            <AnimatePresence mode="wait">
-              {authView === "login" ? (
-                <motion.div
-                  key="login"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-8"
-                >
-                  <header className="text-center space-y-2">
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Acesso ao Portal</h2>
-                    <p className="text-slate-500 text-sm">Insira suas credenciais corporativas para continuar.</p>
-                  </header>
-
-                  <form onSubmit={handleLogin} className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-500">E-mail Profissional</Label>
-                        <div className="relative group">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="exemplo@empresa.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="pl-10 h-11 border-slate-200 rounded-lg focus:ring-primary/20 focus:border-primary transition-all"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-slate-500">Senha</Label>
-                          <button 
-                            type="button" 
-                            onClick={() => switchView("forgot-password")}
-                            className="text-[11px] font-bold text-primary hover:underline uppercase tracking-tighter"
-                          >
-                            Esqueceu a senha?
-                          </button>
-                        </div>
-                        <div className="relative group">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="pl-10 pr-10 h-11 border-slate-200 rounded-lg focus:ring-primary/20 focus:border-primary transition-all"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
+                <form onSubmit={handleLogin} className="space-y-8">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-mail Profissional</Label>
+                      <div className="relative group">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-[#002855] transition-colors" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="exemplo@empresa.com"
+                          value={email}
+                          onChange={(e: any) => setEmail(e.target.value)}
+                          className="pl-12 border-gray-100"
+                          required
+                        />
                       </div>
                     </div>
 
-                    <Button 
-                      type="submit" 
-                      className="w-full h-11 bg-[#0F172A] hover:bg-slate-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-slate-200"
-                      disabled={loading}
-                    >
-                      {loading ? "Verificando..." : "Entrar no Sistema"}
-                    </Button>
-                  </form>
-
-                  <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
-                    <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-bold">
-                      <span className="bg-white px-4 text-slate-400">Novo por aqui?</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="password">Senha de Acesso</Label>
+                        <button 
+                          type="button" 
+                          onClick={() => switchView("forgot-password")}
+                          className="text-[10px] font-bold text-[#C8102E] hover:text-black uppercase tracking-widest transition-colors"
+                        >
+                          Esqueceu a senha?
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-[#002855] transition-colors" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e: any) => setPassword(e.target.value)}
+                          className="pl-12 pr-12 border-gray-100"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   <Button 
+                    type="submit" 
+                    className="w-full py-4 text-sm"
+                    disabled={loading}
+                  >
+                    {loading ? "VERIFICANDO..." : "ENTRAR NO SISTEMA"}
+                  </Button>
+                </form>
+
+                <div className="pt-8 border-t border-gray-100">
+                  <div className="relative mb-8">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100" /></div>
+                    <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em] font-black">
+                      <span className="bg-white px-6 text-gray-400">Novo Utilizador?</span>
+                    </div>
+                  </div>
+                  <Button 
                     variant="outline" 
-                    className="w-full h-11 border-slate-200 text-slate-600 hover:bg-slate-50 font-medium rounded-lg"
+                    className="w-full py-4"
                     onClick={() => switchView("signup")}
                   >
-                    Solicitar Acesso Institucional
+                    SOLICITAR ACESSO INSTITUCIONAL
                   </Button>
-                </motion.div>
-              ) : authView === "signup" ? (
-                <motion.div
-                  key="signup"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-8"
-                >
-                  <header className="space-y-2">
+                </div>
+              </motion.div>
+            ) : authView === "signup" ? (
+              <motion.div
+                key="signup"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-10"
+              >
+                <header className="space-y-4">
+                  <button 
+                    onClick={() => switchView("login")}
+                    className="flex items-center gap-2 text-[10px] font-bold text-[#C8102E] uppercase tracking-widest hover:text-black transition-all"
+                  >
+                    <ArrowLeft className="h-3 w-3" /> Voltar ao Login
+                  </button>
+                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Solicitar Acesso</h2>
+                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
+                    Selecione o perfil institucional para iniciar o processo de revisão.
+                  </p>
+                </header>
+
+                <div className="space-y-8">
+                  <div className="grid grid-cols-2 gap-4">
                     <button 
-                      onClick={() => switchView("login")}
-                      className="flex items-center gap-1 text-xs font-bold text-primary uppercase tracking-widest hover:gap-2 transition-all"
+                      onClick={() => setAccountType("personal")}
+                      className={`p-6 border text-left transition-all flex flex-col gap-4 ${accountType === "personal" ? "border-[#002855] bg-[#002855]/5" : "border-gray-100 hover:border-gray-200"}`}
                     >
-                      <ArrowLeft className="h-3 w-3" /> Voltar ao Login
+                      <User className={`h-5 w-5 ${accountType === "personal" ? "text-[#002855]" : "text-gray-300"}`} />
+                      <div>
+                        <span className="block text-[10px] font-black text-black uppercase tracking-widest">Individual</span>
+                        <span className="text-[9px] text-gray-400 font-medium leading-tight mt-1 block">Consultores independentes.</span>
+                      </div>
                     </button>
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Registro de Conta</h2>
-                    <p className="text-slate-500 text-sm">Selecione o perfil que melhor descreve sua atuação.</p>
-                  </header>
-
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        onClick={() => setAccountType("personal")}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${accountType === "personal" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200"}`}
-                      >
-                        <User className={`h-5 w-5 mb-2 ${accountType === "personal" ? "text-primary" : "text-slate-400"}`} />
-                        <span className="block text-sm font-bold text-slate-900">Individual</span>
-                        <span className="text-[10px] text-slate-500 leading-tight">Consultores e analistas independentes.</span>
-                      </button>
-                      <button 
-                        onClick={() => setAccountType("organization")}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${accountType === "organization" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200"}`}
-                      >
-                        <Building2 className={`h-5 w-5 mb-2 ${accountType === "organization" ? "text-primary" : "text-slate-400"}`} />
-                        <span className="block text-sm font-bold text-slate-900">Corporativo</span>
-                        <span className="text-[10px] text-slate-500 leading-tight">Empresas, ONGs e órgãos governamentais.</span>
-                      </button>
-                    </div>
-
-                    <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-                      {accountType === "personal" ? (
-                        <PersonalSignupForm onSuccess={() => switchView("login")} />
-                      ) : (
-                        <OrganizationSignupForm onSuccess={() => switchView("login")} />
-                      )}
-                    </div>
+                    <button 
+                      onClick={() => setAccountType("organization")}
+                      className={`p-6 border text-left transition-all flex flex-col gap-4 ${accountType === "organization" ? "border-[#002855] bg-[#002855]/5" : "border-gray-100 hover:border-gray-200"}`}
+                    >
+                      <Building2 className={`h-5 w-5 ${accountType === "organization" ? "text-[#002855]" : "text-gray-300"}`} />
+                      <div>
+                        <span className="block text-[10px] font-black text-black uppercase tracking-widest">Corporativo</span>
+                        <span className="text-[9px] text-gray-400 font-medium leading-tight mt-1 block">Empresas e governos.</span>
+                      </div>
+                    </button>
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="forgot"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-8"
-                >
-                  <header className="text-center space-y-2">
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Recuperar Senha</h2>
-                    <p className="text-slate-500 text-sm">Enviaremos instruções para o seu e-mail cadastrado.</p>
-                  </header>
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">E-mail de Recuperação</Label>
-                      <Input placeholder="seu@email.com" className="h-11 border-slate-200" />
-                    </div>
-                    <Button className="w-full h-11 bg-primary text-white font-semibold">Enviar Link de Redefinição</Button>
-                    <Button variant="ghost" className="w-full text-slate-500 text-xs" onClick={() => switchView("login")}>Cancelar e Voltar</Button>
+                  {/* Renderização condicional dos componentes solicitados */}
+                  <div className="pt-4">
+                    {accountType === "personal" ? (
+                      <PersonalSignupForm />
+                    ) : (
+                      <OrganizationSignupForm />
+                    )}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="forgot"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="space-y-10"
+              >
+                <header className="space-y-4">
+                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Recuperar Senha</h2>
+                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
+                    Enviaremos instruções de redefinição para o seu e-mail institucional cadastrado.
+                  </p>
+                </header>
 
-          {/* External Links */}
-          <div className="mt-8 flex justify-center gap-6">
-            <a href="#" className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest">
-              Suporte Técnico <ExternalLink className="h-3 w-3" />
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>E-mail de Recuperação</Label>
+                    <Input placeholder="seu@email.com" className="border-gray-100" />
+                  </div>
+                  <Button className="w-full py-4">ENVIAR LINK DE REDEFINIÇÃO</Button>
+                  <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest" onClick={() => switchView("login")}>Cancelar e Voltar</Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Support Links */}
+          <div className="mt-16 flex justify-center gap-10 border-t border-gray-50 pt-8">
+            <a href="#" className="flex items-center gap-2 text-[10px] font-bold text-gray-300 hover:text-black transition-colors uppercase tracking-widest">
+              Suporte <ExternalLink className="h-3 w-3" />
             </a>
-            <a href="#" className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest">
+            <a href="#" className="flex items-center gap-2 text-[10px] font-bold text-gray-300 hover:text-black transition-colors uppercase tracking-widest">
               Documentação <ExternalLink className="h-3 w-3" />
             </a>
           </div>
-        </motion.div>
+        </div>
       </section>
     </div>
   );
