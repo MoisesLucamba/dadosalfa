@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Bell, AlertTriangle, TrendingUp, TrendingDown, Ship, Globe, 
   Plus, Settings, Trash2, Check, Info, Mail, Smartphone, 
-  Clock, Filter, Search, ChevronRight, Activity
+  Clock, Filter, Search, ChevronRight, Activity, RefreshCw
 } from "lucide-react";
 import { 
   useNotifications, useUserAlerts, useAddUserAlert, 
