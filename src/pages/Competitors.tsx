@@ -302,7 +302,19 @@ const Operators = () => {
                       className="pl-10 bg-[#16191E] border-zinc-800 w-64 h-11 rounded-xl focus:ring-primary/50"
                     />
                   </div>
-                  <DataExportButton data={operatorsData} filename="operadoras_angola" />
+                  <DataExportButton 
+                    data={operatorsData} 
+                    filename="operadoras_angola"
+                    columns={[
+                      { key: 'name', header: 'Nome' },
+                      { key: 'production', header: 'Produção (kbpd)' },
+                      { key: 'marketShare', header: 'Quota Mercado (%)' },
+                      { key: 'efficiency', header: 'Eficiência (%)' },
+                      { key: 'headquarters', header: 'Sede' },
+                      { key: 'since', header: 'Desde' },
+                      { key: 'website', header: 'Website' },
+                    ]}
+                  />
                 </div>
               </div>
 

@@ -77,6 +77,8 @@ export default function Auth() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
   
   // Form States
   const [email, setEmail] = useState("");
@@ -136,6 +138,112 @@ export default function Auth() {
       toast.error("Falha na autenticação", { description: err.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePersonalSignup = async (data: any) => {
+    setSignupLoading(true);
+    setSignupError(null);
+    try {
+      // Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
+      
+      if (authError) throw authError;
+      
+      if (authData.user) {
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            company_name: data.companyName,
+            company_type: 'consultora',
+            contact_name: data.contactName,
+            contact_role: data.jobTitle,
+            contact_phone: data.phone,
+            job_title: data.jobTitle,
+            nif: 'N/A',
+            account_type: 'personal',
+            accepted_terms: data.acceptTerms,
+            accepted_nda: data.acceptNda,
+          });
+          
+        if (profileError) throw profileError;
+        
+        toast.success("Conta criada com sucesso!", { 
+          description: "Por favor, verifique o seu email para confirmar o registo." 
+        });
+        setAuthView("login");
+      }
+    } catch (err: any) {
+      setSignupError(err.message || "Erro ao criar conta");
+      toast.error("Erro no registo", { description: err.message });
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  const handleOrganizationSignup = async (data: any) => {
+    setSignupLoading(true);
+    setSignupError(null);
+    try {
+      // Create organization first
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: data.companyName,
+          nif: data.nif,
+          sector: data.sector,
+          email_domain: data.emailDomain,
+          country: data.country,
+          contact_email: data.contactEmail,
+          contact_phone: data.contactPhone,
+        })
+        .select()
+        .single();
+        
+      if (orgError) throw orgError;
+      
+      // Create user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.contactEmail,
+        password: data.password,
+      });
+      
+      if (authError) throw authError;
+      
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            company_name: data.companyName,
+            company_type: data.sector || 'operadora',
+            contact_name: data.contactName,
+            contact_role: data.contactRole,
+            contact_phone: data.contactPhone,
+            nif: data.nif,
+            organization_id: orgData.id,
+            account_type: 'organization',
+            accepted_terms: data.acceptTerms,
+            accepted_nda: data.acceptNda,
+          });
+          
+        if (profileError) throw profileError;
+        
+        toast.success("Organização registada!", { 
+          description: "O registo será analisado pela nossa equipa." 
+        });
+        setAuthView("login");
+      }
+    } catch (err: any) {
+      setSignupError(err.message || "Erro ao registar organização");
+      toast.error("Erro no registo", { description: err.message });
+    } finally {
+      setSignupLoading(false);
     }
   };
 
@@ -345,9 +453,9 @@ export default function Auth() {
                   {/* Renderização condicional dos componentes solicitados */}
                   <div className="pt-4">
                     {accountType === "personal" ? (
-                      <PersonalSignupForm />
+                      <PersonalSignupForm onSubmit={handlePersonalSignup} isLoading={signupLoading} error={signupError} />
                     ) : (
-                      <OrganizationSignupForm />
+                      <OrganizationSignupForm onSubmit={handleOrganizationSignup} isLoading={signupLoading} error={signupError} />
                     )}
                   </div>
                 </div>

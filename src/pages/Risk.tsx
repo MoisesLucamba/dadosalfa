@@ -199,7 +199,7 @@ const Risk = () => {
               
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="lg" className="rounded-full px-6 border-2 hover:bg-secondary/50 transition-all" 
-                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, globalRiskIndex, lastUpdated: lastUpdated || undefined })}>
+                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex, lastUpdated: lastUpdated || undefined })}>
                   <FileDown className="w-4 h-4 mr-2" /> Exportar
                 </Button>
                 <Button size="lg" className="rounded-full px-6 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" 
@@ -419,9 +419,9 @@ const KPICard = ({ title, value, subtitle, trend, icon, color = "primary", loadi
         <div className="flex justify-between items-start mb-4">
           <div className={`p-3 rounded-2xl ${colorMap[color as keyof typeof colorMap]}`}>
             {icon}
-          </div>
+        </div>
           {trend && (
-            <Badge variant={trend === 'up' ? 'destructive' : 'success'} className="rounded-full px-2 py-0">
+            <Badge variant={trend === 'up' ? 'destructive' : 'outline'} className={`rounded-full px-2 py-0 ${trend === 'down' ? "bg-success/10 text-success border-success/20" : ""}`}>
               {trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             </Badge>
           )}

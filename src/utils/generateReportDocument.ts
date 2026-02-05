@@ -419,7 +419,8 @@ export const generatePDFReport = (data: ReportData): void => {
     console.error('Error generating PDF:', error);
 
     // Enhanced error handling for large reports
-    if (isGeneralReport) {
+    const isLargeReport = data.type === 'general';
+    if (isLargeReport) {
       console.error('Large report generation failed - this may be due to memory constraints');
     }
 

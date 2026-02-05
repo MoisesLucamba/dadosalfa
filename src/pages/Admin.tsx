@@ -322,10 +322,10 @@ const Admin = () => {
                             <TableRow key={user.id} className="border-border/50 hover:bg-muted/20 transition-colors">
                               <TableCell>
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">{user.full_name?.charAt(0) || user.email?.charAt(0)}</div>
+                                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">{user.contact_name?.charAt(0) || "U"}</div>
                                   <div>
-                                    <p className="font-bold text-sm">{user.full_name || "Sem nome"}</p>
-                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                    <p className="font-bold text-sm">{user.contact_name || "Sem nome"}</p>
+                                    <p className="text-xs text-muted-foreground">{user.company_name}</p>
                                   </div>
                                 </div>
                               </TableCell>
@@ -338,19 +338,19 @@ const Admin = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-1.5 text-xs font-medium">
-                                  {user.role === 'admin' ? <Shield className="w-3 h-3 text-primary" /> : <UserCog className="w-3 h-3 text-muted-foreground" />}
-                                  <span className="capitalize">{user.role || 'User'}</span>
+                                  {user.roles?.[0]?.role === 'admin' ? <Shield className="w-3 h-3 text-primary" /> : <UserCog className="w-3 h-3 text-muted-foreground" />}
+                                  <span className="capitalize">{user.roles?.[0]?.role || 'viewer'}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground">{user.created_at ? format(new Date(user.created_at), "dd/MM/yyyy") : "N/A"}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
                                   {!user.is_approved && (
-                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-500 hover:bg-emerald-500/10" onClick={() => updateApproval.mutate({ userId: user.id, approved: true })}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-500 hover:bg-emerald-500/10" onClick={() => updateApproval.mutate({ userId: user.id, isApproved: true })}>
                                       <Check className="h-4 w-4" />
                                     </Button>
                                   )}
-                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-amber-500 hover:bg-amber-500/10" onClick={() => handleSendUserAlert(user.id, user.full_name || user.email)}>
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-amber-500 hover:bg-amber-500/10" onClick={() => handleSendUserAlert(user.id, user.contact_name || user.company_name)}>
                                     <Bell className="h-4 w-4" />
                                   </Button>
                                   <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10">
@@ -394,19 +394,19 @@ const Admin = () => {
                                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><Building2 className="w-5 h-5" /></div>
                                   <div>
                                     <p className="font-bold text-sm">{org.name}</p>
-                                    <p className="text-xs text-muted-foreground">{org.email}</p>
+                                    <p className="text-xs text-muted-foreground">{org.contact_email}</p>
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-xs font-mono">{org.registration_number || "N/A"}</TableCell>
-                              <TableCell><Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-widest font-black">{org.type || "Empresa"}</Badge></TableCell>
+                              <TableCell className="text-xs font-mono">{org.nif || "N/A"}</TableCell>
+                              <TableCell><Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-widest font-black">{org.sector || "Empresa"}</Badge></TableCell>
                               <TableCell className="text-xs text-muted-foreground">{format(new Date(org.created_at), "dd/MM/yyyy")}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                  <Button size="sm" className="h-8 rounded-xl bg-emerald-500 hover:bg-emerald-600 gap-1.5 text-xs font-bold" onClick={() => updateOrgApproval.mutate({ orgId: org.id, approved: true })}>
+                                  <Button size="sm" className="h-8 rounded-xl bg-emerald-500 hover:bg-emerald-600 gap-1.5 text-xs font-bold" onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: true })}>
                                     <Check className="w-3 h-3" /> Aprovar
                                   </Button>
-                                  <Button size="sm" variant="ghost" className="h-8 rounded-xl text-red-500 hover:bg-red-500/10 gap-1.5 text-xs font-bold" onClick={() => updateOrgApproval.mutate({ orgId: org.id, approved: false })}>
+                                  <Button size="sm" variant="ghost" className="h-8 rounded-xl text-red-500 hover:bg-red-500/10 gap-1.5 text-xs font-bold" onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: false })}>
                                     <X className="w-3 h-3" /> Rejeitar
                                   </Button>
                                 </div>

@@ -12,24 +12,26 @@ interface KPICardProps {
   title: string;
   value: string;
   change: number;
-  changeLabel: string;
+  changeLabel?: string;
   icon: React.ReactNode;
   delay?: number;
   variant?: "default" | "accent" | "primary";
   lastUpdate?: string;
   source?: string;
+  className?: string;
 }
 
 export function KPICard({
   title,
   value,
   change,
-  changeLabel,
+  changeLabel = "vs. anterior",
   icon,
   delay = 0,
   variant = "default",
   lastUpdate,
   source,
+  className,
 }: KPICardProps) {
   const isPositive = change > 0;
   const isNegative = change < 0;
@@ -43,7 +45,8 @@ export function KPICard({
       className={cn(
         "relative overflow-hidden rounded-xl border border-border/50 p-5 card-gradient",
         variant === "accent" && "border-accent/30 glow-accent",
-        variant === "primary" && "border-primary/30 glow-primary"
+        variant === "primary" && "border-primary/30 glow-primary",
+        className
       )}
     >
       {/* Background Gradient Effect */}

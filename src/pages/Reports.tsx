@@ -301,6 +301,25 @@ const Reports = () => {
     }
   };
 
+  const handleShareToWorkspace = async (report: Report, workspaceId: string) => {
+    try {
+      // Create a temporary workspace reports instance with the target workspaceId
+      const { error } = await supabase
+        .from('workspace_reports')
+        .insert({
+          workspace_id: workspaceId,
+          report_id: report.id,
+          shared_by: user?.id,
+        });
+        
+      if (error) throw error;
+      toast.success("Relatório partilhado com sucesso!");
+    } catch (error) {
+      console.error('Error sharing report:', error);
+      toast.error("Erro ao partilhar relatório");
+    }
+  };
+
   // --- Computed Data ---
   const filteredReports = useMemo(() => {
     let filtered = reports;

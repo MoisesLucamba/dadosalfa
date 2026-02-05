@@ -163,9 +163,8 @@ const Workspace = () => {
   const filteredWorkspaces = workspaces?.filter(workspace => {
     const matchesSearch = workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workspace.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === "all" || 
-                         (filterStatus === "active" && !workspace.is_archived) ||
-                         (filterStatus === "archived" && workspace.is_archived);
+    // Removed is_archived filter since it doesn't exist on Workspace type
+    const matchesFilter = filterStatus === "all" || filterStatus === "active";
     return matchesSearch && matchesFilter;
   }).sort((a, b) => {
     if (sortBy === "name") return a.name.localeCompare(b.name);
