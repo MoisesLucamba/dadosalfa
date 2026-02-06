@@ -130,15 +130,22 @@ const Workspace = () => {
     }
 
     try {
+      console.log("Creating workspace with data:", {
+        name: newWorkspace.name,
+        description: newWorkspace.description || undefined,
+      });
+      
       await createWorkspace.mutateAsync({
         name: newWorkspace.name,
         description: newWorkspace.description || undefined,
       });
+      
       toast.success("Workspace criado com sucesso!");
       setIsCreateDialogOpen(false);
       setNewWorkspace({ name: "", description: "" });
-    } catch (error) {
-      toast.error("Erro ao criar workspace");
+    } catch (error: any) {
+      console.error("Error creating workspace:", error);
+      toast.error(`Erro ao criar workspace: ${error?.message || 'Erro desconhecido'}`);
     }
   };
 

@@ -64,6 +64,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadReport, ReportData } from "@/utils/generateReportDocument";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { useWorkspaces, useWorkspaceReports } from "@/hooks/useWorkspaces";
+import { LanguageDownloadDialog } from "@/components/reports/LanguageDownloadDialog";
+import { DocumentLanguageCode } from "@/i18n";
 
 // --- Interfaces ---
 interface Report {
@@ -146,6 +148,11 @@ const Reports = () => {
   const { workspaces } = useWorkspaces();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const { shareReport } = useWorkspaceReports(selectedWorkspaceId);
+
+  // Language download dialog state
+  const [showLanguageDialog, setShowLanguageDialog] = useState(false);
+  const [selectedReportForDownload, setSelectedReportForDownload] = useState<Report | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // --- Data Fetching ---
   const fetchReports = async () => {
@@ -252,11 +259,20 @@ const Reports = () => {
     }
   };
 
-  const handleDownload = async (report: Report, format: 'pdf' | 'docx' | 'excel') => {
-    const loadingToast = toast.loading(`A gerar ${format.toUpperCase()}...`);
-    try {
-      if (!report) throw new Error('Relatório não encontrado');
+  const openDownloadDialog = (report: Report) => {
+    setSelectedReportForDownload(report);
+    setShowLanguageDialog(true);
+  };
 
+  const handleDownload = async (format: 'pdf' | 'docx' | 'excel', language: DocumentLanguageCode) => {
+    if (!selectedReportForDownload) return;
+    
+    setIsDownloading(true);
+    const loadingToast = toast.loading(`A gerar ${format.toUpperCase()} em ${language.toUpperCase()}...`);
+    
+    try {
+      const report = selectedReportForDownload;
+      
       await supabase.from('report_downloads').insert({
         report_id: report.id,
         user_id: user?.id,
@@ -276,16 +292,21 @@ const Reports = () => {
         highlights: report.content?.highlights || [],
         generatedAt: report.created_at ? new Date(report.created_at) : new Date(),
         aiGenerated: report.ai_generated || false,
+        language,
       };
 
-      await downloadReport(reportData, format);
+      await downloadReport(reportData, format, language);
       toast.dismiss(loadingToast);
       toast.success(`Download ${format.toUpperCase()} concluído!`);
+      setShowLanguageDialog(false);
+      setSelectedReportForDownload(null);
       fetchReports();
     } catch (error) {
       toast.dismiss(loadingToast);
       console.error('Error downloading:', error);
       toast.error(`Erro no download: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -366,7 +387,7 @@ const Reports = () => {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-100 selection:bg-primary/30">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       <Helmet>
         <title>Relatórios | AlphaData</title>
       </Helmet>
@@ -616,21 +637,15 @@ const Reports = () => {
                                     <DropdownMenuTrigger asChild>
                                       <Button
                                         variant="outline"
-                                        className="h-9 px-4 bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg gap-2"
+                                        className="h-9 px-4 bg-muted border-border hover:bg-muted/80 text-foreground rounded-lg gap-2"
                                       >
                                         <Download className="w-4 h-4" />
                                         <span className="text-xs font-medium">Baixar</span>
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-[#0A0A0A] border-zinc-800 text-zinc-300 w-48 p-1">
-                                      <DropdownMenuItem onClick={() => handleDownload(report, 'pdf')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
-                                        <FileText className="w-4 h-4 mr-3 text-red-500" /> PDF
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDownload(report, 'docx')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
-                                        <FileType className="w-4 h-4 mr-3 text-blue-500" /> DOCX
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDownload(report, 'excel')} className="rounded-lg focus:bg-zinc-900 focus:text-white py-2.5">
-                                        <FileSpreadsheet className="w-4 h-4 mr-3 text-emerald-500" /> Excel
+                                    <DropdownMenuContent align="end" className="bg-card border-border text-foreground w-48 p-1">
+                                      <DropdownMenuItem onClick={() => openDownloadDialog(report)} className="rounded-lg focus:bg-muted py-2.5">
+                                        <Download className="w-4 h-4 mr-3 text-primary" /> Descarregar...
                                       </DropdownMenuItem>
                                       {workspaces.length > 0 && (
                                         <>
@@ -913,6 +928,15 @@ const Reports = () => {
       <WorkspacePanel 
         isOpen={showWorkspacePanel} 
         onClose={() => setShowWorkspacePanel(false)} 
+      />
+
+      {/* Language Download Dialog */}
+      <LanguageDownloadDialog
+        open={showLanguageDialog}
+        onOpenChange={setShowLanguageDialog}
+        onDownload={handleDownload}
+        reportTitle={selectedReportForDownload?.title || 'Relatório'}
+        isDownloading={isDownloading}
       />
     </div>
   );
