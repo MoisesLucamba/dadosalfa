@@ -1,12 +1,13 @@
 /**
  * Utility functions for generating reports in PDF, DOCX, and Excel formats
- * with AlphaData branding
+ * with AlphaData branding and multi-language support
  */
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle, Header, Footer, ImageRun, PageNumber, NumberFormat } from 'docx';
 import { addCoverPageToPDF, getDefaultCoverPageData, getCoverPageExcelRows, CoverPageData } from './reportCoverPage';
+import { getDocumentTranslation, DocumentLanguageCode, DOCUMENT_LANGUAGES } from '@/i18n';
 
 export interface ReportData {
   title: string;
@@ -33,6 +34,8 @@ export interface ReportData {
     role?: string;
     email?: string;
   };
+  // Language for document generation
+  language?: DocumentLanguageCode;
 }
 
 const COLORS = {
@@ -46,14 +49,15 @@ const COLORS = {
   brand: [220, 38, 38] as [number, number, number], // AlphaData Red
 };
 
-const getTypeName = (type: string): string => {
+const getTypeName = (type: string, lang: DocumentLanguageCode = 'pt'): string => {
+  const t = getDocumentTranslation(lang);
   const types: Record<string, string> = {
-    production: 'Produção',
-    market: 'Mercado',
-    exports: 'Exportações',
-    risk: 'Riscos',
-    predictions: 'Previsões IA',
-    general: 'Geral',
+    production: t.production,
+    market: t.market,
+    exports: t.exports,
+    risk: t.risk,
+    predictions: t.production + ' IA',
+    general: t.general,
   };
   return types[type] || type;
 };
@@ -1253,21 +1257,25 @@ export const generateExcelReport = (data: ReportData): void => {
 };
 
 /**
- * Download report in specified format
+ * Download report in specified format with language support
  */
 export const downloadReport = async (
   data: ReportData,
-  format: 'pdf' | 'docx' | 'excel'
+  format: 'pdf' | 'docx' | 'excel',
+  language: DocumentLanguageCode = 'pt'
 ): Promise<void> => {
+  // Set language on data
+  const reportData = { ...data, language };
+  
   switch (format) {
     case 'pdf':
-      generatePDFReport(data);
+      generatePDFReport(reportData);
       break;
     case 'docx':
-      await generateDOCXReport(data);
+      await generateDOCXReport(reportData);
       break;
     case 'excel':
-      generateExcelReport(data);
+      generateExcelReport(reportData);
       break;
   }
 };

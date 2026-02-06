@@ -142,13 +142,13 @@ export default function InstitutionalLanding() {
   }, [currentPage]);
 
   const renderNavbar = () => (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b-2 border-[#f0f0f0]">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background border-b-2 border-border">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" onClick={() => setCurrentPage("home")}>
             <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto" />
           </Link>
-          <div className="hidden lg:flex items-center gap-6 border-l border-gray-200 pl-8">
+          <div className="hidden lg:flex items-center gap-6 border-l border-border pl-8">
             {[
               { id: "solucoes", label: "Soluções" },
               { id: "regulacao", label: "Regulação" },
@@ -158,7 +158,7 @@ export default function InstitutionalLanding() {
               <button 
                 key={item.id} 
                 onClick={() => setCurrentPage(item.id)}
-                className={`text-sm font-bold uppercase tracking-tight transition-colors ${currentPage === item.id ? 'text-[#C8102E]' : 'text-[#002855] hover:text-[#C8102E]'}`}
+                className={`text-sm font-bold uppercase tracking-tight transition-colors ${currentPage === item.id ? 'text-primary' : 'text-foreground hover:text-primary'}`}
               >
                 {item.label}
               </button>
@@ -168,10 +168,10 @@ export default function InstitutionalLanding() {
 
         <div className="flex items-center gap-4">
           <Link to="/auth">
-            <Button variant="ghost" className="hidden md:flex">Portal do Cliente</Button>
+            <Button variant="ghost" className="hidden md:flex text-foreground hover:bg-muted">Portal do Cliente</Button>
           </Link>
           <Link to="/auth">
-            <Button variant="primary" className="rounded-none px-8">SOLICITAR ACESSO</Button>
+            <Button variant="primary" className="rounded-none px-8 bg-primary text-primary-foreground hover:bg-primary/90">SOLICITAR ACESSO</Button>
           </Link>
         </div>
       </div>
