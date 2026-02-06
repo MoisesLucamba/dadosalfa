@@ -263,9 +263,24 @@ export default function Auth() {
         />
         
         <div className="relative z-10">
-          <Link to="/" className="inline-block mb-24">
-            <img src={alphadataLogo} alt="AlphaData" className="h-10 w-auto brightness-0 invert" />
-          </Link>
+          {/* Logo and Back to Landing */}
+          <div className="flex items-center justify-between mb-16">
+            <Link to="/" className="inline-block">
+              <img 
+                src={alphadataLogo} 
+                alt="AlphaData" 
+                className="h-12 w-auto"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+            </Link>
+            <Link 
+              to="/landing"
+              className="flex items-center gap-2 px-4 py-2 border border-white/30 text-white/80 hover:bg-white/10 hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Página Inicial
+            </Link>
+          </div>
 
           <motion.div
             initial={{ opacity: 0, x: -20 }}
