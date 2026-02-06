@@ -10,7 +10,6 @@ import {
   TrendingUp,
   BarChart3,
   Ship,
-  Clock,
   Loader2,
   Bot,
   User,
@@ -26,17 +25,8 @@ import {
   ChevronRight,
   X,
   Menu,
-  Zap,
-  DollarSign,
-  Activity,
-  Package,
-  Truck,
-  Calendar,
-  LineChart,
   AlertCircle,
   ChevronLeft,
-  FileText,
-  TrendingDown,
   Shield,
   Target
 } from "lucide-react";
@@ -50,66 +40,19 @@ import {
   Area
 } from "recharts";
 import { toast } from "sonner";
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ⚙️ CONFIGURAÇÃO - ATUALIZE COM SUAS CREDENCIAIS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-// 🔧 PASSO 1: Substitua com sua URL da Supabase Edge Function
-const BACKEND_URL = "YOUR_SUPABASE_URL/functions/v1/petroleum-search-enhanced";
-
-// 🔧 PASSO 2: Substitua com sua chave anônima do Supabase
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-interface ChartBlock {
-  type: "area" | "bar";
-  title: string;
-  data: { name: string; value: number }[];
-}
-
-interface Source {
-  title: string;
-  type: "database" | "web";
-}
-
-interface BackendResult {
-  title: string;
-  description: string;
-  type: string;
-  source: "database" | "web";
-  relevance: number;
-  date?: string;
-  data?: Record<string, unknown>;
-  url?: string;
-  siteName?: string;
-}
-
-interface BackendResponse {
-  success: boolean;
-  results: BackendResult[];
-  query: string;
-  count: number;
-  sources: {
-    database: number;
-    web: number;
-  };
-  timestamp?: string;
-  error?: string;
-}
-
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  charts: ChartBlock[];
-  sources: Source[];
   time: string;
-  searchStatus?: string;
-  rawResults?: BackendResult[];
+  sources?: string[];
 }
 
 interface ChatSession {
@@ -124,7 +67,6 @@ interface QuickAction {
   icon: React.ElementType;
   gradient: string;
   category: string;
-  searchType?: string;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -133,495 +75,142 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    label: "Análise de Preços do Brent Crude Oil",
+    label: "Qual o preço atual do Brent Crude Oil?",
     icon: TrendingUp,
-    gradient: "from-blue-900 to-blue-700",
-    category: "Mercado Financeiro",
-    searchType: "prices"
+    gradient: "from-primary/20 to-primary/10",
+    category: "Mercado",
   },
   {
-    label: "Relatório de Produção Mensal Consolidado",
+    label: "Relatório de produção mensal da TotalEnergies",
     icon: BarChart3,
-    gradient: "from-red-900 to-red-700",
+    gradient: "from-accent/20 to-accent/10",
     category: "Produção",
-    searchType: "production"
   },
   {
-    label: "Otimização da Cadeia Logística Naval",
+    label: "Principais destinos de exportação de Angola",
     icon: Ship,
-    gradient: "from-blue-800 to-blue-600",
-    category: "Logística",
-    searchType: "exports"
+    gradient: "from-primary/20 to-primary/10",
+    category: "Exportações",
   },
   {
-    label: "Projeções Estratégicas para o Exercício 2026",
+    label: "Previsões estratégicas para 2026",
     icon: Target,
-    gradient: "from-red-800 to-red-600",
-    category: "Planejamento",
-    searchType: "all"
+    gradient: "from-accent/20 to-accent/10",
+    category: "Previsões",
   },
   {
-    label: "Monitoramento de Riscos Operacionais Críticos",
+    label: "Alertas de riscos operacionais ativos",
     icon: AlertCircle,
-    gradient: "from-red-800 to-red-600",
-    category: "Gestão de Riscos",
-    searchType: "risk"
+    gradient: "from-destructive/20 to-destructive/10",
+    category: "Riscos",
   },
   {
-    label: "Análise Geopolítica e Impactos de Mercado",
+    label: "Análise geopolítica e impactos no mercado",
     icon: Shield,
-    gradient: "from-blue-900 to-blue-700",
+    gradient: "from-primary/20 to-primary/10",
     category: "Geopolítica",
-    searchType: "geopolitical"
   },
 ];
 
-const STORAGE_KEY = "petro_analyst_sessions";
+const STORAGE_KEY = "alphadata_chat_sessions";
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-chat`;
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ✅ API INTEGRATION - CONEXÃO REAL COM BACKEND
+   STREAMING CHAT FUNCTION
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const searchPetroleumData = async (
-  query: string,
-  searchType?: string
-): Promise<BackendResponse> => {
-  try {
-    // ✅ Validação de configuração
-    if (!BACKEND_URL || BACKEND_URL === "YOUR_SUPABASE_URL/functions/v1/petroleum-search-enhanced") {
-      console.warn("⚠️ Backend URL não configurada. Usando modo demonstração.");
-      return createFallbackResponse(query);
-    }
-
-    if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY") {
-      console.warn("⚠️ Supabase Key não configurada. Usando modo demonstração.");
-      return createFallbackResponse(query);
-    }
-
-    console.log("📡 [API] Enviando requisição:", { query, searchType });
-
-    // ✅ Chamada real ao backend
-    const response = await fetch(BACKEND_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        query,
-        searchType: searchType || "all",
-        includeWeb: true, // ✅ Pesquisa web ativada
-        maxResults: 20,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ [API] Erro HTTP:", response.status, errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data: BackendResponse = await response.json();
-    
-    console.log("✅ [API] Resposta recebida:", {
-      success: data.success,
-      count: data.count,
-      sources: data.sources
-    });
-
-    if (!data.success) {
-      throw new Error(data.error || "Erro desconhecido na pesquisa");
-    }
-
-    return data;
-    
-  } catch (error) {
-    console.error("❌ [API Error]", error);
-    
-    // Se for erro de rede ou configuração, usar fallback
-    if (error instanceof Error && 
-        (error.message.includes("fetch") || 
-         error.message.includes("NetworkError") ||
-         error.message.includes("CORS"))) {
-      console.warn("⚠️ Erro de rede. Usando dados de demonstração.");
-      return createFallbackResponse(query);
-    }
-    
-    throw error;
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   📊 FALLBACK DATA - Dados de demonstração quando backend não configurado
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-const createFallbackResponse = (query: string): BackendResponse => {
-  const q = query.toLowerCase();
-  const results: BackendResult[] = [];
-
-  // Preços
-  if (q.includes("preço") || q.includes("brent") || q.includes("cotação") || q.includes("wti")) {
-    results.push(
-      {
-        title: "Brent Crude Oil – $85.32/bbl",
-        description: "Cotação atual do petróleo Brent com alta de 2.3% nas últimas 24h. Tendência de valorização devido a restrições de oferta.",
-        type: "prices",
-        source: "database",
-        relevance: 10,
-        date: new Date().toISOString(),
-        data: { crude_type: "Brent", price: 85.32, change: 2.3 }
-      },
-      {
-        title: "WTI Crude Oil – $79.87/bbl",
-        description: "West Texas Intermediate registra valorização moderada de 1.8%. Demanda estável no mercado americano.",
-        type: "prices",
-        source: "database",
-        relevance: 9,
-        date: new Date().toISOString(),
-        data: { crude_type: "WTI", price: 79.87, change: 1.8 }
-      },
-      {
-        title: "Dubai Crude – $82.15/bbl",
-        description: "Mercado asiático mostra sinais de recuperação com alta de 1.5%.",
-        type: "prices",
-        source: "database",
-        relevance: 8,
-        date: new Date().toISOString(),
-        data: { crude_type: "Dubai", price: 82.15, change: 1.5 }
-      }
-    );
-  }
-
-  // Produção
-  if (q.includes("produção") || q.includes("production") || q.includes("block")) {
-    results.push(
-      {
-        title: "ExxonMobil – Block 15",
-        description: "Produção diária de 150,000 bpd com eficiência operacional de 94%. Manutenção programada concluída.",
-        type: "production",
-        source: "database",
-        relevance: 10,
-        date: new Date().toISOString(),
-        data: { block: "Block 15", production: 150000, efficiency: 94, operator: "ExxonMobil" }
-      },
-      {
-        title: "TotalEnergies – Block 17",
-        description: "Produção estável de 120,000 bpd com eficiência de 91%. Novos poços em fase de testes.",
-        type: "production",
-        source: "database",
-        relevance: 9,
-        date: new Date().toISOString(),
-        data: { block: "Block 17", production: 120000, efficiency: 91, operator: "TotalEnergies" }
-      },
-      {
-        title: "BP – Block 18",
-        description: "Produção de 98,500 bpd. Plano de expansão aprovado para Q3 2026.",
-        type: "production",
-        source: "database",
-        relevance: 8,
-        date: new Date().toISOString(),
-        data: { block: "Block 18", production: 98500, efficiency: 89, operator: "BP" }
-      }
-    );
-  }
-
-  // Exportações
-  if (q.includes("exportação") || q.includes("export") || q.includes("logística") || q.includes("navio")) {
-    results.push(
-      {
-        title: "Exportação para China – Janeiro 2026",
-        description: "Volume total de 2.3M barris. Aumento de 12% em relação ao mês anterior.",
-        type: "exports",
-        source: "database",
-        relevance: 10,
-        date: new Date().toISOString(),
-        data: { destination: "China", volume: 2300000, change: 12 }
-      },
-      {
-        title: "Exportação para EUA – Janeiro 2026",
-        description: "Volume de 1.8M barris. Demanda estável do mercado americano.",
-        type: "exports",
-        source: "database",
-        relevance: 9,
-        date: new Date().toISOString(),
-        data: { destination: "USA", volume: 1800000, change: 3 }
-      }
-    );
-  }
-
-  // Riscos e geopolítica
-  if (q.includes("risco") || q.includes("geopolítica") || q.includes("risk")) {
-    results.push(
-      {
-        title: "Alerta: Tensões no Golfo Pérsico",
-        description: "Monitoramento ativo de situação geopolítica. Risco médio para rotas de exportação.",
-        type: "geopolitical",
-        source: "web",
-        relevance: 9,
-        date: new Date().toISOString(),
-        url: "https://example.com/news",
-        siteName: "Petroleum Intelligence"
-      },
-      {
-        title: "Análise de Riscos Operacionais Q1 2026",
-        description: "Relatório consolidado identifica 3 áreas de atenção prioritária.",
-        type: "risk",
-        source: "database",
-        relevance: 8,
-        date: new Date().toISOString()
-      }
-    );
-  }
-
-  // Resultados genéricos
-  if (results.length === 0) {
-    results.push(
-      {
-        title: "⚙️ Modo Demonstração Ativo",
-        description: "Configure BACKEND_URL e SUPABASE_ANON_KEY para conectar ao backend real. Atualmente usando dados de exemplo.",
-        type: "all",
-        source: "database",
-        relevance: 5,
-        date: new Date().toISOString()
-      },
-      {
-        title: "Visão Geral do Sistema",
-        description: "Plataforma pronta para análise de preços, produção, exportações e riscos. Aguardando configuração do backend.",
-        type: "all",
-        source: "database",
-        relevance: 4,
-        date: new Date().toISOString()
-      }
-    );
-  }
-
-  return {
-    success: true,
-    results,
-    query,
-    count: results.length,
-    sources: {
-      database: results.filter(r => r.source === "database").length,
-      web: results.filter(r => r.source === "web").length
+async function streamChat({
+  messages,
+  onDelta,
+  onDone,
+}: {
+  messages: { role: "user" | "assistant"; content: string }[];
+  onDelta: (deltaText: string) => void;
+  onDone: () => void;
+}) {
+  const resp = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    timestamp: new Date().toISOString()
-  };
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   📝 DATA FORMATTERS - Converte resposta do backend para UI
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-const formatBackendResponse = (
-  backendData: BackendResponse,
-  query: string
-): { content: string; charts: ChartBlock[]; sources: Source[] } => {
-  console.log("🔧 [FORMAT] Iniciando formatação:", { query, resultCount: backendData.results.length });
-  
-  const { results, sources: sourceCounts } = backendData;
-
-  // Agrupar resultados por tipo
-  const byType: Record<string, BackendResult[]> = {};
-  results.forEach((r) => {
-    if (!byType[r.type]) byType[r.type] = [];
-    byType[r.type].push(r);
+    body: JSON.stringify({ messages, includeDatabase: true }),
   });
 
-  console.log("📊 [FORMAT] Resultados agrupados por tipo:", Object.keys(byType).map(k => `${k}: ${byType[k].length}`));
-
-  // ✅ Gerar conteúdo markdown estruturado
-  let content = `### 📊 Resultados da Consulta: ${query}\n\n`;
-  
-  content += `Foram encontrados **${results.length} registos** relevantes `;
-  content += `(${sourceCounts.database} da base de dados corporativa`;
-  if (sourceCounts.web > 0) {
-    content += `, ${sourceCounts.web} de fontes web`;
-  }
-  content += `).\n\n`;
-
-  // Seção de Preços
-  if (byType.prices?.length > 0) {
-    content += `**💰 Análise de Preços:**\n`;
-    byType.prices.slice(0, 3).forEach((r) => {
-      content += `* ${r.title}: ${r.description}\n`;
-    });
-    content += `\n`;
-  }
-
-  // Seção de Produção
-  if (byType.production?.length > 0) {
-    content += `**🏭 Dados de Produção:**\n`;
-    byType.production.slice(0, 3).forEach((r) => {
-      content += `* ${r.title}: ${r.description}\n`;
-    });
-    content += `\n`;
-  }
-
-  // Seção de Exportações
-  if (byType.exports?.length > 0) {
-    content += `**🚢 Informações de Exportação:**\n`;
-    byType.exports.slice(0, 3).forEach((r) => {
-      content += `* ${r.title}: ${r.description}\n`;
-    });
-    content += `\n`;
-  }
-
-  // Seção de Riscos
-  if (byType.risk?.length > 0 || byType.geopolitical?.length > 0) {
-    content += `**⚠️ Análise de Riscos:**\n`;
-    [...(byType.risk || []), ...(byType.geopolitical || [])]
-      .slice(0, 3)
-      .forEach((r) => {
-        content += `* ${r.title}: ${r.description}\n`;
-      });
-    content += `\n`;
-  }
-
-  // ✅ Gerar gráficos se houver dados suficientes
-  const charts: ChartBlock[] = [];
-
-  // Gráfico de preços
-  if (byType.prices?.length >= 2) {
-    const priceData = byType.prices.slice(0, 5).map((r, i) => {
-      // Extrair valor do preço do título ou dados
-      const priceFromData = r.data?.price as number;
-      const priceFromTitle = r.title.match(/\$([0-9.]+)/)?.[1];
-      const price = priceFromData || (priceFromTitle ? parseFloat(priceFromTitle) : 80 + Math.random() * 10);
-      
-      return {
-        name: (r.data?.crude_type as string) || r.title.split("–")[0]?.trim() || `Item ${i + 1}`,
-        value: Number(price.toFixed(2)),
-      };
-    });
-
-    charts.push({
-      type: "area",
-      title: "Cotações de Petróleo (USD/bbl)",
-      data: priceData,
-    });
-  }
-
-  // Gráfico de produção
-  if (byType.production?.length >= 2) {
-    const prodData = byType.production.slice(0, 5).map((r) => {
-      // Extrair produção dos dados ou descrição
-      const prodFromData = r.data?.production as number;
-      const prodFromDesc = r.description.match(/([0-9,]+)\s*bpd/)?.[1];
-      const production = prodFromData || (prodFromDesc ? parseInt(prodFromDesc.replace(/,/g, "")) : 100000);
-      
-      return {
-        name: (r.data?.block as string) || r.title.split("–")[1]?.trim() || "N/A",
-        value: production,
-      };
-    });
-
-    charts.push({
-      type: "area",
-      title: "Produção Diária por Bloco (bpd)",
-      data: prodData,
-    });
-  }
-
-  // Gráfico de exportações
-  if (byType.exports?.length >= 2) {
-    const exportData = byType.exports.slice(0, 5).map((r) => {
-      const volume = r.data?.volume as number || 1000000;
-      return {
-        name: (r.data?.destination as string) || r.title.split("–")[0]?.trim() || "N/A",
-        value: volume,
-      };
-    });
-
-    charts.push({
-      type: "area",
-      title: "Volume de Exportações (barris)",
-      data: exportData,
-    });
-  }
-
-  // ✅ Preparar lista de fontes
-  const sources: Source[] = [];
-  const uniqueSources = new Set<string>();
-
-  results.forEach((r) => {
-    const sourceTitle =
-      r.source === "database"
-        ? "Base de Dados Corporativa"
-        : r.siteName || "Pesquisa Web";
-
-    if (!uniqueSources.has(sourceTitle)) {
-      uniqueSources.add(sourceTitle);
-      sources.push({
-        title: sourceTitle,
-        type: r.source,
-      });
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({}));
+    if (resp.status === 429) {
+      throw new Error(errorData.error || "Limite de requisições excedido. Aguarde alguns segundos.");
     }
-  });
-
-  console.log("✅ [FORMAT] Resposta formatada:", {
-    contentPreview: content.substring(0, 100) + "...",
-    contentLength: content.length,
-    chartsCount: charts.length,
-    sourcesCount: sources.length
-  });
-
-  return { content, charts, sources };
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   UTILITY FUNCTIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-const processBold = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-white bg-red-900/20 px-1.5 py-0.5 rounded">
-          {part.slice(2, -2)}
-        </strong>
-      );
+    if (resp.status === 402) {
+      throw new Error(errorData.error || "Créditos insuficientes.");
     }
-    return part;
-  });
-};
+    throw new Error(errorData.error || "Erro ao conectar com o assistente IA");
+  }
+
+  if (!resp.body) throw new Error("No response body");
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let textBuffer = "";
+  let streamDone = false;
+
+  while (!streamDone) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    textBuffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex: number;
+    while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+      let line = textBuffer.slice(0, newlineIndex);
+      textBuffer = textBuffer.slice(newlineIndex + 1);
+
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") {
+        streamDone = true;
+        break;
+      }
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch {
+        textBuffer = line + "\n" + textBuffer;
+        break;
+      }
+    }
+  }
+
+  // Final flush
+  if (textBuffer.trim()) {
+    for (let raw of textBuffer.split("\n")) {
+      if (!raw) continue;
+      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+      if (raw.startsWith(":") || raw.trim() === "") continue;
+      if (!raw.startsWith("data: ")) continue;
+      const jsonStr = raw.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch { /* ignore */ }
+    }
+  }
+
+  onDone();
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const FormattedText = ({ text }: { text: string }) => {
-  const lines = text.split('\n');
-  return (
-    <div className="space-y-3">
-      {lines.map((line, i) => {
-        if (line.startsWith('### ')) {
-          return (
-            <h3 key={i} className="text-xl font-bold text-red-500 mt-6 mb-3">
-              {line.replace('### ', '')}
-            </h3>
-          );
-        }
-        if (line.startsWith('* ')) {
-          return (
-            <li key={i} className="ml-6 list-disc text-gray-200 leading-relaxed">
-              {processBold(line.replace('* ', ''))}
-            </li>
-          );
-        }
-        if (line.trim() === '') return null;
-        return (
-          <p key={i} className="text-gray-200 leading-relaxed">
-            {processBold(line)}
-          </p>
-        );
-      })}
-    </div>
-  );
-};
-
-const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string, searchType?: string) => void }) => (
+const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => void }) => (
   <motion.div 
     key="welcome"
     initial={{ opacity: 0, y: 20 }}
@@ -635,26 +224,26 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string, searc
         initial={{ scale: 0.9 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-red-900/20 to-blue-900/20 border border-red-800/30 text-white text-sm font-medium backdrop-blur-sm"
+        className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary/10 border border-primary/20 text-foreground text-sm font-medium backdrop-blur-sm"
       >
-        <Cpu className="w-5 h-5 text-red-400" />
+        <Cpu className="w-5 h-5 text-primary" />
         <span>Sistema de Inteligência Analítica Empresarial</span>
       </motion.div>
       
       <h1 className="text-5xl lg:text-7xl font-bold tracking-tight">
-        <span className="text-white">Plataforma de </span>
-        <span className="bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">
+        <span className="text-foreground">Plataforma de </span>
+        <span className="text-gradient-primary">
           Business Intelligence
         </span>
       </h1>
       
-      <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed font-light">
+      <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed font-light">
         Análise de dados em tempo real, processamento de linguagem natural e insights estratégicos baseados em inteligência artificial avançada.
       </p>
     </div>
 
     <div className="w-full max-w-6xl px-4">
-      <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-6">Consultas Estratégicas Sugeridas</p>
+      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-6">Consultas Sugeridas</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {QUICK_ACTIONS.map((action, i) => (
           <motion.button
@@ -662,18 +251,18 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string, searc
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.03 }}
-            onClick={() => onQuickAction(action.label, action.searchType)}
-            className="group relative p-5 rounded-xl bg-gradient-to-br from-gray-900/80 to-black/90 border border-gray-800 hover:border-red-800/40 transition-all duration-300 overflow-hidden"
+            onClick={() => onQuickAction(action.label)}
+            className="group relative p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-all duration-300 overflow-hidden text-left"
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+            <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
             <div className="relative flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-lg bg-gradient-to-br ${action.gradient} group-hover:scale-105 transition-transform duration-300`}>
-                  <action.icon className="w-5 h-5 text-white" />
+                <div className="p-2.5 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                  <action.icon className="w-5 h-5 text-primary" />
                 </div>
-                <span className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">{action.category}</span>
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">{action.category}</span>
               </div>
-              <span className="font-medium text-white text-sm text-left leading-snug">{action.label}</span>
+              <span className="font-medium text-foreground text-sm leading-snug">{action.label}</span>
             </div>
           </motion.button>
         ))}
@@ -685,13 +274,6 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string, searc
 const ChatBubble = ({ message }: { message: Message }) => {
   const isUser = message.role === 'user';
   
-  console.log("🎨 [RENDER] ChatBubble:", {
-    role: message.role,
-    contentPreview: message.content.substring(0, 50) + "...",
-    chartsCount: message.charts.length,
-    sourcesCount: message.sources.length
-  });
-  
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -700,72 +282,61 @@ const ChatBubble = ({ message }: { message: Message }) => {
     >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${
         isUser 
-          ? 'bg-gradient-to-br from-blue-800 to-blue-600' 
-          : 'bg-gradient-to-br from-red-800 to-red-600'
+          ? 'bg-primary' 
+          : 'bg-accent'
       }`}>
-        {isUser ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
+        {isUser ? <User className="w-5 h-5 text-primary-foreground" /> : <Bot className="w-5 h-5 text-accent-foreground" />}
       </div>
 
       <div className={`flex flex-col space-y-2 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`p-5 rounded-2xl border backdrop-blur-sm ${
           isUser 
-            ? 'bg-gradient-to-br from-blue-900/30 to-blue-800/30 border-blue-700/20 rounded-tr-md' 
-            : 'bg-gradient-to-br from-gray-900/90 to-black/90 border-gray-800/50 rounded-tl-md'
+            ? 'bg-primary/10 border-primary/20 rounded-tr-md' 
+            : 'bg-card border-border rounded-tl-md'
         }`}>
-          <FormattedText text={message.content} />
-          
-          {message.charts.map((chart, ci) => (
-            <div key={ci} className="mt-6 p-4 rounded-xl bg-black/40 border border-red-900/20">
-              <p className="text-xs font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 text-red-400">
-                <BarChart3 className="w-4 h-4" /> {chart.title}
-              </p>
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chart.data}>
-                    <defs>
-                      <linearGradient id={`colorV-${ci}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#dc2626" stopOpacity={0.6}/>
-                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.3} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#9ca3af'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#9ca3af'}} />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: '#000',
-                        border: '1px solid #374151',
-                        borderRadius: '12px',
-                        color: '#fff'
-                      }} 
-                    />
-                    <Area type="monotone" dataKey="value" stroke="#dc2626" fill={`url(#colorV-${ci})`} strokeWidth={3} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+          {isUser ? (
+            <p className="text-foreground">{message.content}</p>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => <h1 className="text-xl font-bold text-foreground mb-3">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-lg font-semibold text-foreground mb-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-base font-semibold text-foreground mb-2">{children}</h3>,
+                  p: ({ children }) => <p className="text-foreground mb-2 leading-relaxed">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 mb-3">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 mb-3">{children}</ol>,
+                  li: ({ children }) => <li className="text-foreground">{children}</li>,
+                  strong: ({ children }) => <strong className="font-semibold text-primary">{children}</strong>,
+                  code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm">{children}</code>,
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
-          ))}
+          )}
           
-          {!isUser && message.sources.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-800/50 flex flex-wrap gap-2">
+          {!isUser && message.sources && message.sources.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
               {message.sources.map((s, si) => (
                 <Badge 
                   key={si} 
-                  className="rounded-full text-[10px] py-1 px-3 bg-blue-900/20 border-blue-800/30 text-blue-300 flex items-center gap-1.5 font-medium"
+                  variant="secondary"
+                  className="rounded-full text-[10px] py-1 px-3 flex items-center gap-1.5 font-medium"
                 >
-                  {s.type === 'web' ? <Globe className="w-3 h-3" /> : <Database className="w-3 h-3" />}
-                  {s.title}
+                  <Database className="w-3 h-3" />
+                  {s}
                 </Badge>
               ))}
             </div>
           )}
         </div>
         
-        <div className="flex items-center gap-3 px-2 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+        <div className="flex items-center gap-3 px-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
           <span>{message.time}</span>
-          {message.searchStatus && (
-            <span className="text-red-400 flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" /> {message.searchStatus}
+          {!isUser && (
+            <span className="text-primary flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" /> Verificado
             </span>
           )}
         </div>
@@ -774,18 +345,18 @@ const ChatBubble = ({ message }: { message: Message }) => {
   );
 };
 
-const LoadingIndicator = ({ status }: { status: string }) => (
+const LoadingIndicator = () => (
   <div className="flex gap-4">
-    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-800 to-red-600 flex items-center justify-center animate-pulse">
-      <Bot className="w-5 h-5 text-white" />
+    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center animate-pulse">
+      <Bot className="w-5 h-5 text-accent-foreground" />
     </div>
-    <div className="bg-gradient-to-br from-gray-900/90 to-black/90 border border-gray-800/50 p-5 rounded-2xl rounded-tl-md backdrop-blur-sm min-w-[200px] flex items-center gap-4">
+    <div className="bg-card border border-border p-5 rounded-2xl rounded-tl-md backdrop-blur-sm min-w-[200px] flex items-center gap-4">
       <div className="flex gap-1.5">
-        <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce" />
-        <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-        <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
       </div>
-      <span className="text-sm font-medium text-gray-300">{status}</span>
+      <span className="text-sm font-medium text-muted-foreground">A processar consulta...</span>
     </div>
   </div>
 );
@@ -799,7 +370,6 @@ const Search = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [searchStatus, setSearchStatus] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historySidebarExpanded, setHistorySidebarExpanded] = useState(true);
 
@@ -837,7 +407,7 @@ const Search = () => {
     const newId = Date.now().toString();
     const newSession: ChatSession = {
       id: newId,
-      title: "Nova Consulta Analítica",
+      title: "Nova Consulta",
       messages: [],
       date: new Date().toLocaleDateString()
     };
@@ -845,21 +415,21 @@ const Search = () => {
     setCurrentSessionId(newId);
     setInput("");
     setSidebarOpen(false);
-    toast.success("Nova sessão iniciada com sucesso");
+    toast.success("Nova sessão iniciada");
   }, []);
 
   const deleteHistory = useCallback(() => {
-    if (window.confirm("Confirma a eliminação permanente de todo o histórico de consultas?")) {
+    if (window.confirm("Confirma a eliminação de todo o histórico?")) {
       setSessions([]);
       setCurrentSessionId(null);
       localStorage.removeItem(STORAGE_KEY);
-      toast.error("Histórico eliminado permanentemente");
+      toast.error("Histórico eliminado");
     }
   }, []);
 
   const deleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm("Confirma a eliminação desta sessão de consulta?")) {
+    if (window.confirm("Eliminar esta sessão?")) {
       setSessions(prev => {
         const filtered = prev.filter(s => s.id !== sessionId);
         if (filtered.length === 0) {
@@ -870,17 +440,17 @@ const Search = () => {
       if (currentSessionId === sessionId) {
         setCurrentSessionId(sessions[0]?.id || null);
       }
-      toast.success("Sessão eliminada com sucesso");
+      toast.success("Sessão eliminada");
     }
   }, [currentSessionId, sessions]);
 
-  const send = useCallback(async (text?: string, searchType?: string) => {
+  const send = useCallback(async (text?: string) => {
     const term = (text ?? input).trim();
     if (!term || loading) return;
 
     let sessionId = currentSessionId;
     
-    // Criar nova sessão se necessário
+    // Create new session if needed
     if (!sessionId) {
       const newId = Date.now().toString();
       const newSession: ChatSession = {
@@ -895,16 +465,13 @@ const Search = () => {
     }
 
     setLoading(true);
-    setSearchStatus("Processando consulta através de múltiplas fontes...");
     setInput("");
 
-    // Adicionar mensagem do usuário
+    // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
       content: term,
-      charts: [],
-      sources: [],
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -919,48 +486,49 @@ const Search = () => {
     ));
 
     try {
-      // ✅ Etapa 1: Consultar backend
-      setSearchStatus("Consultando base de dados corporativa e fontes web...");
-      console.log("🔍 [SEND] Iniciando busca:", { term, searchType });
+      // Prepare messages for AI
+      const currentMessages = sessions.find(s => s.id === sessionId)?.messages || [];
+      const aiMessages = [
+        ...currentMessages.map(m => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: term }
+      ];
+
+      let assistantContent = "";
       
-      const backendResponse = await searchPetroleumData(term, searchType);
-      console.log("📦 [SEND] Backend response:", backendResponse);
-      
-      // ✅ Etapa 2: Formatar resposta
-      setSearchStatus("Sintetizando análise estratégica...");
-      
-      const formattedResponse = formatBackendResponse(backendResponse, term);
-      console.log("✏️ [SEND] Formatted response:", {
-        contentLength: formattedResponse.content.length,
-        chartsCount: formattedResponse.charts.length,
-        sourcesCount: formattedResponse.sources.length
+      // Stream the response
+      await streamChat({
+        messages: aiMessages,
+        onDelta: (chunk) => {
+          assistantContent += chunk;
+          
+          // Update the assistant message in real-time
+          setSessions(prev => {
+            return prev.map(s => {
+              if (s.id !== sessionId) return s;
+              
+              const msgs = [...s.messages];
+              const lastMsg = msgs[msgs.length - 1];
+              
+              if (lastMsg?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...lastMsg, content: assistantContent };
+              } else {
+                msgs.push({
+                  id: (Date.now() + 1).toString(),
+                  role: "assistant",
+                  content: assistantContent,
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  sources: ["Base de Dados Corporativa"]
+                });
+              }
+              
+              return { ...s, messages: msgs };
+            });
+          });
+        },
+        onDone: () => {
+          setLoading(false);
+        },
       });
-      
-      // ✅ Etapa 3: Criar mensagem do assistente
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: formattedResponse.content,
-        charts: formattedResponse.charts,
-        sources: formattedResponse.sources,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        searchStatus: "Verificado",
-        rawResults: backendResponse.results,
-      };
-      
-      console.log("💬 [SEND] AI Message criada:", aiMsg);
-      
-      setSessions(prev => {
-        const updated = prev.map(s => 
-          s.id === sessionId 
-            ? { ...s, messages: [...s.messages, aiMsg] } 
-            : s
-        );
-        console.log("📝 [SEND] Sessions atualizadas:", updated);
-        return updated;
-      });
-      
-      toast.success(`${backendResponse.count} resultados encontrados`);
       
     } catch (error) {
       console.error("[Search Error]", error);
@@ -968,9 +536,7 @@ const Search = () => {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `### ❌ Erro na Consulta\n\nOcorreu um erro ao processar a sua consulta. Por favor, verifique:\n\n* A configuração do BACKEND_URL está correta\n* As credenciais do SUPABASE_ANON_KEY estão válidas\n* A edge function está implementada e ativa\n* A conexão de rede está estável\n\n**Detalhes do Erro:** ${error instanceof Error ? error.message : "Erro desconhecido"}\n\n💡 **Dica:** Verifique o console do navegador para mais informações.`,
-        charts: [],
-        sources: [],
+        content: `### ❌ Erro na Consulta\n\n${error instanceof Error ? error.message : "Ocorreu um erro desconhecido. Por favor, tente novamente."}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       
@@ -981,24 +547,23 @@ const Search = () => {
       ));
       
       toast.error("Erro ao processar consulta");
-    } finally {
       setLoading(false);
-      setSearchStatus("");
     }
-  }, [input, loading, currentSessionId]);
+  }, [input, loading, currentSessionId, sessions]);
 
   /* ─── Render ──────────────────────────────────────────────────── */
   return (
-    <div className="flex h-screen bg-black overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans">
       <Sidebar activeItem="/search" />
 
+      {/* Mobile Menu Button */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-6 left-6 z-50 lg:hidden w-14 h-14 rounded-full bg-gradient-to-br from-red-800 to-red-600 text-white shadow-2xl shadow-red-900/50 flex items-center justify-center"
+        className="fixed top-6 left-6 z-50 lg:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center"
       >
         <AnimatePresence mode="wait">
           {sidebarOpen ? (
@@ -1013,6 +578,7 @@ const Search = () => {
         </AnimatePresence>
       </motion.button>
 
+      {/* History Sidebar */}
       <AnimatePresence>
         {(sidebarOpen || window.innerWidth >= 1024) && (
           <motion.aside
@@ -1020,7 +586,7 @@ const Search = () => {
             animate={{ x: 0, width: historySidebarExpanded ? 320 : 80 }}
             exit={{ x: -320 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed lg:relative inset-y-0 left-0 z-40 flex flex-col border-r border-gray-800 bg-gradient-to-b from-gray-900 to-black shadow-2xl lg:shadow-none"
+            className="fixed lg:relative inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card shadow-2xl lg:shadow-none"
           >
             {sidebarOpen && (
               <motion.div
@@ -1028,13 +594,13 @@ const Search = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSidebarOpen(false)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm lg:hidden -z-10"
+                className="fixed inset-0 bg-background/60 backdrop-blur-sm lg:hidden -z-10"
               />
             )}
 
             <motion.button
               onClick={() => setHistorySidebarExpanded(!historySidebarExpanded)}
-              className="hidden lg:flex absolute -right-3 top-8 z-50 w-6 h-6 rounded-full bg-gradient-to-br from-red-800 to-red-600 text-white shadow-lg items-center justify-center hover:scale-110 transition-transform"
+              className="hidden lg:flex absolute -right-3 top-8 z-50 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-lg items-center justify-center hover:scale-110 transition-transform"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -1047,22 +613,22 @@ const Search = () => {
               <AnimatePresence mode="wait">
                 {historySidebarExpanded ? (
                   <motion.div key="expanded" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                    <Button onClick={startNewChat} className="w-full rounded-xl gap-2 bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 text-white font-semibold shadow-lg shadow-red-900/50 transition-all duration-300">
+                    <Button onClick={startNewChat} className="w-full rounded-xl gap-2 font-semibold shadow-lg transition-all duration-300">
                       <Plus className="w-4 h-4" /> Nova Consulta
                     </Button>
-                    <div className="flex items-center justify-between text-xs font-medium text-gray-500 uppercase tracking-wider px-2">
-                      <span className="flex items-center gap-2"><History className="w-3 h-3" /> Histórico de Sessões</span>
-                      <button onClick={deleteHistory} className="hover:text-red-500 transition-colors" title="Eliminar todo histórico">
+                    <div className="flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
+                      <span className="flex items-center gap-2"><History className="w-3 h-3" /> Histórico</span>
+                      <button onClick={deleteHistory} className="hover:text-destructive transition-colors" title="Eliminar histórico">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </motion.div>
                 ) : (
                   <motion.div key="collapsed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-4">
-                    <Button onClick={startNewChat} size="icon" className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 text-white shadow-lg shadow-red-900/50" title="Nova Consulta">
+                    <Button onClick={startNewChat} size="icon" className="w-12 h-12 rounded-xl shadow-lg" title="Nova Consulta">
                       <Plus className="w-5 h-5" />
                     </Button>
-                    <div className="w-8 h-px bg-gray-800" />
+                    <div className="w-8 h-px bg-border" />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1074,7 +640,7 @@ const Search = () => {
                   {sessions.length === 0 ? (
                     <AnimatePresence mode="wait">
                       {historySidebarExpanded && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-12 text-gray-600 text-sm">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-12 text-muted-foreground text-sm">
                           <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p>Nenhuma sessão registada</p>
                         </motion.div>
@@ -1086,8 +652,8 @@ const Search = () => {
                         key={session.id}
                         className={`group relative rounded-xl transition-all ${
                           currentSessionId === session.id 
-                            ? 'bg-gradient-to-r from-red-900/20 to-blue-900/20 border border-red-800/30' 
-                            : 'hover:bg-gray-800/50 border border-transparent'
+                            ? 'bg-primary/10 border border-primary/30' 
+                            : 'hover:bg-muted border border-transparent'
                         }`}
                       >
                         <button
@@ -1098,7 +664,7 @@ const Search = () => {
                           className={`w-full p-3 text-left text-sm flex items-center gap-3 ${!historySidebarExpanded && 'justify-center'}`}
                           title={!historySidebarExpanded ? session.title : undefined}
                         >
-                          <MessageSquare className={`flex-shrink-0 ${historySidebarExpanded ? 'w-4 h-4' : 'w-5 h-5'} ${currentSessionId === session.id ? 'text-white' : 'text-gray-400'}`} />
+                          <MessageSquare className={`flex-shrink-0 ${historySidebarExpanded ? 'w-4 h-4' : 'w-5 h-5'} ${currentSessionId === session.id ? 'text-primary' : 'text-muted-foreground'}`} />
                           
                           <AnimatePresence mode="wait">
                             {historySidebarExpanded && (
@@ -1108,10 +674,10 @@ const Search = () => {
                                 exit={{ opacity: 0, width: 0 }}
                                 className="flex items-center gap-3 flex-1 min-w-0"
                               >
-                                <span className={`truncate flex-1 font-medium ${currentSessionId === session.id ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+                                <span className={`truncate flex-1 font-medium ${currentSessionId === session.id ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
                                   {session.title}
                                 </span>
-                                <ChevronRight className={`w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ${currentSessionId === session.id ? 'text-white' : 'text-gray-400'}`} />
+                                <ChevronRight className={`w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ${currentSessionId === session.id ? 'text-primary' : 'text-muted-foreground'}`} />
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -1124,7 +690,7 @@ const Search = () => {
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.8 }}
                               onClick={(e) => deleteSession(session.id, e)}
-                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-gray-400 hover:text-red-500 hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-all"
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
                               title="Eliminar sessão"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -1136,18 +702,19 @@ const Search = () => {
                   )}
                 </div>
               </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar orientation="vertical" className="w-2 bg-gray-900">
-                <ScrollArea.Thumb className="bg-gray-700 rounded-full" />
+              <ScrollArea.Scrollbar orientation="vertical" className="w-2 bg-muted/50">
+                <ScrollArea.Thumb className="bg-muted-foreground/30 rounded-full" />
               </ScrollArea.Scrollbar>
             </ScrollArea.Root>
           </motion.aside>
         )}
       </AnimatePresence>
 
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Header activeItem="/search" />
 
-        <main className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar">
+        <main className="flex-1 overflow-y-auto scroll-smooth scrollbar-thin">
           <div className="max-w-5xl mx-auto w-full px-4 py-8 lg:px-8 flex flex-col min-h-full">
             <AnimatePresence mode="wait">
               {(!currentSession || currentSession.messages.length === 0) ? (
@@ -1157,7 +724,7 @@ const Search = () => {
                   {currentSession.messages.map(msg => (
                     <ChatBubble key={msg.id} message={msg} />
                   ))}
-                  {loading && <LoadingIndicator status={searchStatus} />}
+                  {loading && <LoadingIndicator />}
                   <div ref={chatBottomRef} className="h-4" />
                 </motion.div>
               )}
@@ -1165,43 +732,42 @@ const Search = () => {
           </div>
         </main>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 bg-gradient-to-t from-black via-black/95 to-transparent pointer-events-none">
+        {/* Input Bar */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
           <div className="max-w-4xl mx-auto pointer-events-auto">
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-red-600/20 to-blue-600/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition duration-500" />
-              <div className="relative flex items-center bg-gradient-to-r from-gray-900 to-black border border-gray-800 hover:border-red-800/40 rounded-2xl shadow-2xl overflow-hidden p-2 transition-all duration-300">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition duration-500" />
+              <div className="relative flex items-center bg-card border border-border hover:border-primary/40 rounded-2xl shadow-2xl overflow-hidden p-2 transition-all duration-300">
                 <div className="pl-4">
-                  <SearchIcon className="w-5 h-5 text-gray-500" />
+                  <SearchIcon className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <input 
                   ref={inputRef}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-base px-4 py-4 placeholder:text-gray-600 text-white focus:outline-none font-light"
-                  placeholder="Descreva a sua consulta analítica ou solicite informações estratégicas..."
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-base px-4 py-4 placeholder:text-muted-foreground text-foreground focus:outline-none font-light"
+                  placeholder="Pergunte sobre produção, preços, exportações, riscos..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                   disabled={loading}
                 />
                 <Button 
-                  size="icon" 
-                  className="h-12 w-12 rounded-xl bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 shadow-lg shadow-red-900/50 transition-all duration-300 disabled:opacity-50" 
-                  onClick={() => send()} 
-                  disabled={loading || !input.trim()}
+                  onClick={() => send()}
+                  disabled={!input.trim() || loading}
+                  size="icon"
+                  className="w-12 h-12 rounded-xl mr-1 transition-all duration-300"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <Send className="w-5 h-5 text-white" />}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </Button>
               </div>
             </div>
+            
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              Conectado à <span className="text-primary font-medium">Base de Dados AlphaData</span> • 
+              Powered by <span className="text-primary font-medium">Lovable AI</span>
+            </p>
           </div>
         </div>
       </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-      `}</style>
     </div>
   );
 };

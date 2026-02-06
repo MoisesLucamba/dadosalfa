@@ -40,7 +40,7 @@ export function Header({ activeItem = "/" }: HeaderProps) {
       initial={{ y: -10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="h-16 md:h-18 border-b border-gray-800 bg-gradient-to-r from-gray-900 via-black to-gray-900 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shadow-lg"
+      className="h-16 md:h-18 border-b border-border bg-card backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shadow-lg"
     >
       {/* ═══════════════════════════════════════════════════════════════
           LEFT SECTION - Mobile Nav + Search
@@ -55,10 +55,10 @@ export function Header({ activeItem = "/" }: HeaderProps) {
           className="relative hidden sm:block cursor-pointer flex-1 max-w-md"
           onClick={() => navigate("/search")}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-blue-600/20 rounded-xl blur opacity-0 hover:opacity-100 transition-opacity duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl blur opacity-0 hover:opacity-100 transition-opacity duration-300" />
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-            <div className="w-full h-10 pl-10 pr-4 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-800 hover:border-red-800/50 rounded-xl text-sm text-gray-400 flex items-center transition-all duration-300">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="w-full h-10 pl-10 pr-4 bg-muted border border-border hover:border-primary/50 rounded-xl text-sm text-muted-foreground flex items-center transition-all duration-300">
               Pesquisar blocos, operadores, análises...
             </div>
           </div>
@@ -68,7 +68,7 @@ export function Header({ activeItem = "/" }: HeaderProps) {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="sm:hidden hover:bg-gray-800/50 text-gray-400 hover:text-white transition-colors"
+          className="sm:hidden hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => navigate("/search")}
         >
           <Search className="w-5 h-5" />
@@ -90,14 +90,14 @@ export function Header({ activeItem = "/" }: HeaderProps) {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-red-900/20 to-red-800/20 border border-red-800/30 rounded-full"
+          className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-full"
         >
           <motion.span 
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50"
+            className="w-2 h-2 bg-primary rounded-full shadow-lg"
           />
-          <span className="text-xs font-bold text-red-400 uppercase tracking-wider">LIVE</span>
+          <span className="text-xs font-bold text-primary uppercase tracking-wider">LIVE</span>
         </motion.div>
 
         {/* Theme Toggle */}
@@ -105,7 +105,7 @@ export function Header({ activeItem = "/" }: HeaderProps) {
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="relative overflow-hidden group hover:bg-gray-800/50 text-gray-400 hover:text-white transition-colors"
+          className="relative overflow-hidden group hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           title={theme === "dark" ? "Modo Claro" : "Modo Escuro"}
         >
           <motion.div
@@ -125,14 +125,14 @@ export function Header({ activeItem = "/" }: HeaderProps) {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="relative hover:bg-gray-800/50 text-gray-400 hover:text-white transition-colors group"
+          className="relative hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group"
           title="Notificações"
         >
           <Bell className="w-5 h-5 group-hover:animate-wiggle" />
           <motion.span 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50"
+            className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full shadow-lg"
           />
         </Button>
 
@@ -142,46 +142,46 @@ export function Header({ activeItem = "/" }: HeaderProps) {
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 rounded-xl hover:bg-gradient-to-r hover:from-gray-800/50 hover:to-gray-900/50 border border-transparent hover:border-gray-800 transition-all duration-300 group"
+              className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 rounded-xl hover:bg-muted border border-transparent hover:border-border transition-all duration-300 group"
             >
               {/* User Avatar */}
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-red-600 to-blue-600 rounded-full blur opacity-50 group-hover:opacity-75 transition-opacity" />
-                <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-red-800 to-red-600 flex items-center justify-center shadow-lg">
-                  <span className="text-sm font-bold text-white">{userInitials}</span>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent rounded-full blur opacity-50 group-hover:opacity-75 transition-opacity" />
+                <div className="relative w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                  <span className="text-sm font-bold text-primary-foreground">{userInitials}</span>
                 </div>
               </div>
 
               {/* User Info - Desktop Only */}
               <div className="text-left hidden md:block">
-                <p className="text-sm font-bold text-white truncate max-w-[140px] group-hover:text-red-400 transition-colors">
+                <p className="text-sm font-bold text-foreground truncate max-w-[140px] group-hover:text-primary transition-colors">
                   {userDisplayName}
                 </p>
-                <p className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                <p className="text-xs text-muted-foreground group-hover:text-foreground/70 transition-colors">
                   Conta Ativa
                 </p>
               </div>
 
-              <ChevronDown className="w-4 h-4 text-gray-500 hidden md:block group-hover:text-white transition-colors" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block group-hover:text-foreground transition-colors" />
             </motion.button>
           </DropdownMenuTrigger>
 
           {/* Dropdown Content */}
           <DropdownMenuContent 
             align="end" 
-            className="w-64 bg-gradient-to-b from-gray-900 to-black border border-gray-800 shadow-2xl rounded-xl p-2"
+            className="w-64 bg-popover border border-border shadow-2xl rounded-xl p-2"
           >
             {/* User Info Header */}
-            <DropdownMenuLabel className="px-3 py-3 border-b border-gray-800">
+            <DropdownMenuLabel className="px-3 py-3 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-800 to-red-600 flex items-center justify-center shadow-lg">
-                  <span className="text-sm font-bold text-white">{userInitials}</span>
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                  <span className="text-sm font-bold text-primary-foreground">{userInitials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">
+                  <p className="text-sm font-bold text-foreground truncate">
                     {userDisplayName}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {user?.email}
                   </p>
                 </div>
@@ -191,7 +191,7 @@ export function Header({ activeItem = "/" }: HeaderProps) {
             <div className="py-1">
               {/* Profile Option */}
               <DropdownMenuItem 
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer transition-colors"
                 onClick={() => {
                   toast.info("Perfil em desenvolvimento");
                 }}
@@ -202,7 +202,7 @@ export function Header({ activeItem = "/" }: HeaderProps) {
 
               {/* Settings Option */}
               <DropdownMenuItem 
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer transition-colors"
                 onClick={() => {
                   toast.info("Configurações em desenvolvimento");
                 }}
@@ -212,12 +212,12 @@ export function Header({ activeItem = "/" }: HeaderProps) {
               </DropdownMenuItem>
             </div>
 
-            <DropdownMenuSeparator className="bg-gray-800 my-1" />
+            <DropdownMenuSeparator className="bg-border my-1" />
 
             {/* Sign Out Option */}
             <DropdownMenuItem 
               onClick={handleSignOut}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span className="text-sm font-bold">Terminar Sessão</span>

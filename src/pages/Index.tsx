@@ -175,7 +175,7 @@ const Index = () => {
   const hasNoData = !isLoading && (!prodData?.length && !priceData?.length && !exportData?.length);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] dark:bg-background overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans">
       <Helmet>
         <title>AlphaData | Intelligence Hub</title>
       </Helmet>
@@ -185,7 +185,7 @@ const Index = () => {
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Header activeItem="/" />
 
-<main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 scroll-smooth bg-black text-white">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 scroll-smooth bg-background text-foreground">
           <div className="max-w-7xl mx-auto space-y-8">
             
             {/* Header Section */}
@@ -195,10 +195,10 @@ const Index = () => {
                   <LayoutDashboard className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase tracking-wider">Visão Geral</span>
                 </div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
                   Dashboard Principal
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 max-w-md">
+                <p className="text-muted-foreground max-w-md">
                   Monitoramento em tempo real do ecossistema petrolífero de Angola.
                 </p>
               </div>
@@ -209,9 +209,9 @@ const Index = () => {
                   size="sm" 
                   onClick={handleSyncPrices}
                   disabled={isSyncing}
-                  className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 hover:border-primary/50 transition-all"
+                  className="bg-card shadow-sm border-border hover:border-primary/50 transition-all"
                 >
-                  <Zap className={`w-4 h-4 mr-2 text-amber-500 ${isSyncing ? 'animate-pulse' : ''}`} />
+                  <Zap className={`w-4 h-4 mr-2 text-accent ${isSyncing ? 'animate-pulse' : ''}`} />
                   {isSyncing ? "Sincronizando..." : "Live Prices"}
                 </Button>
                 <Button 
@@ -229,12 +229,12 @@ const Index = () => {
 
             {/* Alerts */}
             {hasNoData && (
-              <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-900/30">
+              <Alert variant="destructive">
                 <AlertTriangle className="h-5 w-5" />
                 <AlertDescription className="flex items-center justify-between w-full">
                   <span>Nenhum dado encontrado para o período atual.</span>
                   {isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={() => navigate("/admin")} className="hover:bg-red-100">
+                    <Button size="sm" variant="ghost" onClick={() => navigate("/admin")}>
                       Configurar Dados
                     </Button>
                   )}
@@ -300,16 +300,16 @@ const Index = () => {
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
-                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
                   <ProductionChart />
                 </div>
-                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
                   <OperatorsTable />
                 </div>
               </div>
               
               <div className="space-y-8">
-                <div className="bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
                   <ExportsMap />
                 </div>
                 <div className="bg-gradient-to-br from-primary/5 to-transparent p-1 rounded-3xl border border-primary/10">
@@ -319,7 +319,7 @@ const Index = () => {
             </div>
 
             {/* Footer Info */}
-            <footer className="pt-8 border-t border-slate-200 dark:border-slate-800">
+            <footer className="pt-8 border-t border-border">
               <DataSourceIndicator 
                 sources={[...DATA_SOURCES.prices, ...DATA_SOURCES.production, ...DATA_SOURCES.exports]} 
               />

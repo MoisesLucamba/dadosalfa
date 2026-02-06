@@ -46,7 +46,6 @@ serve(async (req) => {
         reportTitle = `Exportações e Logística - ${period || new Date().toLocaleDateString('pt-AO', { month: 'long', year: 'numeric' })}`;
         break;
       case 'risk':
-        // Combine all data for risk analysis
         const [riskProd, riskPrice, riskExport, riskAlerts] = await Promise.all([
           supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(50),
           supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(50),
@@ -62,14 +61,11 @@ serve(async (req) => {
         reportTitle = `Avaliação de Riscos - ${period || 'Q' + Math.ceil((new Date().getMonth() + 1) / 3) + ' ' + new Date().getFullYear()}`;
         break;
       case 'predictions':
-        // Use AI predictions
         const aiPredResult = await supabase.functions.invoke('ai-predictions');
         reportData.predictions = aiPredResult.data?.predictions || {};
         reportTitle = `Previsões IA - ${period || new Date().toLocaleDateString('pt-AO', { month: 'long', year: 'numeric' })}`;
         break;
       case 'general':
-        // RELATÓRIO GERAL - Contém TODAS as informações do setor
-        // Otimizado para evitar sobrecarga de memória - reduzindo limites e processando sequencialmente
         console.log('Fetching general report data...');
 
         const generalProduction = await supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(50);
@@ -80,7 +76,6 @@ serve(async (req) => {
         const generalCountryRisk = await supabase.from('country_risk').select('*').order('data_date', { ascending: false }).limit(15);
         const generalRegulatoryEvents = await supabase.from('regulatory_events').select('*').order('created_at', { ascending: false }).limit(15);
 
-        // Verificar se todas as consultas foram bem-sucedidas
         if (generalProduction.error) console.error('Production data error:', generalProduction.error);
         if (generalPrices.error) console.error('Prices data error:', generalPrices.error);
         if (generalExports.error) console.error('Exports data error:', generalExports.error);
@@ -89,7 +84,6 @@ serve(async (req) => {
         if (generalCountryRisk.error) console.error('Country risk error:', generalCountryRisk.error);
         if (generalRegulatoryEvents.error) console.error('Regulatory events error:', generalRegulatoryEvents.error);
         
-        // Lista de operadoras (14 principais de Angola)
         const operators = [
           { name: 'TotalEnergies EP Angola', shortName: 'Total', production: 285, marketShare: 22.8, blocks: 4, website: 'https://totalenergies.com/angola' },
           { name: 'Chevron Angola', shortName: 'Chevron', production: 198, marketShare: 15.8, blocks: 3, website: 'https://angola.chevron.com' },
@@ -136,12 +130,35 @@ serve(async (req) => {
 
     let content: any = { data: reportData };
     let summary = '';
-    // General reports are 6+ pages with comprehensive content
     let pages = reportType === 'general' ? Math.floor(Math.random() * 10) + 8 : Math.floor(Math.random() * 20) + 15;
 
     // Generate AI summary if requested
-    if (aiGenerated && reportType !== 'general') {
+    if (aiGenerated) {
       console.log('Generating AI summary...');
+
+      const systemPrompt = reportType === 'general' 
+        ? `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo abrangente (máximo 1500 palavras) para um relatório geral do setor.
+
+Inclua secções para:
+1. Sumário Executivo com principais destaques
+2. Análise de Produção por operadora
+3. Tendências de Preços e Mercado
+4. Análise de Exportações
+5. Avaliação de Riscos Geopolíticos
+6. Eventos Regulatórios Recentes
+7. Previsões e Tendências
+8. Conclusões e Recomendações Estratégicas
+
+Responda em português de Portugal/Angola. Seja detalhado e institucional.`
+        : `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${reportType === 'production' ? 'produção' : reportType === 'market' ? 'mercado e preços' : reportType === 'exports' ? 'exportações' : reportType === 'risk' ? 'avaliação de riscos' : 'previsões'}.
+
+Inclua:
+1. Principais métricas e tendências
+2. Comparação com período anterior
+3. Destaques e alertas importantes
+4. Recomendações estratégicas
+
+Responda em português de Portugal/Angola.`;
 
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -152,31 +169,19 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            {
-              role: 'system',
-              content: `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${reportType === 'production' ? 'produção' : reportType === 'market' ? 'mercado e preços' : reportType === 'exports' ? 'exportações' : reportType === 'risk' ? 'avaliação de riscos' : 'previsões'}.
-
-Inclua:
-1. Principais métricas e tendências
-2. Comparação com período anterior
-3. Destaques e alertas importantes
-4. Recomendações estratégicas
-
-Responda em português de Portugal/Angola.`
-            },
-            {
-              role: 'user',
-              content: `Analise os seguintes dados e gere o resumo executivo:\n\n${JSON.stringify(reportData, null, 2).substring(0, 2000)}`
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Analise os seguintes dados e gere o resumo executivo:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}` }
           ],
           temperature: 0.7,
-          max_tokens: 1000,
+          max_tokens: reportType === 'general' ? 3000 : 1000,
         }),
       });
 
       if (response.ok) {
         const aiData = await response.json();
         summary = aiData.choices?.[0]?.message?.content || '';
+      }
+    }
 
     // Calculate highlights based on data
     const highlights = [];
@@ -206,7 +211,6 @@ Responda em português de Portugal/Angola.`
         trend: 'stable'
       });
     }
-    // Additional highlights for general report
     if (reportType === 'general') {
       highlights.push({
         title: 'Operadoras Ativas',
