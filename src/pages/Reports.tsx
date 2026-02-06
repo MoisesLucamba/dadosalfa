@@ -416,8 +416,8 @@ const Reports = () => {
                       Analytics Hub
                     </Badge>
                   </div>
-                  <h1 className="text-4xl font-bold tracking-tight text-white">Relatórios</h1>
-                  <p className="text-zinc-400 mt-2 max-w-md">
+                  <h1 className="text-4xl font-bold tracking-tight text-foreground">Relatórios</h1>
+                  <p className="text-muted-foreground mt-2 max-w-md">
                     Gerencie, visualize e automatize seus insights baseados em dados com inteligência artificial.
                   </p>
                 </motion.div>
@@ -430,14 +430,14 @@ const Reports = () => {
                   <Button 
                     variant="outline" 
                     onClick={() => setShowWorkspacePanel(true)}
-                    className="bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300"
+                    className="bg-muted/50 border-border hover:bg-muted text-muted-foreground"
                   >
                     <Users className="w-4 h-4 mr-2" />
                     Workspaces
                   </Button>
                   <Button 
                     onClick={() => setShowGenerateDialog(true)}
-                    className="bg-white text-black hover:bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-all duration-300"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Relatório
@@ -458,16 +458,16 @@ const Reports = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="group p-5 rounded-2xl bg-[#0A0A0A] border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300"
+                    className="group p-5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2 rounded-xl bg-zinc-900 group-hover:scale-110 transition-transform duration-300 ${stat.color}`}>
+                      <div className={`p-2 rounded-xl bg-muted group-hover:scale-110 transition-transform duration-300 ${stat.color}`}>
                         <stat.icon className="w-5 h-5" />
                       </div>
-                      <ArrowUpRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                      <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </div>
-                    <div className="text-2xl font-bold text-white">{stat.value}</div>
-                    <div className="text-xs text-zinc-500 mt-1 font-medium uppercase tracking-wider">{stat.label}</div>
+                    <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                    <div className="text-xs text-muted-foreground mt-1 font-medium uppercase tracking-wider">{stat.label}</div>
                   </motion.div>
                 ))}
               </div>
@@ -480,14 +480,14 @@ const Reports = () => {
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="p-6 rounded-2xl bg-[#0A0A0A] border border-zinc-800/50"
+                    className="p-6 rounded-2xl bg-card border border-border"
                   >
-                    <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-6">Categorias</h3>
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">Categorias</h3>
                     <div className="space-y-2">
                       <button
                         onClick={() => setSelectedCategory(null)}
                         className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
-                          !selectedCategory ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                          !selectedCategory ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                         }`}
                       >
                         <div className="flex items-center gap-3">
