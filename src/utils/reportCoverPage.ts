@@ -9,7 +9,7 @@ import jsPDF from 'jspdf';
 // TYPES & INTERFACES
 // ============================================================================
 
-type RGBColor = readonly [number, number, number];
+type RGBColor = [number, number, number];
 
 export interface CoverPageData {
   generatingCompany: {
@@ -324,11 +324,9 @@ const renderBrandHeader = (doc: jsPDF, data: CoverPageData): number => {
   doc.setFillColor(...COLORS.dark);
   doc.rect(0, 0, pageWidth, LAYOUT.HEADER_HEIGHT, 'F');
   
-  // Subtle overlay for depth
-  doc.setFillColor(0, 0, 0);
-  doc.setGState(new doc.GState({ opacity: 0.05 }));
-  doc.rect(0, 0, pageWidth, LAYOUT.HEADER_HEIGHT, 'F');
-  doc.setGState(new doc.GState({ opacity: 1 }));
+  // Subtle overlay for depth (simplified - removed GState for compatibility)
+  doc.setFillColor(30, 30, 50);
+  doc.rect(0, 0, pageWidth, 20, 'F');
 
   // Alpha symbol with better positioning
   setTextStyle(doc, LAYOUT.ALPHA_SYMBOL_SIZE, 'bold', COLORS.brand);
@@ -352,17 +350,15 @@ const renderBrandHeader = (doc: jsPDF, data: CoverPageData): number => {
     LAYOUT.DECORATIVE_LINE_Y
   );
   
-  // Add subtle glow effect under line
-  doc.setDrawColor(...COLORS.brand);
-  doc.setGState(new doc.GState({ opacity: 0.3 }));
-  doc.setLineWidth(4);
+  // Additional decorative line for glow effect simulation
+  doc.setDrawColor(220, 100, 100);
+  doc.setLineWidth(1);
   doc.line(
     LAYOUT.MARGIN,
-    LAYOUT.DECORATIVE_LINE_Y,
+    LAYOUT.DECORATIVE_LINE_Y + 2,
     LAYOUT.MARGIN + LAYOUT.DECORATIVE_LINE_WIDTH,
-    LAYOUT.DECORATIVE_LINE_Y
+    LAYOUT.DECORATIVE_LINE_Y + 2
   );
-  doc.setGState(new doc.GState({ opacity: 1 }));
 
   // Report label with improved typography
   setTextStyle(doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.mediumGray);
@@ -654,7 +650,7 @@ const renderFooter = (doc: jsPDF): void => {
 const renderDataSourcesPage = (doc: jsPDF, data: CoverPageData): void => {
   doc.addPage();
   const pageWidth = doc.internal.pageSize.getWidth();
-  let yPos = LAYOUT.MARGIN;
+  let yPos: number = LAYOUT.MARGIN;
 
   // Modern page header
   doc.setFillColor(...COLORS.dark);
@@ -669,7 +665,7 @@ const renderDataSourcesPage = (doc: jsPDF, data: CoverPageData): void => {
   setTextStyle(doc, LAYOUT.TAGLINE_SIZE, 'normal', COLORS.white);
   doc.text(TRANSLATIONS.DATA_SOURCES_PAGE_TITLE, LAYOUT.MARGIN, 55);
 
-  yPos = 85;
+  yPos = 85 as number;
 
   // Section title
   drawSectionBar(doc, LAYOUT.MARGIN, yPos, COLORS.primary);
