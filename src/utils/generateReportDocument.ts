@@ -268,14 +268,30 @@ const renderFormattedText = (
   segments: FormattedText[],
   startX: number,
   startY: number,
-  maxWidth: number
+  maxWidth: number,
+  onNewPage?: () => void
 ): number => {
   let yPos = startY;
   let currentLine: { text: string; bold: boolean; italic: boolean; x: number }[] = [];
   let currentX = startX;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomLimit = pageHeight - LAYOUT.FOOTER_HEIGHT - LAYOUT.MARGIN - 5;
+  
+  const checkPageBreak = (requiredSpace: number) => {
+    if (yPos + requiredSpace > bottomLimit) {
+      doc.addPage();
+      yPos = LAYOUT.MARGIN;
+      if (onNewPage) {
+        onNewPage();
+        yPos = LAYOUT.HEADER_HEIGHT + 10;
+      }
+    }
+  };
   
   const flushLine = () => {
     if (currentLine.length === 0) return;
+    
+    checkPageBreak(LAYOUT.LINE_SPACING + 2);
     
     currentLine.forEach(segment => {
       doc.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal');
@@ -291,6 +307,7 @@ const renderFormattedText = (
     // Handle headings
     if (segment.isHeading) {
       flushLine();
+      checkPageBreak(LAYOUT.SUBSECTION_SPACING + 15);
       yPos += LAYOUT.SUBSECTION_SPACING;
       
       const headingSize = segment.headingLevel === 2 ? LAYOUT.TITLE_MEDIUM : LAYOUT.TITLE_SMALL;
@@ -309,6 +326,7 @@ const renderFormattedText = (
     // Handle bullets
     if (segment.isBullet) {
       flushLine();
+      checkPageBreak(LAYOUT.LINE_SPACING + 2);
       
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...COLORS.dark);
@@ -318,14 +336,19 @@ const renderFormattedText = (
       doc.text('•', bulletX, yPos);
       
       const textLines = doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8) - 5);
-      doc.text(textLines, bulletX + 5, yPos);
-      yPos += textLines.length * LAYOUT.LINE_SPACING;
+      
+      for (let i = 0; i < textLines.length; i++) {
+        checkPageBreak(LAYOUT.LINE_SPACING);
+        doc.text(textLines[i], bulletX + 5, yPos);
+        yPos += LAYOUT.LINE_SPACING;
+      }
       continue;
     }
     
     // Handle numbered lists
     if (segment.isNumbered) {
       flushLine();
+      checkPageBreak(LAYOUT.LINE_SPACING + 2);
       
       doc.setFont('helvetica', segment.bold ? 'bold' : 'normal');
       doc.setTextColor(...COLORS.dark);
@@ -333,8 +356,12 @@ const renderFormattedText = (
       
       const numberedX = startX + (segment.indent * 8);
       const textLines = doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8));
-      doc.text(textLines, numberedX, yPos);
-      yPos += textLines.length * LAYOUT.LINE_SPACING;
+      
+      for (let i = 0; i < textLines.length; i++) {
+        checkPageBreak(LAYOUT.LINE_SPACING);
+        doc.text(textLines[i], numberedX, yPos);
+        yPos += LAYOUT.LINE_SPACING;
+      }
       continue;
     }
     
@@ -516,7 +543,7 @@ export const generatePDFReport = (data: ReportData): void => {
       addSectionTitle('Sumário Executivo');
       
       const formattedSegments = parseMarkdownText(data.summary);
-      yPos = renderFormattedText(doc, formattedSegments, margin, yPos, pageWidth - 2 * margin);
+      yPos = renderFormattedText(doc, formattedSegments, margin, yPos, pageWidth - 2 * margin, addHeader);
       yPos += LAYOUT.SECTION_SPACING;
     }
 
