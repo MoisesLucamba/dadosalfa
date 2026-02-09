@@ -18,10 +18,10 @@ export const API_CONFIG = {
     baseUrl: "https://api.anthropic.com/v1/messages",
   },
 
-  // Supabase
+  // Supabase - use Deno.env for edge functions
   supabase: {
-    functionsUrl: process.env.NEXT_PUBLIC_SUPABASE_URL + "/functions/v1",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    functionsUrl: Deno.env.get("SUPABASE_URL") + "/functions/v1",
+    anonKey: Deno.env.get("SUPABASE_ANON_KEY"),
   },
 
   // Rate limits
@@ -95,6 +95,7 @@ export const SEARCH_TYPES = {
     label: "Tudo",
     icon: "Search",
     description: "Busca abrangente em todas as categorias",
+    keywords: [] as string[],
   },
   production: {
     label: "Produção",

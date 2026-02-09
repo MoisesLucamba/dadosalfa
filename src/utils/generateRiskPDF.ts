@@ -10,7 +10,7 @@ import autoTable from 'jspdf-autotable';
 // TYPES & INTERFACES
 // ============================================================================
 
-type RGBColor = readonly [number, number, number];
+type RGBColor = [number, number, number];
 
 export interface RiskScore {
   category: string;
