@@ -56,32 +56,32 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
+    --background: 0 0% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 8%;
+    --card: 0 0% 7%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 8%;
+    --popover: 0 0% 9%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 6%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 12%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 30% 15%;
+    --muted: 0 0% 14%;
     --muted-foreground: 215 20% 55%;
 
     --accent: 38 92% 50%;
-    --accent-foreground: 222 47% 6%;
+    --accent-foreground: 0 0% 4%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
     --ring: 217 91% 60%;
 
     /* Custom tokens */
@@ -89,19 +89,19 @@
     --glow-accent: 38 92% 50%;
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
-    --surface: 222 47% 10%;
-    --surface-elevated: 222 40% 14%;
+    --surface: 0 0% 8%;
+    --surface-elevated: 0 0% 12%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(199 89% 48%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(25 95% 53%) 100%);
-    --gradient-surface: linear-gradient(180deg, hsl(222 47% 10%) 0%, hsl(222 47% 6%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 100%);
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 8%) 0%, hsl(0 0% 4%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 10%) 0%, hsl(0 0% 7%) 100%);
     
     /* Shadows */
     --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.15);
-    --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.4);
-    --shadow-elevated: 0 8px 32px hsl(222 47% 4% / 0.6);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.5);
+    --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.7);
   }
 }
 

@@ -1,6 +1,6 @@
 /**
- * Cover page generator for reports - IMPROVED VERSION
- * Professional typography, modern design, better spacing
+ * Cover page generator for reports - MODERN VERSION
+ * Professional typography, embedded logo, modern design
  */
 
 import jsPDF from 'jspdf';
@@ -44,6 +44,7 @@ export interface CoverPageData {
   reportPeriod: string;
   generatedAt: Date;
   isAiGenerated: boolean;
+  logoBase64?: string;
 }
 
 export interface DataSource {
@@ -53,94 +54,40 @@ export interface DataSource {
 }
 
 // ============================================================================
-// CONSTANTS - IMPROVED COLOR PALETTE
+// CONSTANTS
 // ============================================================================
 
 const COLORS = {
-  // Primary brand colors
-  primary: [30, 64, 175] as RGBColor,      // Deep blue
-  brand: [220, 38, 38] as RGBColor,        // AlphaData red
-  accent: [236, 72, 153] as RGBColor,      // Pink accent
-  
-  // Neutrals - improved contrast
-  dark: [15, 23, 42] as RGBColor,          // Slate 900
-  darkGray: [51, 65, 85] as RGBColor,      // Slate 700
-  muted: [100, 116, 139] as RGBColor,      // Slate 500
-  mediumGray: [148, 163, 184] as RGBColor, // Slate 400
-  lightGray: [203, 213, 225] as RGBColor,  // Slate 300
-  light: [241, 245, 249] as RGBColor,      // Slate 100
-  ultraLight: [248, 250, 252] as RGBColor, // Slate 50
+  primary: [30, 64, 175] as RGBColor,
+  brand: [220, 38, 38] as RGBColor,
+  accent: [236, 72, 153] as RGBColor,
+  dark: [10, 10, 10] as RGBColor,
+  darkGray: [51, 65, 85] as RGBColor,
+  muted: [100, 116, 139] as RGBColor,
+  mediumGray: [148, 163, 184] as RGBColor,
+  lightGray: [203, 213, 225] as RGBColor,
+  light: [241, 245, 249] as RGBColor,
+  ultraLight: [248, 250, 252] as RGBColor,
   white: [255, 255, 255] as RGBColor,
-  
-  // Status colors
-  success: [34, 197, 94] as RGBColor,      // Green
-  warning: [234, 179, 8] as RGBColor,      // Yellow
-  info: [59, 130, 246] as RGBColor,        // Blue
-  
-  // Backgrounds
-  bgPrimary: [249, 250, 251] as RGBColor,  // Gray 50
-  bgSecondary: [243, 244, 246] as RGBColor, // Gray 100
+  success: [34, 197, 94] as RGBColor,
+  warning: [234, 179, 8] as RGBColor,
+  info: [59, 130, 246] as RGBColor,
+  bgPrimary: [249, 250, 251] as RGBColor,
+  bgSecondary: [243, 244, 246] as RGBColor,
 } as const;
 
-// ============================================================================
-// LAYOUT - IMPROVED SPACING AND SIZING
-// ============================================================================
-
 const LAYOUT = {
-  // Margins and spacing
   MARGIN: 20,
-  MARGIN_SMALL: 12,
-  SECTION_SPACING: 16,
-  SUBSECTION_SPACING: 10,
+  SECTION_SPACING: 14,
+  SUBSECTION_SPACING: 8,
   LINE_SPACING: 6,
   CARD_PADDING: 8,
-  
-  // Header
-  HEADER_HEIGHT: 130,
-  ALPHA_SYMBOL_SIZE: 56,
-  ALPHA_SYMBOL_X_OFFSET: 30,
-  BRAND_NAME_SIZE: 32,
-  TAGLINE_SIZE: 11,
-  
-  // Typography - improved hierarchy
-  TITLE_LARGE: 42,
-  TITLE_MEDIUM: 28,
-  TITLE_SMALL: 18,
-  SECTION_TITLE_SIZE: 13,
-  BODY_LARGE: 11,
-  BODY_NORMAL: 10,
-  BODY_SMALL: 9,
-  CAPTION: 8,
-  TINY: 7,
-  
-  // Decorative elements
+  BOX_RADIUS: 6,
+  SMALL_BOX_RADIUS: 3,
+  FOOTER_HEIGHT: 28,
   LINE_WIDTH_THICK: 2.5,
   LINE_WIDTH_MEDIUM: 1.5,
   LINE_WIDTH_THIN: 0.75,
-  BOX_RADIUS: 6,
-  SMALL_BOX_RADIUS: 3,
-  DECORATIVE_LINE_WIDTH: 80,
-  
-  // Component sizes
-  METADATA_BOX_HEIGHT: 35,
-  INFO_BOX_HEIGHT: 26,
-  DATA_SOURCE_BOX_HEIGHT: 32,
-  REQUEST_BOX_HEIGHT: 24,
-  REQUESTED_BY_BOX_HEIGHT: 16,
-  AI_BADGE_WIDTH: 38,
-  AI_BADGE_HEIGHT: 16,
-  SECTION_BAR_WIDTH: 5,
-  SECTION_BAR_HEIGHT: 14,
-  FOOTER_HEIGHT: 28,
-  
-  // Positions
-  ALPHA_Y: 50,
-  BRAND_TEXT_Y: 50,
-  TAGLINE_Y: 68,
-  DECORATIVE_LINE_Y: 82,
-  REPORT_LABEL_Y: 100,
-  REPORT_TITLE_Y: 116,
-  METADATA_START_Y: 148,
 } as const;
 
 const TRANSLATIONS = {
@@ -170,9 +117,6 @@ const TRANSLATIONS = {
   CONTACT: 'Contacto:',
   WEBSITE: 'Website:',
   ADDRESS: 'Endereco:',
-  SOURCE: 'Fonte:',
-  TYPE_LABEL: 'Tipo:',
-  DESCRIPTION: 'Descricao:',
   CONFIDENTIAL_NOTICE: 'Este documento contem informacoes confidenciais. A sua distribuicao esta restrita a destinatarios autorizados.',
   CONFIDENTIAL_HEADER: 'CONFIDENCIAL - USO INTERNO',
   DATA_QUALITY_NOTE: 'Todas as fontes de dados sao verificadas e atualizadas regularmente para garantir precisao e confiabilidade nas analises.',
@@ -181,6 +125,7 @@ const TRANSLATIONS = {
 // ============================================================================
 // DEFAULT DATA
 // ============================================================================
+
 export const getDefaultCoverPageData = (): Omit<CoverPageData, 'reportTitle' | 'reportType' | 'reportPeriod' | 'generatedAt' | 'isAiGenerated'> => ({
   generatingCompany: {
     name: 'AlphaData',
@@ -228,37 +173,20 @@ export const getDefaultCoverPageData = (): Omit<CoverPageData, 'reportTitle' | '
 });
 
 // ============================================================================
-// VALIDATION
-// ============================================================================
-
-const validateCoverPageData = (data: CoverPageData): void => {
-  if (!data) {
-    throw new Error('Cover page data is required');
-  }
-  if (!data.reportTitle?.trim()) {
-    throw new Error('Report title is required');
-  }
-  if (!data.reportType?.trim()) {
-    throw new Error('Report type is required');
-  }
-  if (!data.generatedAt || !(data.generatedAt instanceof Date)) {
-    throw new Error('Generated date must be a valid Date object');
-  }
-  if (!data.generatingCompany?.name) {
-    throw new Error('Generating company name is required');
-  }
-  if (!Array.isArray(data.dataSources) || data.dataSources.length === 0) {
-    throw new Error('At least one data source is required');
-  }
-};
-
-// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
+const validateCoverPageData = (data: CoverPageData): void => {
+  if (!data) throw new Error('Cover page data is required');
+  if (!data.reportTitle?.trim()) throw new Error('Report title is required');
+  if (!data.reportType?.trim()) throw new Error('Report type is required');
+  if (!data.generatedAt || !(data.generatedAt instanceof Date)) throw new Error('Generated date must be a valid Date object');
+  if (!data.generatingCompany?.name) throw new Error('Generating company name is required');
+  if (!Array.isArray(data.dataSources) || data.dataSources.length === 0) throw new Error('At least one data source is required');
+};
+
 const sanitizeText = (text: string): string => {
   if (!text) return '';
-  
   return text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -276,29 +204,6 @@ const setTextStyle = (
   doc.setTextColor(...color);
 };
 
-const drawRoundedBox = (
-  doc: jsPDF,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  color: RGBColor,
-  radius: number = LAYOUT.BOX_RADIUS
-): void => {
-  doc.setFillColor(...color);
-  doc.roundedRect(x, y, width, height, radius, radius, 'F');
-};
-
-const drawSectionBar = (
-  doc: jsPDF,
-  x: number,
-  y: number,
-  color: RGBColor
-): void => {
-  doc.setFillColor(...color);
-  doc.roundedRect(x, y, LAYOUT.SECTION_BAR_WIDTH, LAYOUT.SECTION_BAR_HEIGHT, 1, 1, 'F');
-};
-
 const formatDateTime = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
   const months = [
@@ -309,471 +214,349 @@ const formatDateTime = (date: Date): string => {
   const year = date.getFullYear();
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  
   return `${day} de ${month} de ${year} as ${hours}:${minutes}`;
 };
 
 // ============================================================================
-// RENDER SECTIONS - IMPROVED DESIGN
+// COVER PAGE RENDERING - MODERN DESIGN
 // ============================================================================
 
-const renderBrandHeader = (doc: jsPDF, data: CoverPageData): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  // Modern gradient-style background
-  doc.setFillColor(...COLORS.dark);
-  doc.rect(0, 0, pageWidth, LAYOUT.HEADER_HEIGHT, 'F');
-  
-  // Subtle overlay for depth (simplified - removed GState for compatibility)
-  doc.setFillColor(30, 30, 50);
-  doc.rect(0, 0, pageWidth, 20, 'F');
-
-  // Alpha symbol with better positioning
-  setTextStyle(doc, LAYOUT.ALPHA_SYMBOL_SIZE, 'bold', COLORS.brand);
-  doc.text('a', LAYOUT.MARGIN, LAYOUT.ALPHA_Y);
-
-  // Brand name with improved typography
-  setTextStyle(doc, LAYOUT.BRAND_NAME_SIZE, 'bold', COLORS.white);
-  doc.text('ALPHADATA', LAYOUT.MARGIN + LAYOUT.ALPHA_SYMBOL_X_OFFSET, LAYOUT.BRAND_TEXT_Y);
-
-  // Tagline with better spacing
-  setTextStyle(doc, LAYOUT.TAGLINE_SIZE, 'normal', COLORS.lightGray);
-  doc.text('Inteligencia de Mercado Petrolifero Angolano', LAYOUT.MARGIN, LAYOUT.TAGLINE_Y);
-
-  // Modern decorative accent
-  doc.setDrawColor(...COLORS.brand);
-  doc.setLineWidth(LAYOUT.LINE_WIDTH_THICK);
-  doc.line(
-    LAYOUT.MARGIN,
-    LAYOUT.DECORATIVE_LINE_Y,
-    LAYOUT.MARGIN + LAYOUT.DECORATIVE_LINE_WIDTH,
-    LAYOUT.DECORATIVE_LINE_Y
-  );
-  
-  // Additional decorative line for glow effect simulation
-  doc.setDrawColor(220, 100, 100);
-  doc.setLineWidth(1);
-  doc.line(
-    LAYOUT.MARGIN,
-    LAYOUT.DECORATIVE_LINE_Y + 2,
-    LAYOUT.MARGIN + LAYOUT.DECORATIVE_LINE_WIDTH,
-    LAYOUT.DECORATIVE_LINE_Y + 2
-  );
-
-  // Report label with improved typography
-  setTextStyle(doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.mediumGray);
-  doc.text(TRANSLATIONS.REPORT, LAYOUT.MARGIN, LAYOUT.REPORT_LABEL_Y);
-
-  // Report title with better line height
-  setTextStyle(doc, LAYOUT.TITLE_SMALL, 'bold', COLORS.white);
-  const titleLines = doc.splitTextToSize(sanitizeText(data.reportTitle), pageWidth - 2 * LAYOUT.MARGIN);
-  doc.text(titleLines, LAYOUT.MARGIN, LAYOUT.REPORT_TITLE_Y);
-
-  return LAYOUT.METADATA_START_Y;
-};
-
-const renderMetadataBox = (doc: jsPDF, data: CoverPageData, yPos: number): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  // Modern card design with subtle shadow
-  drawRoundedBox(doc, LAYOUT.MARGIN, yPos, pageWidth - 2 * LAYOUT.MARGIN, LAYOUT.METADATA_BOX_HEIGHT, COLORS.white);
-  
-  // Subtle border
-  doc.setDrawColor(...COLORS.lightGray);
-  doc.setLineWidth(LAYOUT.LINE_WIDTH_THIN);
-  doc.roundedRect(LAYOUT.MARGIN, yPos, pageWidth - 2 * LAYOUT.MARGIN, LAYOUT.METADATA_BOX_HEIGHT, LAYOUT.BOX_RADIUS, LAYOUT.BOX_RADIUS, 'S');
-
-  const metaY = yPos + 14;
-  const labelX = LAYOUT.MARGIN + LAYOUT.CARD_PADDING;
-
-  // Type
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.TYPE, labelX, metaY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.reportType), labelX + 18, metaY);
-
-  // Period
-  const periodX = labelX + 70;
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.PERIOD, periodX, metaY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.reportPeriod) || TRANSLATIONS.CURRENT, periodX + 25, metaY);
-
-  // Generated date - second row
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.GENERATED, labelX, metaY + 12);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(formatDateTime(data.generatedAt), labelX + 22, metaY + 12);
-
-  // Modern AI badge
-  if (data.isAiGenerated) {
-    const badgeX = pageWidth - LAYOUT.MARGIN - LAYOUT.AI_BADGE_WIDTH - LAYOUT.CARD_PADDING;
-    const badgeY = yPos + 10;
-    
-    // Gradient-style badge
-    drawRoundedBox(
-      doc,
-      badgeX,
-      badgeY,
-      LAYOUT.AI_BADGE_WIDTH,
-      LAYOUT.AI_BADGE_HEIGHT,
-      COLORS.primary,
-      LAYOUT.SMALL_BOX_RADIUS
-    );
-    
-    setTextStyle(doc, LAYOUT.CAPTION, 'bold', COLORS.white);
-    doc.text(TRANSLATIONS.AI_GENERATED, badgeX + 4, badgeY + 10);
-  }
-
-  return yPos + LAYOUT.METADATA_BOX_HEIGHT + LAYOUT.SECTION_SPACING;
-};
-
-const renderSectionHeader = (
-  doc: jsPDF,
-  title: string,
-  yPos: number,
-  barColor: RGBColor
-): number => {
-  drawSectionBar(doc, LAYOUT.MARGIN, yPos, barColor);
-  setTextStyle(doc, LAYOUT.SECTION_TITLE_SIZE, 'bold', COLORS.dark);
-  doc.text(sanitizeText(title), LAYOUT.MARGIN + 10, yPos + 10);
-  return yPos + 22;
-};
-
-const renderGeneratingCompany = (
-  doc: jsPDF,
-  company: CoverPageData['generatingCompany'],
-  yPos: number
-): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  // Company name with improved hierarchy
-  setTextStyle(doc, LAYOUT.BODY_LARGE, 'bold', COLORS.dark);
-  doc.text(sanitizeText(company.name), LAYOUT.MARGIN, yPos);
-
-  setTextStyle(doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.darkGray);
-  doc.text(' - ' + sanitizeText(company.fullName), LAYOUT.MARGIN + 28, yPos);
-  yPos += LAYOUT.SUBSECTION_SPACING;
-
-  // Description with better readability
-  const descLines = doc.splitTextToSize(sanitizeText(company.description), pageWidth - 2 * LAYOUT.MARGIN);
-  setTextStyle(doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.darkGray);
-  doc.text(descLines, LAYOUT.MARGIN, yPos);
-  yPos += descLines.length * LAYOUT.LINE_SPACING + LAYOUT.LINE_SPACING;
-
-  // Contact info with icons-style layout
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.muted);
-  const contactText = `${TRANSLATIONS.CONTACT} ${sanitizeText(company.contact)} | ${TRANSLATIONS.WEBSITE} ${sanitizeText(company.website)} | ${TRANSLATIONS.ADDRESS} ${sanitizeText(company.address)}`;
-  const contactLines = doc.splitTextToSize(contactText, pageWidth - 2 * LAYOUT.MARGIN);
-  doc.text(contactLines, LAYOUT.MARGIN, yPos);
-
-  return yPos + contactLines.length * 5 + LAYOUT.SECTION_SPACING;
-};
-
-const renderCountryInfo = (
-  doc: jsPDF,
-  countryInfo: CoverPageData['countryInfo'],
-  yPos: number
-): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  // Modern info card
-  drawRoundedBox(
-    doc,
-    LAYOUT.MARGIN,
-    yPos,
-    pageWidth - 2 * LAYOUT.MARGIN,
-    LAYOUT.INFO_BOX_HEIGHT,
-    COLORS.bgPrimary,
-    LAYOUT.SMALL_BOX_RADIUS
-  );
-
-  const infoY = yPos + 10;
-  const labelX = LAYOUT.MARGIN + LAYOUT.CARD_PADDING;
-
-  // First row
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.COUNTRY, labelX, infoY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(countryInfo.name), labelX + 20, infoY);
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.REGION, labelX + 90, infoY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(countryInfo.region), labelX + 110, infoY);
-
-  // Second row
-  const secondRowY = infoY + 10;
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.CURRENCY, labelX, secondRowY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(countryInfo.currency), labelX + 23, secondRowY);
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.LANGUAGE, labelX + 70, secondRowY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(countryInfo.language), labelX + 93, secondRowY);
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.TIMEZONE, labelX + 125, secondRowY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(countryInfo.timezone), labelX + 141, secondRowY);
-
-  return yPos + LAYOUT.INFO_BOX_HEIGHT + LAYOUT.SUBSECTION_SPACING;
-};
-
-const renderRequestingCompany = (
-  doc: jsPDF,
-  company: NonNullable<CoverPageData['requestingCompany']>,
-  yPos: number
-): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  drawRoundedBox(
-    doc,
-    LAYOUT.MARGIN,
-    yPos,
-    pageWidth - 2 * LAYOUT.MARGIN,
-    LAYOUT.REQUEST_BOX_HEIGHT,
-    COLORS.bgPrimary,
-    LAYOUT.SMALL_BOX_RADIUS
-  );
-
-  const reqY = yPos + 10;
-  const labelX = LAYOUT.MARGIN + LAYOUT.CARD_PADDING;
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.COMPANY, labelX, reqY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(company.name), labelX + 28, reqY);
-
-  if (company.nif) {
-    setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-    doc.text(TRANSLATIONS.NIF, labelX + 110, reqY);
-    setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-    doc.text(sanitizeText(company.nif), labelX + 122, reqY);
-  }
-
-  if (company.sector || company.country) {
-    const secondRowY = reqY + 10;
-    if (company.sector) {
-      setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-      doc.text(TRANSLATIONS.SECTOR, labelX, secondRowY);
-      setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-      doc.text(sanitizeText(company.sector), labelX + 23, secondRowY);
-    }
-
-    if (company.country) {
-      setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-      doc.text(TRANSLATIONS.COUNTRY, labelX + 90, secondRowY);
-      setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-      doc.text(sanitizeText(company.country), labelX + 105, secondRowY);
-    }
-  }
-
-  return yPos + LAYOUT.REQUEST_BOX_HEIGHT + LAYOUT.SUBSECTION_SPACING;
-};
-
-const renderRequestedBy = (
-  doc: jsPDF,
-  person: NonNullable<CoverPageData['requestedBy']>,
-  yPos: number
-): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  drawRoundedBox(
-    doc,
-    LAYOUT.MARGIN,
-    yPos,
-    pageWidth - 2 * LAYOUT.MARGIN,
-    LAYOUT.REQUESTED_BY_BOX_HEIGHT,
-    COLORS.bgPrimary,
-    LAYOUT.SMALL_BOX_RADIUS
-  );
-
-  const byY = yPos + 11;
-  const labelX = LAYOUT.MARGIN + LAYOUT.CARD_PADDING;
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-  doc.text(TRANSLATIONS.NAME, labelX, byY);
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-  doc.text(sanitizeText(person.name), labelX + 20, byY);
-
-  if (person.role) {
-    setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-    doc.text(TRANSLATIONS.ROLE, labelX + 90, byY);
-    setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.dark);
-    doc.text(sanitizeText(person.role), labelX + 108, byY);
-  }
-
-  if (person.email) {
-    // If email is long, show it on the same line if possible
-    const emailText = sanitizeText(person.email);
-    const emailWidth = doc.getTextWidth(emailText);
-    const availableWidth = pageWidth - LAYOUT.MARGIN - labelX - 168;
-    
-    if (emailWidth < availableWidth) {
-      setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.muted);
-      doc.text(TRANSLATIONS.EMAIL, labelX + 150, byY);
-      setTextStyle(doc, LAYOUT.CAPTION, 'normal', COLORS.dark);
-      doc.text(emailText, labelX + 165, byY);
-    }
-  }
-
-  return yPos + LAYOUT.REQUESTED_BY_BOX_HEIGHT + LAYOUT.SUBSECTION_SPACING;
-};
-
-const renderFooter = (doc: jsPDF): void => {
+const renderCoverPage = (doc: jsPDF, data: CoverPageData): void => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = LAYOUT.MARGIN;
 
-  // Modern footer with gradient
+  // === FULL DARK HEADER (top 45%) ===
+  const headerHeight = pageHeight * 0.42;
   doc.setFillColor(...COLORS.dark);
-  doc.rect(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, LAYOUT.FOOTER_HEIGHT, 'F');
+  doc.rect(0, 0, pageWidth, headerHeight, 'F');
 
-  // Accent line
+  // Subtle gradient band at top
+  doc.setFillColor(20, 20, 25);
+  doc.rect(0, 0, pageWidth, 25, 'F');
+
+  // Red accent line
   doc.setDrawColor(...COLORS.brand);
-  doc.setLineWidth(LAYOUT.LINE_WIDTH_MEDIUM);
-  doc.line(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, pageHeight - LAYOUT.FOOTER_HEIGHT);
+  doc.setLineWidth(3);
+  doc.line(margin, headerHeight - 1, margin + 80, headerHeight - 1);
 
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.mediumGray);
-  doc.text(sanitizeText(TRANSLATIONS.CONFIDENTIAL_NOTICE), pageWidth / 2, pageHeight - 16, { align: 'center' });
+  // === LOGO ===
+  let logoY = 30;
+  if (data.logoBase64) {
+    try {
+      doc.addImage(data.logoBase64, 'PNG', margin, logoY, 22, 22);
+      // Brand name next to logo
+      setTextStyle(doc, 28, 'bold', COLORS.white);
+      doc.text('ALPHADATA', margin + 28, logoY + 15);
+    } catch {
+      // Fallback to text
+      setTextStyle(doc, 48, 'bold', COLORS.brand);
+      doc.text('α', margin, logoY + 15);
+      setTextStyle(doc, 28, 'bold', COLORS.white);
+      doc.text('ALPHADATA', margin + 25, logoY + 15);
+    }
+  } else {
+    setTextStyle(doc, 48, 'bold', COLORS.brand);
+    doc.text('α', margin, logoY + 15);
+    setTextStyle(doc, 28, 'bold', COLORS.white);
+    doc.text('ALPHADATA', margin + 25, logoY + 15);
+  }
 
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.brand);
-  doc.text(TRANSLATIONS.CONFIDENTIAL_HEADER, pageWidth / 2, pageHeight - 8, { align: 'center' });
+  // Tagline
+  setTextStyle(doc, 10, 'normal', COLORS.mediumGray);
+  doc.text('Inteligencia de Mercado Petrolifero Angolano', margin, logoY + 28);
+
+  // === REPORT TITLE ===
+  const titleY = logoY + 50;
+  setTextStyle(doc, 9, 'bold', COLORS.mediumGray);
+  doc.text(TRANSLATIONS.REPORT, margin, titleY);
+
+  setTextStyle(doc, 22, 'bold', COLORS.white);
+  const titleLines = doc.splitTextToSize(sanitizeText(data.reportTitle), pageWidth - 2 * margin);
+  doc.text(titleLines, margin, titleY + 14);
+
+  // === METADATA BAR ===
+  const metaY = headerHeight + 12;
+  doc.setFillColor(...COLORS.white);
+  doc.roundedRect(margin, metaY, pageWidth - 2 * margin, 32, 4, 4, 'F');
+  doc.setDrawColor(...COLORS.lightGray);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, metaY, pageWidth - 2 * margin, 32, 4, 4, 'S');
+
+  const labelX = margin + 10;
+  const metaTextY = metaY + 13;
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.TYPE, labelX, metaTextY);
+  setTextStyle(doc, 9, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.reportType), labelX + 16, metaTextY);
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.PERIOD, labelX + 65, metaTextY);
+  setTextStyle(doc, 9, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.reportPeriod) || TRANSLATIONS.CURRENT, labelX + 88, metaTextY);
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.GENERATED, labelX, metaTextY + 11);
+  setTextStyle(doc, 9, 'normal', COLORS.dark);
+  doc.text(formatDateTime(data.generatedAt), labelX + 22, metaTextY + 11);
+
+  if (data.isAiGenerated) {
+    const badgeX = pageWidth - margin - 48;
+    doc.setFillColor(...COLORS.primary);
+    doc.roundedRect(badgeX, metaY + 10, 38, 13, 3, 3, 'F');
+    setTextStyle(doc, 7, 'bold', COLORS.white);
+    doc.text(TRANSLATIONS.AI_GENERATED, badgeX + 5, metaY + 18);
+  }
+
+  // === COMPANY INFO SECTION ===
+  let yPos = metaY + 48;
+
+  // Generating Company
+  doc.setFillColor(...COLORS.brand);
+  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
+  setTextStyle(doc, 11, 'bold', COLORS.dark);
+  doc.text(TRANSLATIONS.GENERATING_COMPANY, margin + 10, yPos + 9);
+  yPos += 18;
+
+  setTextStyle(doc, 10, 'bold', COLORS.dark);
+  doc.text(sanitizeText(data.generatingCompany.fullName), margin, yPos);
+  yPos += 8;
+
+  setTextStyle(doc, 9, 'normal', COLORS.darkGray);
+  const descLines = doc.splitTextToSize(sanitizeText(data.generatingCompany.description), pageWidth - 2 * margin);
+  doc.text(descLines, margin, yPos);
+  yPos += descLines.length * 5 + 5;
+
+  setTextStyle(doc, 8, 'normal', COLORS.muted);
+  doc.text(`${TRANSLATIONS.CONTACT} ${sanitizeText(data.generatingCompany.contact)} | ${TRANSLATIONS.WEBSITE} ${sanitizeText(data.generatingCompany.website)} | ${TRANSLATIONS.ADDRESS} ${sanitizeText(data.generatingCompany.address)}`, margin, yPos);
+  yPos += 14;
+
+  // Country Info
+  doc.setFillColor(...COLORS.success);
+  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
+  setTextStyle(doc, 11, 'bold', COLORS.dark);
+  doc.text(TRANSLATIONS.COUNTRY_INFO, margin + 10, yPos + 9);
+  yPos += 18;
+
+  doc.setFillColor(...COLORS.bgPrimary);
+  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 22, 3, 3, 'F');
+
+  const ciY = yPos + 9;
+  const ciX = margin + 8;
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.COUNTRY, ciX, ciY);
+  setTextStyle(doc, 8, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.countryInfo.name), ciX + 18, ciY);
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.REGION, ciX + 80, ciY);
+  setTextStyle(doc, 8, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.countryInfo.region), ciX + 100, ciY);
+
+  const ci2Y = ciY + 9;
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.CURRENCY, ciX, ci2Y);
+  setTextStyle(doc, 8, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.countryInfo.currency), ciX + 23, ci2Y);
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.LANGUAGE, ciX + 65, ci2Y);
+  setTextStyle(doc, 8, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.countryInfo.language), ciX + 85, ci2Y);
+
+  setTextStyle(doc, 8, 'bold', COLORS.muted);
+  doc.text(TRANSLATIONS.TIMEZONE, ciX + 115, ci2Y);
+  setTextStyle(doc, 8, 'normal', COLORS.dark);
+  doc.text(sanitizeText(data.countryInfo.timezone), ciX + 131, ci2Y);
+
+  yPos += 28;
+
+  // Requesting Company
+  if (data.requestingCompany) {
+    doc.setFillColor(...COLORS.warning);
+    doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
+    setTextStyle(doc, 11, 'bold', COLORS.dark);
+    doc.text(TRANSLATIONS.REQUESTING_COMPANY, margin + 10, yPos + 9);
+    yPos += 18;
+
+    doc.setFillColor(...COLORS.bgPrimary);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 20, 3, 3, 'F');
+
+    const rcY = yPos + 10;
+    setTextStyle(doc, 8, 'bold', COLORS.muted);
+    doc.text(TRANSLATIONS.COMPANY, margin + 8, rcY);
+    setTextStyle(doc, 8, 'normal', COLORS.dark);
+    doc.text(sanitizeText(data.requestingCompany.name), margin + 35, rcY);
+
+    if (data.requestingCompany.nif) {
+      setTextStyle(doc, 8, 'bold', COLORS.muted);
+      doc.text(TRANSLATIONS.NIF, margin + 105, rcY);
+      setTextStyle(doc, 8, 'normal', COLORS.dark);
+      doc.text(sanitizeText(data.requestingCompany.nif), margin + 117, rcY);
+    }
+
+    yPos += 26;
+  }
+
+  // Requested By
+  if (data.requestedBy) {
+    doc.setFillColor(...COLORS.info);
+    doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
+    setTextStyle(doc, 11, 'bold', COLORS.dark);
+    doc.text(TRANSLATIONS.REQUESTED_BY, margin + 10, yPos + 9);
+    yPos += 18;
+
+    doc.setFillColor(...COLORS.bgPrimary);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 14, 3, 3, 'F');
+
+    const rbY = yPos + 9;
+    setTextStyle(doc, 8, 'bold', COLORS.muted);
+    doc.text(TRANSLATIONS.NAME, margin + 8, rbY);
+    setTextStyle(doc, 8, 'normal', COLORS.dark);
+    doc.text(sanitizeText(data.requestedBy.name), margin + 26, rbY);
+
+    if (data.requestedBy.role) {
+      setTextStyle(doc, 8, 'bold', COLORS.muted);
+      doc.text(TRANSLATIONS.ROLE, margin + 85, rbY);
+      setTextStyle(doc, 8, 'normal', COLORS.dark);
+      doc.text(sanitizeText(data.requestedBy.role), margin + 103, rbY);
+    }
+
+    yPos += 20;
+  }
+
+  // Footer
+  renderFooter(doc);
 };
 
 // ============================================================================
-// DATA SOURCES PAGE - IMPROVED DESIGN
+// DATA SOURCES PAGE
 // ============================================================================
 
 const renderDataSourcesPage = (doc: jsPDF, data: CoverPageData): void => {
   doc.addPage();
   const pageWidth = doc.internal.pageSize.getWidth();
-  let yPos: number = LAYOUT.MARGIN;
+  const margin = LAYOUT.MARGIN;
 
-  // Modern page header
+  // Header bar
   doc.setFillColor(...COLORS.dark);
-  doc.rect(0, 0, pageWidth, 70, 'F');
+  doc.rect(0, 0, pageWidth, 60, 'F');
 
-  setTextStyle(doc, LAYOUT.ALPHA_SYMBOL_SIZE, 'bold', COLORS.brand);
-  doc.text('a', LAYOUT.MARGIN, 38);
+  if (data.logoBase64) {
+    try {
+      doc.addImage(data.logoBase64, 'PNG', margin, 14, 16, 16);
+      setTextStyle(doc, 22, 'bold', COLORS.white);
+      doc.text('ALPHADATA', margin + 22, 28);
+    } catch {
+      setTextStyle(doc, 36, 'bold', COLORS.brand);
+      doc.text('α', margin, 32);
+      setTextStyle(doc, 22, 'bold', COLORS.white);
+      doc.text('ALPHADATA', margin + 22, 32);
+    }
+  } else {
+    setTextStyle(doc, 36, 'bold', COLORS.brand);
+    doc.text('α', margin, 32);
+    setTextStyle(doc, 22, 'bold', COLORS.white);
+    doc.text('ALPHADATA', margin + 22, 32);
+  }
 
-  setTextStyle(doc, LAYOUT.BRAND_NAME_SIZE, 'bold', COLORS.white);
-  doc.text('ALPHADATA', LAYOUT.MARGIN + LAYOUT.ALPHA_SYMBOL_X_OFFSET, 38);
+  setTextStyle(doc, 10, 'normal', COLORS.lightGray);
+  doc.text(TRANSLATIONS.DATA_SOURCES_PAGE_TITLE, margin, 46);
 
-  setTextStyle(doc, LAYOUT.TAGLINE_SIZE, 'normal', COLORS.white);
-  doc.text(TRANSLATIONS.DATA_SOURCES_PAGE_TITLE, LAYOUT.MARGIN, 55);
-
-  yPos = 85 as number;
+  let yPos = 75;
 
   // Section title
-  drawSectionBar(doc, LAYOUT.MARGIN, yPos, COLORS.primary);
-  setTextStyle(doc, LAYOUT.SECTION_TITLE_SIZE, 'bold', COLORS.dark);
-  doc.text(TRANSLATIONS.DATA_SOURCES, LAYOUT.MARGIN + 10, yPos + 10);
-  yPos += 28;
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
+  setTextStyle(doc, 11, 'bold', COLORS.dark);
+  doc.text(TRANSLATIONS.DATA_SOURCES, margin + 10, yPos + 9);
+  yPos += 22;
 
-  // Introduction text
-  setTextStyle(doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.darkGray);
+  // Intro text
+  setTextStyle(doc, 9, 'normal', COLORS.darkGray);
   const introText = 'Este relatorio baseia-se em multiplas fontes de dados verificadas e confiaveis para garantir a precisao e integridade das analises apresentadas.';
-  const introLines = doc.splitTextToSize(introText, pageWidth - 2 * LAYOUT.MARGIN);
-  doc.text(introLines, LAYOUT.MARGIN, yPos);
-  yPos += introLines.length * LAYOUT.LINE_SPACING + 18;
+  const introLines = doc.splitTextToSize(introText, pageWidth - 2 * margin);
+  doc.text(introLines, margin, yPos);
+  yPos += introLines.length * 5 + 14;
 
-  // Modern data sources cards
+  // Data sources cards
   data.dataSources.forEach((source, index) => {
-    if (yPos + LAYOUT.DATA_SOURCE_BOX_HEIGHT + 10 > doc.internal.pageSize.getHeight() - LAYOUT.FOOTER_HEIGHT - LAYOUT.MARGIN) {
+    const cardHeight = 30;
+    if (yPos + cardHeight + 10 > doc.internal.pageSize.getHeight() - LAYOUT.FOOTER_HEIGHT - margin) {
       renderFooter(doc);
       doc.addPage();
-      yPos = LAYOUT.MARGIN;
+      yPos = margin;
     }
 
-    // Card background
-    drawRoundedBox(
-      doc,
-      LAYOUT.MARGIN,
-      yPos,
-      pageWidth - 2 * LAYOUT.MARGIN,
-      LAYOUT.DATA_SOURCE_BOX_HEIGHT,
-      COLORS.white,
-      LAYOUT.BOX_RADIUS
-    );
-    
-    // Card border
+    doc.setFillColor(...COLORS.white);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, cardHeight, 4, 4, 'F');
     doc.setDrawColor(...COLORS.lightGray);
-    doc.setLineWidth(LAYOUT.LINE_WIDTH_THIN);
-    doc.roundedRect(
-      LAYOUT.MARGIN,
-      yPos,
-      pageWidth - 2 * LAYOUT.MARGIN,
-      LAYOUT.DATA_SOURCE_BOX_HEIGHT,
-      LAYOUT.BOX_RADIUS,
-      LAYOUT.BOX_RADIUS,
-      'S'
-    );
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, cardHeight, 4, 4, 'S');
 
-    // Modern number badge
-    const badgeX = LAYOUT.MARGIN + 10;
-    const badgeY = yPos + 16;
+    // Number badge
+    const badgeX = margin + 10;
+    const badgeY = yPos + 15;
     doc.setFillColor(...COLORS.primary);
-    doc.circle(badgeX, badgeY, 9, 'F');
-    setTextStyle(doc, LAYOUT.BODY_NORMAL, 'bold', COLORS.white);
+    doc.circle(badgeX, badgeY, 8, 'F');
+    setTextStyle(doc, 10, 'bold', COLORS.white);
     doc.text(`${index + 1}`, badgeX, badgeY + 3, { align: 'center' });
 
     // Source name
-    setTextStyle(doc, LAYOUT.BODY_LARGE, 'bold', COLORS.dark);
-    doc.text(sanitizeText(source.name), LAYOUT.MARGIN + 26, yPos + 12);
+    setTextStyle(doc, 10, 'bold', COLORS.dark);
+    doc.text(sanitizeText(source.name), margin + 24, yPos + 11);
 
     // Type badge
     const typeText = `[${sanitizeText(source.type)}]`;
-    const typeWidth = doc.getTextWidth(typeText);
-    const badgeWidth = typeWidth + 10;
-    const badgePosX = pageWidth - LAYOUT.MARGIN - badgeWidth - 6;
-    
+    const typeWidth = doc.getTextWidth(typeText) + 8;
+    const typeBadgeX = pageWidth - margin - typeWidth - 6;
     doc.setFillColor(...COLORS.brand);
-    doc.roundedRect(
-      badgePosX,
-      yPos + 7,
-      badgeWidth,
-      10,
-      2,
-      2,
-      'F'
-    );
-    setTextStyle(doc, LAYOUT.CAPTION, 'bold', COLORS.white);
-    doc.text(typeText, badgePosX + 5, yPos + 13);
+    doc.roundedRect(typeBadgeX, yPos + 5, typeWidth, 10, 2, 2, 'F');
+    setTextStyle(doc, 7, 'bold', COLORS.white);
+    doc.text(typeText, typeBadgeX + 4, yPos + 12);
 
     // Description
-    setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.darkGray);
-    const descLines = doc.splitTextToSize(sanitizeText(source.description), pageWidth - 2 * LAYOUT.MARGIN - 36);
-    doc.text(descLines, LAYOUT.MARGIN + 26, yPos + 21);
+    setTextStyle(doc, 8, 'normal', COLORS.darkGray);
+    doc.text(sanitizeText(source.description), margin + 24, yPos + 21);
 
-    yPos += LAYOUT.DATA_SOURCE_BOX_HEIGHT + 12;
+    yPos += cardHeight + 8;
   });
 
-  // Modern quality note
+  // Quality note
   yPos += 8;
-  drawRoundedBox(
-    doc,
-    LAYOUT.MARGIN,
-    yPos,
-    pageWidth - 2 * LAYOUT.MARGIN,
-    28,
-    [235, 248, 255] as RGBColor,
-    LAYOUT.BOX_RADIUS
-  );
+  doc.setFillColor(235, 248, 255);
+  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 24, 4, 4, 'F');
 
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'bold', COLORS.primary);
-  doc.text('NOTA SOBRE QUALIDADE DOS DADOS', LAYOUT.MARGIN + 8, yPos + 10);
-
-  setTextStyle(doc, LAYOUT.BODY_SMALL, 'normal', COLORS.darkGray);
-  const noteLines = doc.splitTextToSize(
-    sanitizeText(TRANSLATIONS.DATA_QUALITY_NOTE),
-    pageWidth - 2 * LAYOUT.MARGIN - 16
-  );
-  doc.text(noteLines, LAYOUT.MARGIN + 8, yPos + 18);
+  setTextStyle(doc, 8, 'bold', COLORS.primary);
+  doc.text('NOTA SOBRE QUALIDADE DOS DADOS', margin + 8, yPos + 9);
+  setTextStyle(doc, 8, 'normal', COLORS.darkGray);
+  const noteLines = doc.splitTextToSize(sanitizeText(TRANSLATIONS.DATA_QUALITY_NOTE), pageWidth - 2 * margin - 16);
+  doc.text(noteLines, margin + 8, yPos + 17);
 
   renderFooter(doc);
+};
+
+// ============================================================================
+// FOOTER
+// ============================================================================
+
+const renderFooter = (doc: jsPDF): void => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(...COLORS.dark);
+  doc.rect(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, LAYOUT.FOOTER_HEIGHT, 'F');
+
+  doc.setDrawColor(...COLORS.brand);
+  doc.setLineWidth(LAYOUT.LINE_WIDTH_MEDIUM);
+  doc.line(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, pageHeight - LAYOUT.FOOTER_HEIGHT);
+
+  setTextStyle(doc, 8, 'normal', COLORS.mediumGray);
+  doc.text(sanitizeText(TRANSLATIONS.CONFIDENTIAL_NOTICE), pageWidth / 2, pageHeight - 16, { align: 'center' });
+
+  setTextStyle(doc, 8, 'bold', COLORS.brand);
+  doc.text(TRANSLATIONS.CONFIDENTIAL_HEADER, pageWidth / 2, pageHeight - 8, { align: 'center' });
 };
 
 // ============================================================================
@@ -792,31 +575,7 @@ export const addCoverPageToPDF = (doc: jsPDF, data: CoverPageData): void => {
       creator: 'AlphaData Platform',
     });
 
-    let yPos = 0;
-
-    // PAGE 1: COVER
-    yPos = renderBrandHeader(doc, data);
-    yPos = renderMetadataBox(doc, data, yPos);
-
-    yPos = renderSectionHeader(doc, TRANSLATIONS.GENERATING_COMPANY, yPos, COLORS.brand);
-    yPos = renderGeneratingCompany(doc, data.generatingCompany, yPos);
-
-    yPos = renderSectionHeader(doc, TRANSLATIONS.COUNTRY_INFO, yPos, COLORS.success);
-    yPos = renderCountryInfo(doc, data.countryInfo, yPos);
-
-    if (data.requestingCompany) {
-      yPos = renderSectionHeader(doc, TRANSLATIONS.REQUESTING_COMPANY, yPos, COLORS.warning);
-      yPos = renderRequestingCompany(doc, data.requestingCompany, yPos);
-    }
-
-    if (data.requestedBy) {
-      yPos = renderSectionHeader(doc, TRANSLATIONS.REQUESTED_BY, yPos, COLORS.info);
-      yPos = renderRequestedBy(doc, data.requestedBy, yPos);
-    }
-
-    renderFooter(doc);
-
-    // PAGE 2: DATA SOURCES
+    renderCoverPage(doc, data);
     renderDataSourcesPage(doc, data);
 
   } catch (error) {
@@ -825,7 +584,10 @@ export const addCoverPageToPDF = (doc: jsPDF, data: CoverPageData): void => {
   }
 };
 
-// Export other functions remain the same
+// ============================================================================
+// DOCX & EXCEL EXPORTS (unchanged)
+// ============================================================================
+
 export const getCoverPageDOCXContent = (data: CoverPageData) => {
   validateCoverPageData(data);
   return {
@@ -913,27 +675,17 @@ export const getCoverPageExcelRows = (data: CoverPageData): string[] => {
   if (data.requestingCompany) {
     rows.push(addExcelRow('subheader', 'EMPRESA SOLICITANTE', undefined, true));
     rows.push(addExcelRow('bold', 'Empresa:', data.requestingCompany.name));
-    if (data.requestingCompany.nif) {
-      rows.push(addExcelRow('bold', 'NIF:', data.requestingCompany.nif));
-    }
-    if (data.requestingCompany.sector) {
-      rows.push(addExcelRow('bold', 'Sector:', data.requestingCompany.sector));
-    }
-    if (data.requestingCompany.country) {
-      rows.push(addExcelRow('bold', 'Pais:', data.requestingCompany.country));
-    }
+    if (data.requestingCompany.nif) rows.push(addExcelRow('bold', 'NIF:', data.requestingCompany.nif));
+    if (data.requestingCompany.sector) rows.push(addExcelRow('bold', 'Sector:', data.requestingCompany.sector));
+    if (data.requestingCompany.country) rows.push(addExcelRow('bold', 'Pais:', data.requestingCompany.country));
     rows.push(addExcelSeparator());
   }
 
   if (data.requestedBy) {
     rows.push(addExcelRow('subheader', 'SOLICITADO POR', undefined, true));
     rows.push(addExcelRow('bold', 'Nome:', data.requestedBy.name));
-    if (data.requestedBy.role) {
-      rows.push(addExcelRow('bold', 'Cargo:', data.requestedBy.role));
-    }
-    if (data.requestedBy.email) {
-      rows.push(addExcelRow('bold', 'Email:', data.requestedBy.email));
-    }
+    if (data.requestedBy.role) rows.push(addExcelRow('bold', 'Cargo:', data.requestedBy.role));
+    if (data.requestedBy.email) rows.push(addExcelRow('bold', 'Email:', data.requestedBy.email));
     rows.push(addExcelSeparator());
   }
 
