@@ -1,14 +1,39 @@
 /**
  * Utility functions for generating reports in PDF, DOCX, and Excel formats
- * MODERN VERSION with charts, proper page breaks, and embedded logo
+ * FIXED VERSION:
+ *  - No asterisks leaking into output
+ *  - Fully dynamic charts driven by real data
+ *  - Robust markdown parser with clean text output
+ *  - Proper page-break handling throughout
  */
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle, Header, Footer, ImageRun, PageNumber, NumberFormat } from 'docx';
-import { addCoverPageToPDF, getDefaultCoverPageData, getCoverPageExcelRows, CoverPageData } from './reportCoverPage';
-import { getDocumentTranslation, DocumentLanguageCode, DOCUMENT_LANGUAGES } from '@/i18n';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  HeadingLevel,
+  AlignmentType,
+  BorderStyle,
+} from 'docx';
+import {
+  addCoverPageToPDF,
+  getDefaultCoverPageData,
+  getCoverPageExcelRows,
+  CoverPageData,
+} from './reportCoverPage';
+import { getDocumentTranslation, DocumentLanguageCode } from '@/i18n';
 import { loadLogoAsBase64 } from './loadLogoForPDF';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PUBLIC TYPES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export interface ReportData {
   title: string;
@@ -16,924 +41,1108 @@ export interface ReportData {
   period: string;
   summary?: string;
   content: any;
-  highlights?: Array<{
-    title: string;
-    value: string;
-    trend?: string;
-  }>;
+  highlights?: Array<{ title: string; value: string; trend?: string }>;
   generatedAt: Date;
   aiGenerated: boolean;
-  requestingCompany?: {
-    name: string;
-    nif?: string;
-    sector?: string;
-    country?: string;
-  };
-  requestedBy?: {
-    name: string;
-    role?: string;
-    email?: string;
-  };
+  requestingCompany?: { name: string; nif?: string; sector?: string; country?: string };
+  requestedBy?: { name: string; role?: string; email?: string };
   language?: DocumentLanguageCode;
 }
 
-// ============================================================================
-// COLORS & LAYOUT
-// ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTERNAL TYPES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-const COLORS = {
-  primary: [30, 64, 175] as [number, number, number],
-  success: [34, 197, 94] as [number, number, number],
-  warning: [234, 179, 8] as [number, number, number],
-  danger: [239, 68, 68] as [number, number, number],
-  dark: [10, 10, 10] as [number, number, number],
-  darkGray: [51, 65, 85] as [number, number, number],
-  muted: [100, 116, 139] as [number, number, number],
-  mediumGray: [148, 163, 184] as [number, number, number],
-  lightGray: [203, 213, 225] as [number, number, number],
-  light: [241, 245, 249] as [number, number, number],
-  ultraLight: [248, 250, 252] as [number, number, number],
-  white: [255, 255, 255] as [number, number, number],
-  brand: [220, 38, 38] as [number, number, number],
-  chartBlue: [59, 130, 246] as [number, number, number],
-  chartGreen: [16, 185, 129] as [number, number, number],
-  chartOrange: [249, 115, 22] as [number, number, number],
-  chartPurple: [139, 92, 246] as [number, number, number],
-  chartPink: [236, 72, 153] as [number, number, number],
-};
+type RGB = [number, number, number];
 
-const CHART_COLORS: [number, number, number][] = [
-  COLORS.chartBlue,
-  COLORS.brand,
-  COLORS.chartGreen,
-  COLORS.chartOrange,
-  COLORS.chartPurple,
-  COLORS.chartPink,
-  COLORS.primary,
-  COLORS.warning,
-];
-
-const LAYOUT = {
-  MARGIN: 20,
-  SECTION_SPACING: 16,
-  SUBSECTION_SPACING: 10,
-  LINE_SPACING: 6,
-  CARD_PADDING: 10,
-  TITLE_LARGE: 24,
-  TITLE_MEDIUM: 18,
-  TITLE_SMALL: 14,
-  SECTION_TITLE: 13,
-  BODY_LARGE: 11,
-  BODY_NORMAL: 10,
-  BODY_SMALL: 9,
-  CAPTION: 8,
-  HEADER_HEIGHT: 45,
-  FOOTER_HEIGHT: 22,
-  HIGHLIGHT_BOX_HEIGHT: 22,
-  BOX_RADIUS: 6,
-  SMALL_RADIUS: 3,
-  LINE_WIDTH_THICK: 2,
-  LINE_WIDTH_THIN: 0.5,
-};
-
-// ============================================================================
-// TEXT FORMATTING UTILITIES
-// ============================================================================
-
-interface FormattedText {
-  text: string;
-  bold: boolean;
-  italic: boolean;
-  isHeading: boolean;
-  headingLevel: number;
-  isBullet: boolean;
-  isNumbered: boolean;
-  indent: number;
+interface Block {
+  kind: 'h1' | 'h2' | 'h3' | 'paragraph' | 'bullet' | 'numbered' | 'blank';
+  text: string;     // plain text, ALL markdown stripped
+  indent: number;   // 0 = normal, 1+ = nested
 }
 
-const parseMarkdownText = (text: string): FormattedText[] => {
-  if (!text) return [];
-  const lines = text.split('\n');
-  const formatted: FormattedText[] = [];
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) continue;
+const C = {
+  dark:       [10,  10,  10]  as RGB,
+  darkGray:   [51,  65,  85]  as RGB,
+  muted:      [100, 116, 139] as RGB,
+  mediumGray: [148, 163, 184] as RGB,
+  lightGray:  [203, 213, 225] as RGB,
+  ultraLight: [248, 250, 252] as RGB,
+  white:      [255, 255, 255] as RGB,
+  brand:      [220, 38,  38]  as RGB,
+  primary:    [30,  64,  175] as RGB,
+  success:    [34,  197, 94]  as RGB,
+  warning:    [234, 179, 8]   as RGB,
+  danger:     [239, 68,  68]  as RGB,
+  // Chart palette
+  c0: [59,  130, 246] as RGB,
+  c1: [220, 38,  38]  as RGB,
+  c2: [16,  185, 129] as RGB,
+  c3: [249, 115, 22]  as RGB,
+  c4: [139, 92,  246] as RGB,
+  c5: [236, 72,  153] as RGB,
+  c6: [30,  64,  175] as RGB,
+  c7: [234, 179, 8]   as RGB,
+} as const;
 
-    const heading2Match = line.match(/^##\s+(.+)$/);
-    const heading3Match = line.match(/^###\s+(.+)$/);
-    const boldHeadingMatch = line.match(/^\*\*(\d+)\.\s+([^:]+):\*\*$/);
+const CHART_PALETTE: RGB[] = [C.c0, C.c1, C.c2, C.c3, C.c4, C.c5, C.c6, C.c7];
 
-    if (heading2Match) {
-      formatted.push({ text: heading2Match[1], bold: true, italic: false, isHeading: true, headingLevel: 2, isBullet: false, isNumbered: false, indent: 0 });
+const L = {
+  MARGIN:     20,
+  HEADER_H:   45,
+  FOOTER_H:   22,
+  SECTION_SP: 16,
+  SUBSEC_SP:  10,
+  LINE_SP:    6,
+  BOX_R:      5,
+  SMALL_R:    2,
+  THIN:       0.4,
+  THICK:      2,
+} as const;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKDOWN → PLAIN-TEXT BLOCK PARSER
+   (Strips ALL asterisks, hashes, dashes used as markup)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Remove every markdown decoration and return clean text */
+function stripInline(raw: string): string {
+  return raw
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')   // bold-italic
+    .replace(/\*\*(.+?)\*\*/g, '$1')        // bold
+    .replace(/\*(.+?)\*/g, '$1')            // italic
+    .replace(/__(.+?)__/g, '$1')            // bold alt
+    .replace(/_(.+?)_/g, '$1')              // italic alt
+    .replace(/`(.+?)`/g, '$1')              // inline code
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')     // links
+    .replace(/~~(.+?)~~/g, '$1')            // strikethrough
+    .trim();
+}
+
+function parseMarkdown(raw: string): Block[] {
+  if (!raw) return [];
+  const blocks: Block[] = [];
+
+  for (const line of raw.split('\n')) {
+    const t = line.trimEnd();
+
+    // Blank line
+    if (!t.trim()) {
+      blocks.push({ kind: 'blank', text: '', indent: 0 });
       continue;
     }
-    if (heading3Match) {
-      formatted.push({ text: heading3Match[1], bold: true, italic: false, isHeading: true, headingLevel: 3, isBullet: false, isNumbered: false, indent: 0 });
+
+    // ATX headings
+    const h3m = t.match(/^###\s+(.*)/);
+    if (h3m) { blocks.push({ kind: 'h3', text: stripInline(h3m[1]), indent: 0 }); continue; }
+
+    const h2m = t.match(/^##\s+(.*)/);
+    if (h2m) { blocks.push({ kind: 'h2', text: stripInline(h2m[1]), indent: 0 }); continue; }
+
+    const h1m = t.match(/^#\s+(.*)/);
+    if (h1m) { blocks.push({ kind: 'h1', text: stripInline(h1m[1]), indent: 0 }); continue; }
+
+    // Setext heading (underline ==)
+    // (rare but guard it)
+    if (/^={3,}$/.test(t.trim()) && blocks.length > 0) {
+      const last = blocks[blocks.length - 1];
+      last.kind = 'h1';
       continue;
     }
-    if (boldHeadingMatch) {
-      formatted.push({ text: `${boldHeadingMatch[1]}. ${boldHeadingMatch[2]}:`, bold: true, italic: false, isHeading: true, headingLevel: 3, isBullet: false, isNumbered: true, indent: 0 });
+    if (/^-{3,}$/.test(t.trim()) && blocks.length > 0) {
+      const last = blocks[blocks.length - 1];
+      last.kind = 'h2';
       continue;
     }
 
-    const bulletMatch = line.match(/^\*\s+(.+)$/);
-    if (bulletMatch) {
-      formatted.push({ text: bulletMatch[1], bold: false, italic: false, isHeading: false, headingLevel: 0, isBullet: true, isNumbered: false, indent: 1 });
+    // Numbered list with bold heading pattern: **1. Title:**
+    const boldNumHeading = t.match(/^\*{0,2}(\d+)\.\s+([^*]+?):?\*{0,2}$/);
+    if (boldNumHeading && t.startsWith('**')) {
+      blocks.push({ kind: 'h3', text: `${boldNumHeading[1]}. ${stripInline(boldNumHeading[2])}`, indent: 0 });
       continue;
     }
 
-    // Sub-bullets (- -)
-    const subBulletMatch = line.match(/^-\s+-\s+(.+)$/);
-    if (subBulletMatch) {
-      formatted.push({ text: subBulletMatch[1], bold: false, italic: false, isHeading: false, headingLevel: 0, isBullet: true, isNumbered: false, indent: 2 });
+    // Sub-bullet (two dashes: - -)
+    const subDash = t.match(/^(\s*)-\s+-\s+(.*)/);
+    if (subDash) {
+      blocks.push({ kind: 'bullet', text: stripInline(subDash[2]), indent: 2 });
       continue;
     }
 
-    // Single dash bullets
-    const dashBulletMatch = line.match(/^-\s+(.+)$/);
-    if (dashBulletMatch) {
-      formatted.push({ text: dashBulletMatch[1], bold: false, italic: false, isHeading: false, headingLevel: 0, isBullet: true, isNumbered: false, indent: 1 });
+    // Asterisk bullet
+    const starBullet = t.match(/^(\s*)\*\s+(.*)/);
+    if (starBullet) {
+      const indentLevel = Math.floor(starBullet[1].length / 2) + 1;
+      blocks.push({ kind: 'bullet', text: stripInline(starBullet[2]), indent: indentLevel });
       continue;
     }
 
-    const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/);
-    if (numberedMatch) {
-      formatted.push({ text: `${numberedMatch[1]}. ${numberedMatch[2]}`, bold: false, italic: false, isHeading: false, headingLevel: 0, isBullet: false, isNumbered: true, indent: 1 });
+    // Dash bullet
+    const dashBullet = t.match(/^(\s*)-\s+(.*)/);
+    if (dashBullet) {
+      const indentLevel = Math.floor(dashBullet[1].length / 2) + 1;
+      blocks.push({ kind: 'bullet', text: stripInline(dashBullet[2]), indent: indentLevel });
       continue;
     }
 
-    formatted.push(...parseInlineFormatting(line));
+    // Numbered list
+    const numbered = t.match(/^(\s*)(\d+)\.\s+(.*)/);
+    if (numbered) {
+      const indentLevel = Math.floor(numbered[1].length / 2) + 1;
+      blocks.push({ kind: 'numbered', text: `${numbered[2]}. ${stripInline(numbered[3])}`, indent: indentLevel });
+      continue;
+    }
+
+    // Normal paragraph
+    blocks.push({ kind: 'paragraph', text: stripInline(t), indent: 0 });
   }
-  return formatted;
-};
 
-const parseInlineFormatting = (text: string): FormattedText[] => {
-  const segments: FormattedText[] = [];
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  // Remove leading/trailing blanks
+  while (blocks.length > 0 && blocks[0].kind === 'blank') blocks.shift();
+  while (blocks.length > 0 && blocks[blocks.length - 1].kind === 'blank') blocks.pop();
 
-  for (const part of parts) {
-    if (!part) continue;
-    const boldMatch = part.match(/^\*\*(.+)\*\*$/);
-    if (boldMatch) {
-      segments.push({ text: boldMatch[1], bold: true, italic: false, isHeading: false, headingLevel: 0, isBullet: false, isNumbered: false, indent: 0 });
-      continue;
-    }
-    const italicMatch = part.match(/^\*(.+)\*$/);
-    if (italicMatch) {
-      segments.push({ text: italicMatch[1], bold: false, italic: true, isHeading: false, headingLevel: 0, isBullet: false, isNumbered: false, indent: 0 });
-      continue;
-    }
-    if (part.trim()) {
-      segments.push({ text: part, bold: false, italic: false, isHeading: false, headingLevel: 0, isBullet: false, isNumbered: false, indent: 0 });
-    }
+  return blocks;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PDF CONTEXT HELPERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface PDFCtx {
+  doc: jsPDF;
+  y: number;          // current cursor
+  W: number;          // page width
+  H: number;          // page height
+  margin: number;
+  onNewPage: () => void;
+}
+
+function bottomLimit(ctx: PDFCtx) {
+  return ctx.H - L.FOOTER_H - ctx.margin - 8;
+}
+
+function needsPage(ctx: PDFCtx, space: number) {
+  if (ctx.y + space > bottomLimit(ctx)) {
+    ctx.doc.addPage();
+    ctx.y = ctx.margin;
+    ctx.onNewPage();
   }
-  return segments;
-};
+}
 
-/**
- * Render formatted text with robust page break handling
- */
-const renderFormattedText = (
-  doc: jsPDF,
-  segments: FormattedText[],
-  startX: number,
-  startY: number,
-  maxWidth: number,
-  onNewPage?: () => void
-): number => {
-  let yPos = startY;
-  let currentLine: { text: string; bold: boolean; italic: boolean; x: number }[] = [];
-  let currentX = startX;
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const bottomLimit = pageHeight - LAYOUT.FOOTER_HEIGHT - LAYOUT.MARGIN - 10;
+function setFont(doc: jsPDF, size: number, weight: 'normal' | 'bold' | 'italic', color: RGB) {
+  doc.setFontSize(size);
+  doc.setFont('helvetica', weight);
+  doc.setTextColor(...color);
+}
 
-  const ensureSpace = (requiredSpace: number) => {
-    if (yPos + requiredSpace > bottomLimit) {
-      doc.addPage();
-      yPos = LAYOUT.MARGIN;
-      if (onNewPage) {
-        onNewPage();
-        yPos = LAYOUT.HEADER_HEIGHT + 10;
-      }
-    }
-  };
+function textLines(doc: jsPDF, text: string, maxW: number): string[] {
+  return doc.splitTextToSize(text, maxW);
+}
 
-  const flushLine = () => {
-    if (currentLine.length === 0) return;
-    ensureSpace(LAYOUT.LINE_SPACING + 2);
-    currentLine.forEach(segment => {
-      doc.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal');
-      doc.text(segment.text, segment.x, yPos);
-    });
-    currentLine = [];
-    currentX = startX;
-    yPos += LAYOUT.LINE_SPACING;
-  };
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOCK RENDERER — renders parsed blocks into PDF
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  for (const segment of segments) {
-    if (segment.isHeading) {
-      flushLine();
-      ensureSpace(LAYOUT.SUBSECTION_SPACING + 18);
-      yPos += LAYOUT.SUBSECTION_SPACING;
+function renderBlocks(ctx: PDFCtx, blocks: Block[]) {
+  const contentW = ctx.W - 2 * ctx.margin;
+  let prevKind: Block['kind'] | null = null;
 
-      const headingSize = segment.headingLevel === 2 ? LAYOUT.TITLE_MEDIUM : LAYOUT.TITLE_SMALL;
-      doc.setFontSize(headingSize);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...COLORS.dark);
-
-      // Draw accent bar for headings
-      doc.setFillColor(...COLORS.brand);
-      doc.roundedRect(startX, yPos - 4, 3, 10, 1, 1, 'F');
-
-      const headingLines = doc.splitTextToSize(segment.text, maxWidth - 8);
-      for (let i = 0; i < headingLines.length; i++) {
-        ensureSpace(LAYOUT.LINE_SPACING + 2);
-        doc.text(headingLines[i], startX + 8, yPos);
-        yPos += LAYOUT.LINE_SPACING + 2;
-      }
-      yPos += LAYOUT.SUBSECTION_SPACING / 2;
-
-      doc.setFontSize(LAYOUT.BODY_NORMAL);
+  for (const block of blocks) {
+    if (block.kind === 'blank') {
+      if (prevKind && prevKind !== 'blank') ctx.y += 3;
+      prevKind = 'blank';
       continue;
     }
 
-    if (segment.isBullet) {
-      flushLine();
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...COLORS.darkGray);
-      doc.setFontSize(LAYOUT.BODY_NORMAL);
+    if (block.kind === 'h1' || block.kind === 'h2' || block.kind === 'h3') {
+      const sizes = { h1: 16, h2: 13, h3: 11 };
+      const sz = sizes[block.kind];
+      needsPage(ctx, 22);
+      if (prevKind && prevKind !== 'blank') ctx.y += L.SUBSEC_SP;
 
-      const bulletX = startX + (segment.indent * 8);
-      const textLines = doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8) - 6);
+      if (block.kind === 'h2') {
+        // Red accent bar for section headings
+        ctx.doc.setFillColor(...C.brand);
+        ctx.doc.roundedRect(ctx.margin, ctx.y, 3, 12, 1, 1, 'F');
+      }
 
-      for (let i = 0; i < textLines.length; i++) {
-        ensureSpace(LAYOUT.LINE_SPACING);
+      setFont(ctx.doc, sz, 'bold', C.dark);
+      const lines = textLines(ctx.doc, block.text, contentW - (block.kind === 'h2' ? 8 : 0));
+      const xOff = block.kind === 'h2' ? ctx.margin + 8 : ctx.margin;
+      for (const ln of lines) {
+        needsPage(ctx, L.LINE_SP + 3);
+        ctx.doc.text(ln, xOff, ctx.y);
+        ctx.y += L.LINE_SP + 2;
+      }
+      ctx.y += 3;
+      prevKind = block.kind;
+      continue;
+    }
+
+    if (block.kind === 'bullet') {
+      setFont(ctx.doc, 10, 'normal', C.darkGray);
+      const indentX = ctx.margin + block.indent * 8;
+      const textW = contentW - block.indent * 8 - 7;
+      const lines = textLines(ctx.doc, block.text, textW);
+      for (let i = 0; i < lines.length; i++) {
+        needsPage(ctx, L.LINE_SP);
         if (i === 0) {
-          doc.setFillColor(...COLORS.brand);
-          doc.circle(bulletX + 1.5, yPos - 1.5, 1.2, 'F');
+          ctx.doc.setFillColor(...C.brand);
+          ctx.doc.circle(indentX + 1.5, ctx.y - 1.8, 1.2, 'F');
         }
-        doc.text(textLines[i], bulletX + 6, yPos);
-        yPos += LAYOUT.LINE_SPACING;
+        ctx.doc.text(lines[i], indentX + 6, ctx.y);
+        ctx.y += L.LINE_SP;
       }
+      prevKind = 'bullet';
       continue;
     }
 
-    if (segment.isNumbered) {
-      flushLine();
-      doc.setFont('helvetica', segment.bold ? 'bold' : 'normal');
-      doc.setTextColor(...COLORS.dark);
-      doc.setFontSize(LAYOUT.BODY_NORMAL);
-
-      const numberedX = startX + (segment.indent * 8);
-      const textLines = doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8));
-
-      for (let i = 0; i < textLines.length; i++) {
-        ensureSpace(LAYOUT.LINE_SPACING);
-        doc.text(textLines[i], numberedX, yPos);
-        yPos += LAYOUT.LINE_SPACING;
+    if (block.kind === 'numbered') {
+      setFont(ctx.doc, 10, 'normal', C.darkGray);
+      const indentX = ctx.margin + block.indent * 8;
+      const textW = contentW - block.indent * 8;
+      const lines = textLines(ctx.doc, block.text, textW);
+      for (const ln of lines) {
+        needsPage(ctx, L.LINE_SP);
+        ctx.doc.text(ln, indentX, ctx.y);
+        ctx.y += L.LINE_SP;
       }
+      prevKind = 'numbered';
       continue;
     }
 
-    // Regular paragraph text
-    doc.setFontSize(LAYOUT.BODY_NORMAL);
-    doc.setTextColor(...COLORS.darkGray);
-    doc.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal');
-
-    const words = segment.text.split(' ');
-    for (const word of words) {
-      const wordWidth = doc.getTextWidth(word + ' ');
-      if (currentX + wordWidth > startX + maxWidth) {
-        flushLine();
-      }
-      currentLine.push({ text: word + ' ', bold: segment.bold, italic: segment.italic, x: currentX });
-      currentX += wordWidth;
+    // paragraph
+    setFont(ctx.doc, 10, 'normal', C.darkGray);
+    const lines = textLines(ctx.doc, block.text, contentW);
+    for (const ln of lines) {
+      needsPage(ctx, L.LINE_SP);
+      ctx.doc.text(ln, ctx.margin, ctx.y);
+      ctx.y += L.LINE_SP;
     }
+    prevKind = 'paragraph';
   }
+}
 
-  flushLine();
-  return yPos;
-};
-
-// ============================================================================
-// CHART RENDERING
-// ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
+   DYNAMIC CHART RENDERERS
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Draw a horizontal bar chart for production data
+ * Horizontal bar chart — driven entirely by the passed `items` array.
+ * Each item: { label: string; value: number; unit?: string }
  */
-const drawProductionBarChart = (
-  doc: jsPDF,
-  data: Array<{ operator: string; daily_production: number }>,
-  startX: number,
-  startY: number,
-  width: number,
-  maxBars: number = 6
-): number => {
-  const chartData = data
-    .sort((a, b) => b.daily_production - a.daily_production)
-    .slice(0, maxBars);
+function drawHBarChart(
+  ctx: PDFCtx,
+  title: string,
+  items: { label: string; value: number }[],
+  unit: string = '',
+  maxBars: number = 8
+): void {
+  if (items.length === 0) return;
+  const sorted = [...items].sort((a, b) => b.value - a.value).slice(0, maxBars);
+  const maxVal = sorted[0].value;
 
-  if (chartData.length === 0) return startY;
+  const labelW = 52;
+  const valueW = 20;
+  const barAreaW = ctx.W - 2 * ctx.margin - labelW - valueW - 4;
+  const barH = 10;
+  const barGap = 5;
+  const totalH = sorted.length * (barH + barGap) + 16;
 
-  const barHeight = 14;
-  const barGap = 6;
-  const labelWidth = 55;
-  const chartWidth = width - labelWidth - 30;
-  const maxValue = Math.max(...chartData.map(d => d.daily_production));
+  needsPage(ctx, totalH + 18);
 
-  let yPos = startY;
+  // Title
+  setFont(ctx.doc, 10, 'bold', C.dark);
+  ctx.doc.text(title, ctx.margin, ctx.y);
+  ctx.y += 10;
 
-  // Chart title
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...COLORS.dark);
-  doc.text('Producao por Operador (bpd)', startX, yPos);
-  yPos += 10;
+  // Background panel
+  ctx.doc.setFillColor(...C.ultraLight);
+  ctx.doc.roundedRect(ctx.margin, ctx.y - 2, ctx.W - 2 * ctx.margin, totalH, L.BOX_R, L.BOX_R, 'F');
 
-  // Background
-  doc.setFillColor(...COLORS.ultraLight);
-  const chartTotalHeight = chartData.length * (barHeight + barGap) + 5;
-  doc.roundedRect(startX, yPos - 3, width, chartTotalHeight, 4, 4, 'F');
+  sorted.forEach((item, i) => {
+    const rowY = ctx.y + i * (barH + barGap);
+    const ratio = maxVal > 0 ? item.value / maxVal : 0;
+    const barW = Math.max(ratio * barAreaW, 2);
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
 
-  chartData.forEach((item, index) => {
-    const barWidth = (item.daily_production / maxValue) * chartWidth;
-    const barY = yPos + index * (barHeight + barGap);
-    const color = CHART_COLORS[index % CHART_COLORS.length];
-
-    // Operator label
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...COLORS.darkGray);
-    const label = (item.operator || '-').substring(0, 14);
-    doc.text(label, startX + 4, barY + 10);
+    // Label
+    setFont(ctx.doc, 7.5, 'normal', C.darkGray);
+    const label = (item.label || '').length > 14 ? item.label.substring(0, 13) + '…' : item.label;
+    ctx.doc.text(label, ctx.margin + 3, rowY + barH - 1);
 
     // Bar
-    doc.setFillColor(...color);
-    doc.roundedRect(startX + labelWidth, barY + 2, barWidth, barHeight - 4, 2, 2, 'F');
+    ctx.doc.setFillColor(...color);
+    ctx.doc.roundedRect(ctx.margin + labelW, rowY, barW, barH, L.SMALL_R, L.SMALL_R, 'F');
 
-    // Value label
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...COLORS.dark);
-    const valueText = `${(item.daily_production / 1000).toFixed(0)}K`;
-    doc.text(valueText, startX + labelWidth + barWidth + 3, barY + 10);
+    // Value
+    setFont(ctx.doc, 7, 'bold', C.dark);
+    const formatted = item.value >= 1_000_000
+      ? `${(item.value / 1_000_000).toFixed(1)}M`
+      : item.value >= 1_000
+      ? `${(item.value / 1_000).toFixed(0)}K`
+      : `${item.value.toFixed(0)}`;
+    ctx.doc.text(`${formatted}${unit ? ' ' + unit : ''}`, ctx.margin + labelW + barW + 3, rowY + barH - 1);
   });
 
-  return yPos + chartTotalHeight + 10;
-};
+  ctx.y += totalH + 8;
+}
 
 /**
- * Draw a simple pie/donut chart for market share
+ * Donut / pie chart — segments from real data.
+ * items: { label: string; value: number }[]
  */
-const drawMarketShareDonut = (
-  doc: jsPDF,
-  data: Array<{ operator: string; daily_production: number }>,
-  centerX: number,
-  centerY: number,
-  radius: number
-): number => {
-  const total = data.reduce((sum, d) => sum + d.daily_production, 0);
-  if (total === 0) return centerY + radius + 10;
+function drawDonutChart(
+  ctx: PDFCtx,
+  title: string,
+  items: { label: string; value: number }[],
+  unit: string = ''
+): void {
+  if (items.length === 0) return;
 
-  const topData = data.sort((a, b) => b.daily_production - a.daily_production).slice(0, 6);
+  const top = [...items].sort((a, b) => b.value - a.value).slice(0, 7);
+  const total = top.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return;
 
+  const r = 26;
+  const legendLineH = 8;
+  const legendH = top.length * legendLineH + 6;
+  const totalH = r * 2 + legendH + 20;
+
+  needsPage(ctx, totalH + 18);
+
+  setFont(ctx.doc, 10, 'bold', C.dark);
+  ctx.doc.text(title, ctx.margin, ctx.y);
+  ctx.y += 10;
+
+  const cx = ctx.margin + r + 5;
+  const cy = ctx.y + r;
+
+  // Draw pie segments
   let startAngle = -Math.PI / 2;
+  top.forEach((item, i) => {
+    const slice = (item.value / total) * 2 * Math.PI;
+    const endAngle = startAngle + slice;
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    ctx.doc.setFillColor(...color);
 
-  topData.forEach((item, index) => {
-    const share = item.daily_production / total;
-    const endAngle = startAngle + share * 2 * Math.PI;
-    const color = CHART_COLORS[index % CHART_COLORS.length];
-
-    // Draw arc segment using line approximation
-    doc.setFillColor(...color);
-    const steps = Math.max(8, Math.floor(share * 40));
-    const points: { x: number; y: number }[] = [{ x: centerX, y: centerY }];
-
-    for (let i = 0; i <= steps; i++) {
-      const angle = startAngle + (i / steps) * (endAngle - startAngle);
-      points.push({
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
-      });
-    }
-
-    // Draw filled triangle fan
-    for (let i = 1; i < points.length - 1; i++) {
-      doc.triangle(
-        points[0].x, points[0].y,
-        points[i].x, points[i].y,
-        points[i + 1].x, points[i + 1].y,
+    // Approximate arc with triangle fan
+    const steps = Math.max(6, Math.floor(slice * 14));
+    for (let s = 0; s < steps; s++) {
+      const a1 = startAngle + (s / steps) * slice;
+      const a2 = startAngle + ((s + 1) / steps) * slice;
+      ctx.doc.triangle(
+        cx, cy,
+        cx + Math.cos(a1) * r, cy + Math.sin(a1) * r,
+        cx + Math.cos(a2) * r, cy + Math.sin(a2) * r,
         'F'
       );
     }
-
     startAngle = endAngle;
   });
 
-  // Inner circle for donut effect
-  doc.setFillColor(...COLORS.white);
-  doc.circle(centerX, centerY, radius * 0.55, 'F');
+  // Inner white circle (donut)
+  ctx.doc.setFillColor(...C.white);
+  ctx.doc.circle(cx, cy, r * 0.54, 'F');
 
-  // Center text
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...COLORS.dark);
-  doc.text(`${(total / 1000).toFixed(0)}K`, centerX, centerY + 1, { align: 'center' });
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...COLORS.muted);
-  doc.text('bpd total', centerX, centerY + 6, { align: 'center' });
+  // Center label
+  const centerFmt = total >= 1_000_000
+    ? `${(total / 1_000_000).toFixed(1)}M`
+    : total >= 1_000
+    ? `${(total / 1_000).toFixed(0)}K`
+    : `${total.toFixed(0)}`;
+  setFont(ctx.doc, 9, 'bold', C.dark);
+  ctx.doc.text(centerFmt, cx, cy + 1.5, { align: 'center' });
+  if (unit) {
+    setFont(ctx.doc, 6, 'normal', C.muted);
+    ctx.doc.text(unit, cx, cy + 7, { align: 'center' });
+  }
+
+  // Legend (right of donut)
+  const legendX = cx + r + 8;
+  let legendY = ctx.y + 4;
+  top.forEach((item, i) => {
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    const pct = ((item.value / total) * 100).toFixed(1);
+    ctx.doc.setFillColor(...color);
+    ctx.doc.roundedRect(legendX, legendY - 3, 5, 5, 0.5, 0.5, 'F');
+    setFont(ctx.doc, 7, 'normal', C.darkGray);
+    const lbl = item.label.length > 18 ? item.label.substring(0, 17) + '…' : item.label;
+    ctx.doc.text(`${lbl}  ${pct}%`, legendX + 7, legendY + 1);
+    legendY += legendLineH;
+  });
+
+  ctx.y = cy + r + legendH + 8;
+}
+
+/**
+ * Simple line/sparkline chart for time-series data
+ * points: { label: string; value: number }[] (ordered)
+ */
+function drawLineChart(
+  ctx: PDFCtx,
+  title: string,
+  series: Array<{ name: string; points: { label: string; value: number }[]; color?: RGB }>,
+): void {
+  if (series.length === 0 || series[0].points.length === 0) return;
+
+  const chartH = 48;
+  const chartW = ctx.W - 2 * ctx.margin;
+  needsPage(ctx, chartH + 28);
+
+  setFont(ctx.doc, 10, 'bold', C.dark);
+  ctx.doc.text(title, ctx.margin, ctx.y);
+  ctx.y += 8;
+
+  // Background
+  ctx.doc.setFillColor(...C.ultraLight);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, chartW, chartH, L.BOX_R, L.BOX_R, 'F');
+
+  // Grid lines (4 horizontal)
+  const allVals = series.flatMap(s => s.points.map(p => p.value));
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+  const padX = 6;
+  const padY = 8;
+  const plotW = chartW - 2 * padX;
+  const plotH = chartH - 2 * padY;
+
+  ctx.doc.setDrawColor(...C.lightGray);
+  ctx.doc.setLineWidth(0.2);
+  for (let g = 0; g <= 3; g++) {
+    const gy = ctx.y + padY + (g / 3) * plotH;
+    ctx.doc.line(ctx.margin + padX, gy, ctx.margin + padX + plotW, gy);
+    // Y axis label
+    const labelVal = maxV - (g / 3) * range;
+    setFont(ctx.doc, 5.5, 'normal', C.mediumGray);
+    ctx.doc.text(
+      labelVal >= 1000 ? `${(labelVal / 1000).toFixed(0)}K` : `${labelVal.toFixed(0)}`,
+      ctx.margin, gy + 1.5
+    );
+  }
+
+  // Draw each series
+  series.forEach((s, si) => {
+    const color = s.color || CHART_PALETTE[si % CHART_PALETTE.length];
+    const pts = s.points;
+    if (pts.length < 2) return;
+
+    ctx.doc.setDrawColor(...color);
+    ctx.doc.setLineWidth(1.2);
+
+    const toXY = (i: number) => ({
+      x: ctx.margin + padX + (i / (pts.length - 1)) * plotW,
+      y: ctx.y + padY + (1 - (pts[i].value - minV) / range) * plotH,
+    });
+
+    for (let i = 0; i < pts.length - 1; i++) {
+      const { x: x1, y: y1 } = toXY(i);
+      const { x: x2, y: y2 } = toXY(i + 1);
+      ctx.doc.line(x1, y1, x2, y2);
+    }
+
+    // Dots
+    ctx.doc.setFillColor(...color);
+    for (let i = 0; i < pts.length; i++) {
+      const { x, y } = toXY(i);
+      ctx.doc.circle(x, y, 1.2, 'F');
+    }
+  });
+
+  // X axis labels (evenly spaced, up to 8)
+  const step = Math.max(1, Math.ceil(series[0].points.length / 8));
+  setFont(ctx.doc, 5.5, 'normal', C.mediumGray);
+  for (let i = 0; i < series[0].points.length; i += step) {
+    const xp = ctx.margin + padX + (i / (series[0].points.length - 1)) * plotW;
+    ctx.doc.text(series[0].points[i].label, xp, ctx.y + chartH + 4, { align: 'center' });
+  }
 
   // Legend
-  let legendY = centerY + radius + 8;
-  const legendX = centerX - radius;
-  topData.forEach((item, index) => {
-    const color = CHART_COLORS[index % CHART_COLORS.length];
-    const share = ((item.daily_production / total) * 100).toFixed(1);
+  if (series.length > 1) {
+    let lx = ctx.margin;
+    series.forEach((s, i) => {
+      const color = s.color || CHART_PALETTE[i % CHART_PALETTE.length];
+      ctx.doc.setFillColor(...color);
+      ctx.doc.roundedRect(lx, ctx.y + chartH + 7, 5, 4, 0.5, 0.5, 'F');
+      setFont(ctx.doc, 6, 'normal', C.darkGray);
+      ctx.doc.text(s.name, lx + 7, ctx.y + chartH + 10.5);
+      lx += ctx.doc.getTextWidth(s.name) + 16;
+    });
+  }
 
-    doc.setFillColor(...color);
-    doc.roundedRect(legendX, legendY - 3, 6, 6, 1, 1, 'F');
+  ctx.y += chartH + 16;
+}
 
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...COLORS.darkGray);
-    doc.text(`${(item.operator || '-').substring(0, 16)} (${share}%)`, legendX + 9, legendY + 1);
-    legendY += 8;
-  });
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA EXTRACTORS — pull real arrays from report content
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  return legendY + 5;
-};
+function extractProduction(content: any): { label: string; value: number }[] {
+  const arr: any[] = content?.data?.production || content?.production || [];
+  return arr
+    .filter(r => r && (r.daily_production || r.production || r.value))
+    .map(r => ({
+      label: r.operator || r.company || r.name || r.label || 'N/D',
+      value: Number(r.daily_production ?? r.production ?? r.value ?? 0),
+    }));
+}
 
-// ============================================================================
-// PDF GENERATION
-// ============================================================================
+function extractPrices(content: any): { label: string; value: number }[] {
+  const arr: any[] = content?.data?.prices || content?.prices || [];
+  return arr
+    .filter(r => r && r.price)
+    .map(r => ({
+      label: r.crude_type || r.type || r.name || r.label || 'N/D',
+      value: Number(r.price ?? 0),
+    }));
+}
 
-const getTypeName = (type: string, lang: DocumentLanguageCode = 'pt'): string => {
-  const t = getDocumentTranslation(lang);
-  const types: Record<string, string> = {
-    production: t.production,
-    market: t.market,
-    exports: t.exports,
-    risk: t.risk,
-    predictions: t.production + ' IA',
-    general: t.general,
+function extractExports(content: any): { label: string; value: number }[] {
+  const arr: any[] = content?.data?.exports || content?.exports || [];
+  return arr
+    .filter(r => r && (r.volume || r.value))
+    .map(r => ({
+      label: r.destination || r.country || r.label || 'N/D',
+      value: Number(r.volume ?? r.value ?? 0),
+    }));
+}
+
+/** Try to build time-series from any date-ordered array */
+function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string) {
+  const arr: any[] = content?.data?.[labelKey] || content?.[labelKey] || [];
+  return arr
+    .filter(r => r && r[dateKey] && r[valueKey] != null)
+    .sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime())
+    .map(r => ({
+      label: new Date(r[dateKey]).toLocaleDateString('pt-AO', { month: 'short', day: '2-digit' }),
+      value: Number(r[valueKey]),
+    }));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PDF HEADER / FOOTER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function makeHeaderFn(
+  doc: jsPDF,
+  data: ReportData,
+  logoBase64: string | undefined,
+  pageWidth: number,
+): () => void {
+  return function drawHeader() {
+    doc.setFillColor(...C.dark);
+    doc.rect(0, 0, pageWidth, L.HEADER_H, 'F');
+
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', L.MARGIN, 8, 12, 12);
+        setFont(doc, 17, 'bold', C.white);
+        doc.text('ALPHADATA', L.MARGIN + 15, 18);
+      } catch {
+        setFont(doc, 26, 'bold', C.brand);
+        doc.text('α', L.MARGIN, 20);
+        setFont(doc, 17, 'bold', C.white);
+        doc.text('ALPHADATA', L.MARGIN + 13, 20);
+      }
+    } else {
+      setFont(doc, 26, 'bold', C.brand);
+      doc.text('α', L.MARGIN, 20);
+      setFont(doc, 17, 'bold', C.white);
+      doc.text('ALPHADATA', L.MARGIN + 13, 20);
+    }
+
+    setFont(doc, 9, 'normal', C.mediumGray);
+    const titleStr = (data.title || 'Relatório').substring(0, 60);
+    doc.text(titleStr, L.MARGIN, 32);
+
+    // Date right-aligned
+    const d = safeDate(data.generatedAt);
+    setFont(doc, 7.5, 'normal', C.mediumGray);
+    doc.text(
+      `Gerado em: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+      pageWidth - L.MARGIN - 85,
+      20
+    );
+
+    if (data.aiGenerated) {
+      doc.setFillColor(...C.primary);
+      doc.roundedRect(pageWidth - L.MARGIN - 40, 26, 36, 9, 2, 2, 'F');
+      setFont(doc, 6.5, 'bold', C.white);
+      doc.text('Gerado com IA', pageWidth - L.MARGIN - 36, 32);
+    }
   };
-  return types[type] || type;
-};
+}
+
+function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFillColor(...C.ultraLight);
+    doc.rect(0, pageHeight - L.FOOTER_H, pageWidth, L.FOOTER_H, 'F');
+    doc.setDrawColor(...C.brand);
+    doc.setLineWidth(L.THIN);
+    doc.line(0, pageHeight - L.FOOTER_H, pageWidth, pageHeight - L.FOOTER_H);
+
+    setFont(doc, 7, 'normal', C.muted);
+    doc.text('AlphaData - Inteligência de Mercado Petrolífero Angolano', L.MARGIN, pageHeight - 8);
+    doc.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text('CONFIDENCIAL', pageWidth - L.MARGIN - 25, pageHeight - 8);
+  }
+}
+
+function sectionTitle(ctx: PDFCtx, title: string) {
+  needsPage(ctx, 24);
+  ctx.doc.setFillColor(...C.brand);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, 3, 13, 1, 1, 'F');
+  setFont(ctx.doc, 13, 'bold', C.dark);
+  ctx.doc.text(title, ctx.margin + 9, ctx.y + 9.5);
+  ctx.y += 20;
+}
+
+function safeDate(d: any): Date {
+  const parsed = d instanceof Date ? d : new Date(d);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function getTypeName(type: string, lang: DocumentLanguageCode = 'pt'): string {
+  const map: Record<string, string> = {
+    production: 'Produção',
+    market: 'Mercado',
+    exports: 'Exportações',
+    risk: 'Risco',
+    predictions: 'Previsões',
+    general: 'Geral',
+  };
+  return map[type] || type || 'Relatório';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PDF GENERATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generatePDFReport = async (data: ReportData): Promise<void> => {
-  try {
-    // Load logo
-    let logoBase64: string | undefined;
-    try {
-      logoBase64 = await loadLogoAsBase64();
-    } catch (e) {
-      console.warn('Could not load logo for PDF:', e);
-    }
+  let logoBase64: string | undefined;
+  try { logoBase64 = await loadLogoAsBase64(); } catch { /* logo optional */ }
 
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = LAYOUT.MARGIN;
-    let yPos = margin;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const margin = L.MARGIN;
 
-    // Cover page
-    const defaultCoverData = getDefaultCoverPageData();
-    const coverPageData: CoverPageData = {
-      ...defaultCoverData,
-      reportTitle: data.title || 'Relatório AlphaData',
-      reportType: getTypeName(data.type),
-      reportPeriod: data.period || 'Actual',
-      generatedAt: data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt),
-      isAiGenerated: data.aiGenerated || false,
-      requestingCompany: data.requestingCompany,
-      requestedBy: data.requestedBy,
-      logoBase64,
-    };
+  // ── Cover page ──────────────────────────────────────────────────────────
+  const defaultCover = getDefaultCoverPageData();
+  const coverData: CoverPageData = {
+    ...defaultCover,
+    reportTitle: data.title || 'Relatório AlphaData',
+    reportType: getTypeName(data.type),
+    reportPeriod: data.period || 'Actual',
+    generatedAt: safeDate(data.generatedAt),
+    isAiGenerated: data.aiGenerated || false,
+    requestingCompany: data.requestingCompany,
+    requestedBy: data.requestedBy,
+    logoBase64,
+  };
+  addCoverPageToPDF(doc, coverData);
+  doc.addPage();
 
-    addCoverPageToPDF(doc, coverPageData);
-    doc.addPage();
+  // ── Setup context ────────────────────────────────────────────────────────
+  const drawHeader = makeHeaderFn(doc, data, logoBase64, W);
+  drawHeader();
 
-    const bottomLimit = pageHeight - LAYOUT.FOOTER_HEIGHT - margin - 10;
-
-    const checkNewPage = (requiredSpace: number) => {
-      if (yPos + requiredSpace > bottomLimit) {
-        doc.addPage();
-        yPos = margin;
-        addHeader();
-      }
-    };
-
-    const addHeader = () => {
-      doc.setFillColor(...COLORS.dark);
-      doc.rect(0, 0, pageWidth, LAYOUT.HEADER_HEIGHT, 'F');
-
-      // Logo in header
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, 'PNG', margin, 8, 12, 12);
-          doc.setTextColor(...COLORS.white);
-          doc.setFontSize(18);
-          doc.setFont('helvetica', 'bold');
-          doc.text('ALPHADATA', margin + 16, 18);
-        } catch {
-          doc.setTextColor(...COLORS.brand);
-          doc.setFontSize(28);
-          doc.setFont('helvetica', 'bold');
-          doc.text('α', margin, 22);
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(18);
-          doc.text('ALPHADATA', margin + 14, 22);
-        }
-      } else {
-        doc.setTextColor(...COLORS.brand);
-        doc.setFontSize(28);
-        doc.setFont('helvetica', 'bold');
-        doc.text('α', margin, 22);
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18);
-        doc.text('ALPHADATA', margin + 14, 22);
-      }
-
-      // Title
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...COLORS.lightGray);
-      const safeTitle = data.title || 'Relatório AlphaData';
-      doc.text(safeTitle, margin, 34);
-
-      // Generation info
-      doc.setFontSize(8);
-      let generatedDate: Date;
-      try {
-        generatedDate = data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt);
-        if (isNaN(generatedDate.getTime())) generatedDate = new Date();
-      } catch {
-        generatedDate = new Date();
-      }
-      const generatedText = `Gerado em: ${generatedDate.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
-      doc.text(generatedText, pageWidth - margin - 80, 22);
-
-      if (data.aiGenerated) {
-        doc.setFillColor(...COLORS.primary);
-        doc.roundedRect(pageWidth - margin - 44, 28, 40, 10, 2, 2, 'F');
-        doc.setTextColor(...COLORS.white);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Gerado com IA', pageWidth - margin - 40, 34);
-      }
-
-      yPos = LAYOUT.HEADER_HEIGHT + 10;
-    };
-
-    const addFooter = () => {
-      const totalPages = doc.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-
-        doc.setFillColor(...COLORS.ultraLight);
-        doc.rect(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, LAYOUT.FOOTER_HEIGHT, 'F');
-
-        doc.setDrawColor(...COLORS.brand);
-        doc.setLineWidth(LAYOUT.LINE_WIDTH_THIN);
-        doc.line(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, pageHeight - LAYOUT.FOOTER_HEIGHT);
-
-        doc.setTextColor(...COLORS.muted);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text('AlphaData - Inteligencia de Mercado Petrolifero Angolano', margin, pageHeight - 10);
-        doc.text(`Pagina ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-        doc.text('CONFIDENCIAL - USO INTERNO', pageWidth - margin - 45, pageHeight - 10);
-      }
-    };
-
-    const addSectionTitle = (title: string) => {
-      checkNewPage(25);
-      doc.setFillColor(...COLORS.brand);
-      doc.roundedRect(margin, yPos, 4, 14, 1, 1, 'F');
-      doc.setTextColor(...COLORS.dark);
-      doc.setFontSize(LAYOUT.SECTION_TITLE);
-      doc.setFont('helvetica', 'bold');
-      doc.text(title, margin + 10, yPos + 10);
-      yPos += 22;
-    };
-
-    // Start document
-    addHeader();
-
-    // === EXECUTIVE SUMMARY ===
-    if (data.summary) {
-      addSectionTitle('Sumario Executivo');
-      const formattedSegments = parseMarkdownText(data.summary);
-      yPos = renderFormattedText(doc, formattedSegments, margin, yPos, pageWidth - 2 * margin, addHeader);
-      yPos += LAYOUT.SECTION_SPACING;
-    }
-
-    // === CHARTS (for production data) ===
-    if (data.content?.data?.production && Array.isArray(data.content.data.production) && data.content.data.production.length > 0) {
-      checkNewPage(120);
-      addSectionTitle('Analise Visual de Producao');
-
-      const productionData = data.content.data.production;
-
-      // Bar chart
-      checkNewPage(100);
-      yPos = drawProductionBarChart(doc, productionData, margin, yPos, pageWidth - 2 * margin, 6);
-
-      // Donut chart
-      checkNewPage(100);
-      const donutCenterX = pageWidth / 2;
-      yPos = drawMarketShareDonut(doc, productionData, donutCenterX, yPos + 28, 24);
-      yPos += LAYOUT.SECTION_SPACING;
-    }
-
-    // === HIGHLIGHTS ===
-    if (data.highlights && data.highlights.length > 0) {
-      addSectionTitle('Destaques Principais');
-
-      data.highlights.forEach((highlight) => {
-        checkNewPage(LAYOUT.HIGHLIGHT_BOX_HEIGHT + 5);
-
-        doc.setFillColor(...COLORS.white);
-        doc.roundedRect(margin, yPos, pageWidth - 2 * margin, LAYOUT.HIGHLIGHT_BOX_HEIGHT, LAYOUT.BOX_RADIUS, LAYOUT.BOX_RADIUS, 'F');
-        doc.setDrawColor(...COLORS.lightGray);
-        doc.setLineWidth(LAYOUT.LINE_WIDTH_THIN);
-        doc.roundedRect(margin, yPos, pageWidth - 2 * margin, LAYOUT.HIGHLIGHT_BOX_HEIGHT, LAYOUT.BOX_RADIUS, LAYOUT.BOX_RADIUS, 'S');
-
-        doc.setTextColor(...COLORS.muted);
-        doc.setFontSize(LAYOUT.BODY_SMALL);
-        doc.setFont('helvetica', 'normal');
-        doc.text(highlight.title, margin + LAYOUT.CARD_PADDING, yPos + 9);
-
-        doc.setTextColor(...COLORS.dark);
-        doc.setFontSize(LAYOUT.TITLE_SMALL);
-        doc.setFont('helvetica', 'bold');
-        doc.text(highlight.value, margin + LAYOUT.CARD_PADDING, yPos + 17);
-
-        if (highlight.trend) {
-          const trendColor = highlight.trend === 'up' ? COLORS.success :
-            highlight.trend === 'down' ? COLORS.danger : COLORS.muted;
-          doc.setFillColor(...trendColor);
-          doc.circle(pageWidth - margin - 12, yPos + 11, 5, 'F');
-          doc.setTextColor(...COLORS.white);
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          const arrow = highlight.trend === 'up' ? '+' : highlight.trend === 'down' ? '-' : '=';
-          doc.text(arrow, pageWidth - margin - 13.5, yPos + 13.5);
-        }
-
-        yPos += LAYOUT.HIGHLIGHT_BOX_HEIGHT + 8;
-      });
-
-      yPos += LAYOUT.SUBSECTION_SPACING;
-    }
-
-    // === DATA TABLES ===
-    if (data.content) {
-      addSectionTitle(`Dados de ${getTypeName(data.type)}`);
-
-      if (data.content.data) {
-        const contentData = data.content.data;
-
-        // Production table
-        if (contentData.production && Array.isArray(contentData.production)) {
-          const maxRows = data.type === 'general' ? 10 : 15;
-          const tableData = contentData.production.slice(0, maxRows).map((item: any) => [
-            item.operator || '-',
-            item.block || '-',
-            item.field || '-',
-            `${(item.daily_production / 1000).toFixed(0)}K bpd`,
-            item.status || '-',
-          ]);
-
-          if (tableData.length > 0) {
-            checkNewPage(80);
-            autoTable(doc, {
-              startY: yPos,
-              head: [['Operador', 'Bloco', 'Campo', 'Producao', 'Status']],
-              body: tableData,
-              margin: { left: margin, right: margin },
-              headStyles: {
-                fillColor: COLORS.dark,
-                textColor: COLORS.white,
-                fontStyle: 'bold',
-                fontSize: 9,
-                halign: 'left',
-              },
-              bodyStyles: { fontSize: 8, textColor: COLORS.darkGray },
-              alternateRowStyles: { fillColor: COLORS.ultraLight },
-              theme: 'plain',
-              styles: { cellPadding: 4, lineColor: COLORS.lightGray, lineWidth: 0.1 },
-            });
-            yPos = (doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-          }
-        }
-
-        // Price table
-        if (contentData.prices && Array.isArray(contentData.prices)) {
-          const tableData = contentData.prices.slice(0, 10).map((item: any) => [
-            item.crude_type || '-',
-            `$${item.price?.toFixed(2) || '0.00'}`,
-            `${item.change_percent >= 0 ? '+' : ''}${item.change_percent?.toFixed(2) || '0.00'}%`,
-            new Date(item.data_date).toLocaleDateString('pt-AO'),
-          ]);
-
-          if (tableData.length > 0) {
-            checkNewPage(50);
-            autoTable(doc, {
-              startY: yPos,
-              head: [['Tipo de Crude', 'Preco (USD)', 'Variacao', 'Data']],
-              body: tableData,
-              margin: { left: margin, right: margin },
-              headStyles: { fillColor: COLORS.dark, textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
-              bodyStyles: { fontSize: 8, textColor: COLORS.darkGray },
-              alternateRowStyles: { fillColor: COLORS.ultraLight },
-              theme: 'plain',
-              styles: { cellPadding: 4, lineColor: COLORS.lightGray, lineWidth: 0.1 },
-            });
-            yPos = (doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-          }
-        }
-
-        // Export table
-        if (contentData.exports && Array.isArray(contentData.exports)) {
-          const tableData = contentData.exports.slice(0, 10).map((item: any) => [
-            item.destination || '-',
-            `${(item.volume / 1000000).toFixed(2)}M bbl`,
-            item.tanker_name || '-',
-            item.status || '-',
-          ]);
-
-          if (tableData.length > 0) {
-            checkNewPage(50);
-            autoTable(doc, {
-              startY: yPos,
-              head: [['Destino', 'Volume', 'Tanque', 'Status']],
-              body: tableData,
-              margin: { left: margin, right: margin },
-              headStyles: { fillColor: COLORS.dark, textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
-              bodyStyles: { fontSize: 8, textColor: COLORS.darkGray },
-              alternateRowStyles: { fillColor: COLORS.ultraLight },
-              theme: 'plain',
-              styles: { cellPadding: 4, lineColor: COLORS.lightGray, lineWidth: 0.1 },
-            });
-            yPos = (doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-          }
-        }
-      }
-    }
-
-    // Disclaimer
-    checkNewPage(35);
-    doc.setFillColor(...COLORS.ultraLight);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 32, LAYOUT.BOX_RADIUS, LAYOUT.BOX_RADIUS, 'F');
-
-    doc.setTextColor(...COLORS.muted);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'italic');
-    const disclaimer = 'AVISO LEGAL: Este relatorio foi gerado pela AlphaData - Inteligencia de Mercado Petrolifero Angolano. As informacoes aqui contidas sao para fins informativos e nao constituem aconselhamento financeiro ou de investimento. A AlphaData nao se responsabiliza por decisoes tomadas com base neste documento. Todos os dados sao provenientes de fontes oficiais e APIs de mercado em tempo real.';
-    const disclaimerLines = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin - 10);
-    doc.text(disclaimerLines, margin + 5, yPos + 8);
-
-    addFooter();
-
-    const safeType = data.type || 'Relatorio';
-    const safePeriod = data.period?.replace(/\s+/g, '_') || new Date().toISOString().split('T')[0];
-    const fileName = `AlphaData_${getTypeName(safeType)}_${safePeriod}.pdf`;
-    doc.save(fileName);
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    if (errorMessage.includes('memory') || errorMessage.includes('heap')) {
-      throw new Error('Relatório muito grande para gerar PDF. Tente reduzir a quantidade de dados ou use Excel.');
-    }
-    throw new Error(`Falha ao gerar PDF: ${errorMessage}`);
-  }
-};
-
-// ============================================================================
-// DOCX & EXCEL GENERATION
-// ============================================================================
-
-export const generateDOCXReport = async (data: ReportData): Promise<void> => {
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const ctx: PDFCtx = {
+    doc,
+    y: L.HEADER_H + 8,
+    W,
+    H,
+    margin,
+    onNewPage: () => { drawHeader(); ctx.y = L.HEADER_H + 8; },
   };
 
-  const defaultCoverData = getDefaultCoverPageData();
+  const contentW = W - 2 * margin;
+
+  // ── Executive Summary ────────────────────────────────────────────────────
+  if (data.summary) {
+    sectionTitle(ctx, 'Sumário Executivo');
+    const blocks = parseMarkdown(data.summary);
+    renderBlocks(ctx, blocks);
+    ctx.y += L.SECTION_SP;
+  }
+
+  // ── Highlights ───────────────────────────────────────────────────────────
+  if (data.highlights && data.highlights.length > 0) {
+    sectionTitle(ctx, 'Destaques Principais');
+    const boxH = 22;
+    data.highlights.forEach(h => {
+      needsPage(ctx, boxH + 6);
+      ctx.doc.setFillColor(...C.white);
+      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'F');
+      ctx.doc.setDrawColor(...C.lightGray);
+      ctx.doc.setLineWidth(L.THIN);
+      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'S');
+
+      setFont(ctx.doc, 8, 'normal', C.muted);
+      ctx.doc.text(h.title, margin + 8, ctx.y + 9);
+      setFont(ctx.doc, 13, 'bold', C.dark);
+      ctx.doc.text(h.value, margin + 8, ctx.y + 18);
+
+      if (h.trend) {
+        const tColor = h.trend === 'up' ? C.success : h.trend === 'down' ? C.danger : C.muted;
+        ctx.doc.setFillColor(...tColor);
+        ctx.doc.circle(W - margin - 12, ctx.y + 11, 5, 'F');
+        setFont(ctx.doc, 9, 'bold', C.white);
+        const arrow = h.trend === 'up' ? '↑' : h.trend === 'down' ? '↓' : '=';
+        ctx.doc.text(arrow, W - margin - 13.5, ctx.y + 13.5);
+      }
+      ctx.y += boxH + 7;
+    });
+    ctx.y += L.SUBSEC_SP;
+  }
+
+  // ── Dynamic Charts ───────────────────────────────────────────────────────
+  const prodData = extractProduction(data.content);
+  const priceData = extractPrices(data.content);
+  const exportData = extractExports(data.content);
+
+  // Price time series (if available)
+  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date');
+
+  const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
+
+  if (hasCharts) {
+    sectionTitle(ctx, 'Análise Visual');
+
+    if (prodData.length > 0) {
+      drawHBarChart(ctx, 'Produção por Operador', prodData, 'bpd', 8);
+      ctx.y += 4;
+      if (prodData.length >= 3) {
+        drawDonutChart(ctx, 'Quota de Mercado (Produção)', prodData, 'bpd');
+        ctx.y += 4;
+      }
+    }
+
+    if (priceSeries.length > 1) {
+      drawLineChart(ctx, 'Evolução de Preços (USD/bbl)', [
+        { name: 'Preço', points: priceSeries, color: C.brand },
+      ]);
+    } else if (priceData.length > 0) {
+      drawHBarChart(ctx, 'Preços por Tipo de Crude (USD/bbl)', priceData, 'USD', 8);
+    }
+
+    if (exportData.length > 0) {
+      drawHBarChart(ctx, 'Exportações por Destino', exportData, 'bbl', 8);
+    }
+
+    ctx.y += L.SECTION_SP;
+  }
+
+  // ── Data Tables ──────────────────────────────────────────────────────────
+  if (data.content?.data) {
+    const cd = data.content.data;
+
+    // Production table
+    if (Array.isArray(cd.production) && cd.production.length > 0) {
+      sectionTitle(ctx, `Dados de ${getTypeName(data.type)}`);
+      const rows = cd.production.slice(0, 20).map((r: any) => [
+        r.operator || r.company || '-',
+        r.block || '-',
+        r.field || '-',
+        r.daily_production
+          ? `${(r.daily_production / 1000).toFixed(0)}K bpd`
+          : '-',
+        r.status || '-',
+      ]);
+      autoTable(doc, {
+        startY: ctx.y,
+        head: [['Operador', 'Bloco', 'Campo', 'Produção', 'Status']],
+        body: rows,
+        margin: { left: margin, right: margin },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray },
+        alternateRowStyles: { fillColor: C.ultraLight },
+        theme: 'plain',
+        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+      });
+      ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
+    }
+
+    // Prices table
+    if (Array.isArray(cd.prices) && cd.prices.length > 0) {
+      needsPage(ctx, 50);
+      sectionTitle(ctx, 'Tabela de Preços');
+      const rows = cd.prices.slice(0, 12).map((r: any) => [
+        r.crude_type || r.type || '-',
+        r.price != null ? `$${Number(r.price).toFixed(2)}` : '-',
+        r.change_percent != null
+          ? `${r.change_percent >= 0 ? '+' : ''}${Number(r.change_percent).toFixed(2)}%`
+          : '-',
+        r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-',
+      ]);
+      autoTable(doc, {
+        startY: ctx.y,
+        head: [['Tipo de Crude', 'Preço (USD)', 'Variação', 'Data']],
+        body: rows,
+        margin: { left: margin, right: margin },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray },
+        alternateRowStyles: { fillColor: C.ultraLight },
+        theme: 'plain',
+        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+      });
+      ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
+    }
+
+    // Exports table
+    if (Array.isArray(cd.exports) && cd.exports.length > 0) {
+      needsPage(ctx, 50);
+      sectionTitle(ctx, 'Tabela de Exportações');
+      const rows = cd.exports.slice(0, 12).map((r: any) => [
+        r.destination || r.country || '-',
+        r.volume != null ? `${(Number(r.volume) / 1_000_000).toFixed(2)}M bbl` : '-',
+        r.tanker_name || '-',
+        r.status || '-',
+      ]);
+      autoTable(doc, {
+        startY: ctx.y,
+        head: [['Destino', 'Volume', 'Tanque', 'Status']],
+        body: rows,
+        margin: { left: margin, right: margin },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray },
+        alternateRowStyles: { fillColor: C.ultraLight },
+        theme: 'plain',
+        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+      });
+      ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
+    }
+  }
+
+  // ── Disclaimer ───────────────────────────────────────────────────────────
+  needsPage(ctx, 36);
+  ctx.doc.setFillColor(...C.ultraLight);
+  ctx.doc.roundedRect(margin, ctx.y, contentW, 32, L.BOX_R, L.BOX_R, 'F');
+  setFont(ctx.doc, 6.5, 'italic', C.muted);
+  const disclaimer =
+    'AVISO LEGAL: Este relatório foi gerado pela AlphaData - Inteligência de Mercado Petrolífero Angolano. As informações aqui contidas são para fins informativos e não constituem aconselhamento financeiro ou de investimento. A AlphaData não se responsabiliza por decisões tomadas com base neste documento. Todos os dados são provenientes de fontes oficiais e APIs de mercado em tempo real.';
+  const dLines = ctx.doc.splitTextToSize(disclaimer, contentW - 10);
+  ctx.doc.text(dLines, margin + 5, ctx.y + 8);
+
+  // ── Footers (all pages) ──────────────────────────────────────────────────
+  addFooters(doc, W, H);
+
+  const fileName = `AlphaData_${getTypeName(data.type)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
+  doc.save(fileName);
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOCX GENERATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const children: any[] = [];
 
-  const doc = new Document({
-    sections: [{
-      properties: {
-        page: {
-          margin: { top: 1440, bottom: 1440, left: 1800, right: 1440 },
-        },
-      },
-      children,
-    }],
-  });
+  // Title
+  children.push(
+    new Paragraph({
+      text: data.title || 'Relatório AlphaData',
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+    })
+  );
 
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: `Período: ${data.period || 'N/D'}   |   `, color: '64748B', size: 20 }),
+        new TextRun({ text: `Gerado em: ${safeDate(data.generatedAt).toLocaleDateString('pt-AO')}`, color: '64748B', size: 20 }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+    })
+  );
+
+  // Render markdown blocks for summary
+  if (data.summary) {
+    children.push(new Paragraph({ text: 'Sumário Executivo', heading: HeadingLevel.HEADING_1 }));
+
+    const blocks = parseMarkdown(data.summary);
+    for (const block of blocks) {
+      if (block.kind === 'blank') continue;
+      if (block.kind === 'h1') {
+        children.push(new Paragraph({ text: block.text, heading: HeadingLevel.HEADING_1 }));
+      } else if (block.kind === 'h2') {
+        children.push(new Paragraph({ text: block.text, heading: HeadingLevel.HEADING_2 }));
+      } else if (block.kind === 'h3') {
+        children.push(new Paragraph({ text: block.text, heading: HeadingLevel.HEADING_3 }));
+      } else if (block.kind === 'bullet') {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: block.text, size: 20 })],
+            bullet: { level: block.indent - 1 },
+          })
+        );
+      } else if (block.kind === 'numbered') {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: block.text, size: 20 })],
+            numbering: { reference: 'default-numbering', level: 0 },
+          })
+        );
+      } else {
+        // paragraph
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: block.text, size: 20 })],
+            spacing: { after: 120 },
+          })
+        );
+      }
+    }
+  }
+
+  // Tables from content
+  const cd = data.content?.data;
+  if (cd?.production && Array.isArray(cd.production) && cd.production.length > 0) {
+    children.push(new Paragraph({ text: 'Dados de Produção', heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
+    const headerRow = new TableRow({
+      children: ['Operador', 'Bloco', 'Campo', 'Produção (bpd)', 'Status'].map(h =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: 'FFFFFF', size: 18 })] })],
+          shading: { fill: '0A0A0A' },
+        })
+      ),
+    });
+    const dataRows = cd.production.slice(0, 20).map((r: any) =>
+      new TableRow({
+        children: [
+          r.operator || '-',
+          r.block || '-',
+          r.field || '-',
+          r.daily_production ? `${(r.daily_production / 1000).toFixed(0)}K` : '-',
+          r.status || '-',
+        ].map(val =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: String(val), size: 18 })] })],
+          })
+        ),
+      })
+    );
+    children.push(new Table({
+      rows: [headerRow, ...dataRows],
+      width: { size: 100, type: WidthType.PERCENTAGE },
+    }));
+  }
+
+  const doc = new Document({ sections: [{ children }] });
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `AlphaData_${getTypeName(data.type)}_${data.period?.replace(/\s+/g, '_') || new Date().toISOString().split('T')[0]}.docx`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXCEL GENERATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 export const generateExcelReport = (data: ReportData): void => {
-  const escapeXml = (str: string): string => {
-    return String(str || '')
+  const esc = (s: string) =>
+    String(s || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
-  };
 
-  let rows: string[] = [];
-
-  const defaultCoverData = getDefaultCoverPageData();
-  const coverPageData: CoverPageData = {
-    ...defaultCoverData,
+  const defaultCover = getDefaultCoverPageData();
+  const coverData: CoverPageData = {
+    ...defaultCover,
     reportTitle: data.title || 'Relatório AlphaData',
     reportType: getTypeName(data.type),
     reportPeriod: data.period || 'Actual',
-    generatedAt: data.generatedAt instanceof Date ? data.generatedAt : new Date(data.generatedAt),
+    generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
   };
 
-  rows.push(...getCoverPageExcelRows(coverPageData));
+  const coverRows = getCoverPageExcelRows(coverData);
+
+  // Build data worksheet rows
+  const dataRows: string[] = [];
+  const cd = data.content?.data;
+
+  if (cd?.production && Array.isArray(cd.production)) {
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Operador</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Bloco</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Campo</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Producao (bpd)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    cd.production.forEach((r: any) => {
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.operator||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.block||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.field||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.daily_production||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
+    });
+    dataRows.push(`<Row></Row>`);
+  }
+
+  if (cd?.prices && Array.isArray(cd.prices)) {
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tipo Crude</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Preco USD</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Variacao %</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Data</Data></Cell></Row>`);
+    cd.prices.forEach((r: any) => {
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-'}</Data></Cell></Row>`);
+    });
+    dataRows.push(`<Row></Row>`);
+  }
+
+  if (cd?.exports && Array.isArray(cd.exports)) {
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Destino</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Volume (bbl)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tanque</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    cd.exports.forEach((r: any) => {
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.destination||r.country||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.volume||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.tanker_name||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
+    });
+  }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
-  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
   <Styles>
-    <Style ss:ID="brand">
-      <Font ss:Bold="1" ss:Size="18" ss:Color="#DC2626"/>
-      <Interior ss:Color="#0A0A0A" ss:Pattern="Solid"/>
-    </Style>
-    <Style ss:ID="header">
-      <Font ss:Bold="1" ss:Size="14"/>
-    </Style>
-    <Style ss:ID="subheader">
-      <Font ss:Bold="1" ss:Size="11" ss:Color="#0A0A0A"/>
-      <Interior ss:Color="#E5E7EB" ss:Pattern="Solid"/>
-    </Style>
-    <Style ss:ID="tableHeader">
-      <Font ss:Bold="1" ss:Color="#FFFFFF"/>
-      <Interior ss:Color="#0A0A0A" ss:Pattern="Solid"/>
-    </Style>
-    <Style ss:ID="bold">
-      <Font ss:Bold="1"/>
-    </Style>
-    <Style ss:ID="footer">
-      <Font ss:Italic="1" ss:Size="9" ss:Color="#64748B"/>
-    </Style>
+    <Style ss:ID="brand"><Font ss:Bold="1" ss:Size="18" ss:Color="#DC2626"/><Interior ss:Color="#0A0A0A" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="subheader"><Font ss:Bold="1" ss:Size="11"/><Interior ss:Color="#E5E7EB" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="tableHeader"><Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="10"/><Interior ss:Color="#0A0A0A" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="bold"><Font ss:Bold="1"/></Style>
+    <Style ss:ID="footer"><Font ss:Italic="1" ss:Size="9" ss:Color="#64748B"/></Style>
   </Styles>
-  <Worksheet ss:Name="AlphaData Report">
-    <Table>
-      ${rows.join('\n')}
-    </Table>
+  <Worksheet ss:Name="Info">
+    <Table>${coverRows.join('\n')}</Table>
+  </Worksheet>
+  <Worksheet ss:Name="Dados">
+    <Table>${dataRows.join('\n')}</Table>
   </Worksheet>
 </Workbook>`;
 
   const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `AlphaData_${getTypeName(data.type)}_${data.period?.replace(/\s+/g, '_') || new Date().toISOString().split('T')[0]}.xls`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTRY POINT
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export const downloadReport = async (
   data: ReportData,
   format: 'pdf' | 'docx' | 'excel',
   language: DocumentLanguageCode = 'pt'
 ): Promise<void> => {
-  const reportData = { ...data, language };
-
-  switch (format) {
-    case 'pdf':
-      await generatePDFReport(reportData);
-      break;
-    case 'docx':
-      await generateDOCXReport(reportData);
-      break;
-    case 'excel':
-      generateExcelReport(reportData);
-      break;
-  }
+  const d = { ...data, language };
+  if (format === 'pdf') return generatePDFReport(d);
+  if (format === 'docx') return generateDOCXReport(d);
+  generateExcelReport(d);
 };

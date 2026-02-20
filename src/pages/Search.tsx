@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import * as ScrollArea from '@radix-ui/react-scroll-area';
+import * as ScrollArea from "@radix-ui/react-scroll-area";
 import {
   Search as SearchIcon,
   TrendingUp,
@@ -28,7 +28,12 @@ import {
   AlertCircle,
   ChevronLeft,
   Shield,
-  Target
+  Target,
+  Flame,
+  Droplets,
+  Zap,
+  Activity,
+  TrendingDown,
 } from "lucide-react";
 import {
   XAxis,
@@ -37,15 +42,31 @@ import {
   Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TYPES & INTERFACES
+   TYPES
    ═══════════════════════════════════════════════════════════════════════════ */
+
+interface ChartData {
+  type: "area" | "bar" | "line" | "pie";
+  title: string;
+  unit?: string;
+  data: Record<string, string | number>[];
+  dataKeys: { key: string; color: string }[];
+  xKey: string;
+}
 
 interface Message {
   id: string;
@@ -53,6 +74,7 @@ interface Message {
   content: string;
   time: string;
   sources?: string[];
+  charts?: ChartData[];
 }
 
 interface ChatSession {
@@ -65,58 +87,30 @@ interface ChatSession {
 interface QuickAction {
   label: string;
   icon: React.ElementType;
-  gradient: string;
   category: string;
+  accent: string;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONSTANTS & CONFIG
+   CONSTANTS
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const QUICK_ACTIONS: QuickAction[] = [
-  {
-    label: "Qual o preço atual do Brent Crude Oil?",
-    icon: TrendingUp,
-    gradient: "from-primary/20 to-primary/10",
-    category: "Mercado",
-  },
-  {
-    label: "Relatório de produção mensal da TotalEnergies",
-    icon: BarChart3,
-    gradient: "from-accent/20 to-accent/10",
-    category: "Produção",
-  },
-  {
-    label: "Principais destinos de exportação de Angola",
-    icon: Ship,
-    gradient: "from-primary/20 to-primary/10",
-    category: "Exportações",
-  },
-  {
-    label: "Previsões estratégicas para 2026",
-    icon: Target,
-    gradient: "from-accent/20 to-accent/10",
-    category: "Previsões",
-  },
-  {
-    label: "Alertas de riscos operacionais ativos",
-    icon: AlertCircle,
-    gradient: "from-destructive/20 to-destructive/10",
-    category: "Riscos",
-  },
-  {
-    label: "Análise geopolítica e impactos no mercado",
-    icon: Shield,
-    gradient: "from-primary/20 to-primary/10",
-    category: "Geopolítica",
-  },
+  { label: "Qual o preço atual do Brent Crude Oil?", icon: TrendingUp, category: "Mercado", accent: "#dc2626" },
+  { label: "Relatório de produção mensal da TotalEnergies", icon: BarChart3, category: "Produção", accent: "#1e3a5f" },
+  { label: "Principais destinos de exportação de Angola", icon: Ship, category: "Exportações", accent: "#dc2626" },
+  { label: "Previsões estratégicas para 2026", icon: Target, category: "Previsões", accent: "#1e3a5f" },
+  { label: "Alertas de riscos operacionais ativos", icon: AlertCircle, category: "Riscos", accent: "#dc2626" },
+  { label: "Análise geopolítica e impactos no mercado", icon: Shield, category: "Geopolítica", accent: "#1e3a5f" },
 ];
 
 const STORAGE_KEY = "alphadata_chat_sessions";
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-chat`;
 
+const CHART_COLORS = ["#dc2626", "#1e3a5f", "#ef4444", "#3b82f6", "#991b1b", "#1d4ed8"];
+
 /* ═══════════════════════════════════════════════════════════════════════════
-   STREAMING CHAT FUNCTION
+   STREAMING
    ═══════════════════════════════════════════════════════════════════════════ */
 
 async function streamChat({
@@ -132,19 +126,15 @@ async function streamChat({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
     body: JSON.stringify({ messages, includeDatabase: true }),
   });
 
   if (!resp.ok) {
     const errorData = await resp.json().catch(() => ({}));
-    if (resp.status === 429) {
-      throw new Error(errorData.error || "Limite de requisições excedido. Aguarde alguns segundos.");
-    }
-    if (resp.status === 402) {
-      throw new Error(errorData.error || "Créditos insuficientes.");
-    }
+    if (resp.status === 429) throw new Error(errorData.error || "Limite de requisições excedido.");
+    if (resp.status === 402) throw new Error(errorData.error || "Créditos insuficientes.");
     throw new Error(errorData.error || "Erro ao conectar com o assistente IA");
   }
 
@@ -159,22 +149,15 @@ async function streamChat({
     const { done, value } = await reader.read();
     if (done) break;
     textBuffer += decoder.decode(value, { stream: true });
-
     let newlineIndex: number;
     while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
       let line = textBuffer.slice(0, newlineIndex);
       textBuffer = textBuffer.slice(newlineIndex + 1);
-
       if (line.endsWith("\r")) line = line.slice(0, -1);
       if (line.startsWith(":") || line.trim() === "") continue;
       if (!line.startsWith("data: ")) continue;
-
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") {
-        streamDone = true;
-        break;
-      }
-
+      if (jsonStr === "[DONE]") { streamDone = true; break; }
       try {
         const parsed = JSON.parse(jsonStr);
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -185,84 +168,312 @@ async function streamChat({
       }
     }
   }
-
-  // Final flush
-  if (textBuffer.trim()) {
-    for (let raw of textBuffer.split("\n")) {
-      if (!raw) continue;
-      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-      if (raw.startsWith(":") || raw.trim() === "") continue;
-      if (!raw.startsWith("data: ")) continue;
-      const jsonStr = raw.slice(6).trim();
-      if (jsonStr === "[DONE]") continue;
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) onDelta(content);
-      } catch { /* ignore */ }
-    }
-  }
-
   onDone();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SUB-COMPONENTS
+   CHART RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartRenderer = ({ chart }: { chart: ChartData }) => {
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{
+        background: "#0a1628",
+        border: "1px solid rgba(220,38,38,0.3)",
+        borderRadius: 8,
+        padding: "10px 14px",
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: 12,
+      }}>
+        <p style={{ color: "#5a8ab5", marginBottom: 4, fontWeight: 600 }}>{label}</p>
+        {payload.map((p: any, i: number) => (
+          <p key={i} style={{ color: p.color, fontWeight: 700 }}>
+            {p.name}: <span style={{ color: "#e2e8f0" }}>{p.value}{chart.unit ? ` ${chart.unit}` : ""}</span>
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 rounded-xl overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #070d1a 0%, #0d0707 100%)",
+        border: "1px solid rgba(30,58,95,0.4)",
+      }}
+    >
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-1 h-4 rounded-full"
+            style={{ background: "linear-gradient(180deg, #dc2626, #991b1b)" }}
+          />
+          <span style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            color: "#5a8ab5",
+            textTransform: "uppercase",
+          }}>
+            {chart.title}
+          </span>
+          {chart.unit && (
+            <span style={{
+              fontSize: 9,
+              color: "#2d4a6a",
+              fontFamily: "'DM Sans', sans-serif",
+              letterSpacing: "0.1em",
+            }}>
+              ({chart.unit})
+            </span>
+          )}
+        </div>
+        <Activity className="w-3 h-3" style={{ color: "#dc2626", opacity: 0.6 }} />
+      </div>
+
+      <div style={{ height: 200, padding: "0 8px 16px" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          {chart.type === "area" ? (
+            <AreaChart data={chart.data}>
+              <defs>
+                {chart.dataKeys.map((dk, i) => (
+                  <linearGradient key={dk.key} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={dk.color} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={dk.color} stopOpacity={0} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              {chart.dataKeys.map((dk, i) => (
+                <Area key={dk.key} type="monotone" dataKey={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${i})`} />
+              ))}
+            </AreaChart>
+          ) : chart.type === "bar" ? (
+            <BarChart data={chart.data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              {chart.dataKeys.map((dk) => (
+                <Bar key={dk.key} dataKey={dk.key} fill={dk.color} radius={[3, 3, 0, 0]} />
+              ))}
+            </BarChart>
+          ) : chart.type === "pie" ? (
+            <PieChart>
+              <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={75} innerRadius={40} strokeWidth={0}>
+                {chart.data.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          ) : (
+            <LineChart data={chart.data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              {chart.dataKeys.map((dk) => (
+                <Line key={dk.key} type="monotone" dataKey={dk.key} stroke={dk.color} strokeWidth={2} dot={{ fill: dk.color, r: 3 }} />
+              ))}
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WELCOME SCREEN
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => void }) => (
-  <motion.div 
+  <motion.div
     key="welcome"
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
+    exit={{ opacity: 0, scale: 0.97 }}
     transition={{ duration: 0.4 }}
-    className="flex-1 flex flex-col justify-center items-center text-center space-y-12 py-12"
+    className="flex-1 flex flex-col justify-center items-center text-center py-12"
+    style={{ gap: "3rem" }}
   >
-    <div className="space-y-6">
-      <motion.div 
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.2 }}
-        className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary/10 border border-primary/20 text-foreground text-sm font-medium backdrop-blur-sm"
+    {/* Hero */}
+    <div className="space-y-6 max-w-3xl">
+      {/* Badge */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full"
+        style={{
+          background: "rgba(220,38,38,0.08)",
+          border: "1px solid rgba(220,38,38,0.25)",
+        }}
       >
-        <Cpu className="w-5 h-5 text-primary" />
-        <span>Sistema de Inteligência Analítica Empresarial</span>
-      </motion.div>
-      
-      <h1 className="text-5xl lg:text-7xl font-bold tracking-tight">
-        <span className="text-foreground">Plataforma de </span>
-        <span className="text-gradient-primary">
-          Business Intelligence
+        <Flame className="w-4 h-4" style={{ color: "#ef4444" }} />
+        <span style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: "10px",
+          fontWeight: 700,
+          letterSpacing: "0.18em",
+          color: "#9bb5d6",
+          textTransform: "uppercase",
+        }}>
+          Oil & Gas Intelligence Platform
         </span>
-      </h1>
-      
-      <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed font-light">
-        Análise de dados em tempo real, processamento de linguagem natural e insights estratégicos baseados em inteligência artificial avançada.
-      </p>
+        <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
+      </motion.div>
+
+      {/* Title */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+        <h1 style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
+          <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 48px)", color: "#e2e8f0", letterSpacing: "-0.02em" }}>
+            OIL & GAS
+          </span>
+          <span style={{
+            display: "block",
+            fontSize: "clamp(28px, 5vw, 52px)",
+            background: "linear-gradient(135deg, #dc2626 0%, #ef4444 40%, #60a5fa 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            letterSpacing: "-0.02em",
+          }}>
+            AI ANALYST
+          </span>
+        </h1>
+      </motion.div>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: "15px",
+          color: "#3d5a7a",
+          lineHeight: 1.7,
+          maxWidth: "480px",
+          margin: "0 auto",
+        }}
+      >
+        Análise de mercado em tempo real, inteligência preditiva e insights estratégicos para o setor energético.
+      </motion.p>
+
+      {/* Stats row */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="flex items-center justify-center gap-8"
+      >
+        {[
+          { icon: Droplets, label: "Petróleo", value: "Live" },
+          { icon: Activity, label: "Mercados", value: "24/7" },
+          { icon: Zap, label: "Resposta", value: "<2s" },
+        ].map((stat) => (
+          <div key={stat.label} className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.2)" }}
+            >
+              <stat.icon className="w-3.5 h-3.5" style={{ color: "#ef4444" }} />
+            </div>
+            <div className="text-left">
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "11px", fontWeight: 700, color: "#e2e8f0" }}>{stat.value}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2d4a6a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</div>
+            </div>
+          </div>
+        ))}
+      </motion.div>
     </div>
 
-    <div className="w-full max-w-6xl px-4">
-      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-6">Consultas Sugeridas</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    {/* Quick actions */}
+    <div className="w-full max-w-4xl px-4">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
+        <span style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: "9px",
+          fontWeight: 700,
+          letterSpacing: "0.2em",
+          color: "#2d4a6a",
+          textTransform: "uppercase",
+        }}>
+          Consultas Frequentes
+        </span>
+        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {QUICK_ACTIONS.map((action, i) => (
           <motion.button
             key={i}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.03 }}
+            transition={{ delay: 0.15 + i * 0.05 }}
             onClick={() => onQuickAction(action.label)}
-            className="group relative p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-all duration-300 overflow-hidden text-left"
+            className="group relative p-4 rounded-xl text-left transition-all duration-200 overflow-hidden"
+            style={{
+              background: "#080e1a",
+              border: "1px solid rgba(30,58,95,0.35)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(220,38,38,0.35)";
+              (e.currentTarget as HTMLElement).style.background = "#0d0f1a";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,58,95,0.35)";
+              (e.currentTarget as HTMLElement).style.background = "#080e1a";
+            }}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-            <div className="relative flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
-                  <action.icon className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">{action.category}</span>
+            <div
+              className="absolute top-0 right-0 w-20 h-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: `radial-gradient(circle at top right, ${action.accent}15 0%, transparent 70%)` }}
+            />
+            <div className="flex items-start gap-3">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 transition-all group-hover:scale-110"
+                style={{
+                  background: `${action.accent}18`,
+                  border: `1px solid ${action.accent}30`,
+                }}
+              >
+                <action.icon className="w-4 h-4" style={{ color: action.accent === "#dc2626" ? "#ef4444" : "#60a5fa" }} />
               </div>
-              <span className="font-medium text-foreground text-sm leading-snug">{action.label}</span>
+              <div className="min-w-0">
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "8px",
+                  fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  color: action.accent === "#dc2626" ? "#ef4444" : "#3b82f6",
+                  textTransform: "uppercase",
+                  marginBottom: "4px",
+                  opacity: 0.7,
+                }}>
+                  {action.category}
+                </div>
+                <span style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: "12.5px",
+                  fontWeight: 500,
+                  color: "#7aa3cc",
+                  lineHeight: 1.4,
+                  display: "block",
+                }}>
+                  {action.label}
+                </span>
+              </div>
             </div>
           </motion.button>
         ))}
@@ -271,73 +482,159 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
   </motion.div>
 );
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT BUBBLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 const ChatBubble = ({ message }: { message: Message }) => {
-  const isUser = message.role === 'user';
-  
+  const isUser = message.role === "user";
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${
-        isUser 
-          ? 'bg-primary' 
-          : 'bg-accent'
-      }`}>
-        {isUser ? <User className="w-5 h-5 text-primary-foreground" /> : <Bot className="w-5 h-5 text-accent-foreground" />}
+      {/* Avatar */}
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
+        style={isUser
+          ? { background: "linear-gradient(135deg, #dc2626, #991b1b)", boxShadow: "0 0 12px rgba(220,38,38,0.3)" }
+          : { background: "linear-gradient(135deg, #0f1d35, #1e3a5f)", border: "1px solid rgba(30,58,95,0.6)" }
+        }
+      >
+        {isUser
+          ? <User className="w-4 h-4 text-white" />
+          : <Flame className="w-4 h-4" style={{ color: "#ef4444" }} />
+        }
       </div>
 
-      <div className={`flex flex-col space-y-2 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`p-5 rounded-2xl border backdrop-blur-sm ${
-          isUser 
-            ? 'bg-primary/10 border-primary/20 rounded-tr-md' 
-            : 'bg-card border-border rounded-tl-md'
-        }`}>
+      {/* Content */}
+      <div className={`flex flex-col space-y-1.5 max-w-[88%] ${isUser ? "items-end" : "items-start"}`}>
+        {/* Role label */}
+        <div className="flex items-center gap-2 px-1" style={{ flexDirection: isUser ? "row-reverse" : "row" }}>
+          <span style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: "9px",
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            color: isUser ? "#dc2626" : "#3b82f6",
+            textTransform: "uppercase",
+          }}>
+            {isUser ? "Utilizador" : "AlphaData AI"}
+          </span>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>
+            {message.time}
+          </span>
+        </div>
+
+        {/* Bubble */}
+        <div
+          className="px-5 py-4 rounded-2xl"
+          style={isUser
+            ? {
+                background: "linear-gradient(135deg, rgba(220,38,38,0.12) 0%, rgba(153,27,27,0.08) 100%)",
+                border: "1px solid rgba(220,38,38,0.2)",
+                borderTopRightRadius: 4,
+              }
+            : {
+                background: "#080e1a",
+                border: "1px solid rgba(30,58,95,0.4)",
+                borderTopLeftRadius: 4,
+                width: "100%",
+              }
+          }
+        >
           {isUser ? (
-            <p className="text-foreground">{message.content}</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#e2e8f0", lineHeight: 1.6 }}>
+              {message.content}
+            </p>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="ai-response">
+              <style>{`
+                .ai-response h1 { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(30,58,95,0.4); }
+                .ai-response h2 { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; color: #9bb5d6; letter-spacing: 0.08em; margin: 16px 0 8px; text-transform: uppercase; }
+                .ai-response h3 { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #7aa3cc; margin: 12px 0 6px; }
+                .ai-response p { font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: #7aa3cc; line-height: 1.75; margin-bottom: 10px; }
+                .ai-response ul { list-style: none; padding: 0; margin-bottom: 12px; }
+                .ai-response ul li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 4px 0 4px 18px; position: relative; }
+                .ai-response ul li::before { content: ''; position: absolute; left: 0; top: 13px; width: 6px; height: 1px; background: #dc2626; }
+                .ai-response ol { padding-left: 20px; margin-bottom: 12px; }
+                .ai-response ol li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 3px 0; }
+                .ai-response strong { font-weight: 700; color: #ef4444; }
+                .ai-response em { color: #60a5fa; font-style: normal; font-weight: 600; }
+                .ai-response code { background: rgba(30,58,95,0.3); color: #93c5fd; font-family: 'Space Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(30,58,95,0.4); }
+                .ai-response blockquote { border-left: 2px solid #dc2626; padding-left: 14px; margin: 12px 0; background: rgba(220,38,38,0.04); border-radius: 0 6px 6px 0; padding: 10px 14px; }
+                .ai-response blockquote p { color: #9bb5d6; margin: 0; font-style: italic; }
+                .ai-response table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+                .ai-response th { background: rgba(30,58,95,0.4); color: #9bb5d6; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; text-align: left; border: 1px solid rgba(30,58,95,0.3); }
+                .ai-response td { color: #5a8ab5; font-family: 'DM Sans', sans-serif; padding: 8px 12px; border: 1px solid rgba(30,58,95,0.2); }
+                .ai-response tr:nth-child(even) td { background: rgba(30,58,95,0.08); }
+              `}</style>
               <ReactMarkdown
                 components={{
-                  h1: ({ children }) => <h1 className="text-xl font-bold text-foreground mb-3">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-lg font-semibold text-foreground mb-2">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-base font-semibold text-foreground mb-2">{children}</h3>,
-                  p: ({ children }) => <p className="text-foreground mb-2 leading-relaxed">{children}</p>,
-                  ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 mb-3">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 mb-3">{children}</ol>,
-                  li: ({ children }) => <li className="text-foreground">{children}</li>,
-                  strong: ({ children }) => <strong className="font-semibold text-primary">{children}</strong>,
-                  code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm">{children}</code>,
+                  h1: ({ children }) => <h1>{children}</h1>,
+                  h2: ({ children }) => <h2>{children}</h2>,
+                  h3: ({ children }) => <h3>{children}</h3>,
+                  p: ({ children }) => <p>{children}</p>,
+                  ul: ({ children }) => <ul>{children}</ul>,
+                  ol: ({ children }) => <ol>{children}</ol>,
+                  li: ({ children }) => <li>{children}</li>,
+                  strong: ({ children }) => <strong>{children}</strong>,
+                  em: ({ children }) => <em>{children}</em>,
+                  code: ({ children }) => <code>{children}</code>,
+                  blockquote: ({ children }) => <blockquote>{children}</blockquote>,
+                  table: ({ children }) => <table>{children}</table>,
+                  thead: ({ children }) => <thead>{children}</thead>,
+                  tbody: ({ children }) => <tbody>{children}</tbody>,
+                  tr: ({ children }) => <tr>{children}</tr>,
+                  th: ({ children }) => <th>{children}</th>,
+                  td: ({ children }) => <td>{children}</td>,
                 }}
               >
                 {message.content}
               </ReactMarkdown>
             </div>
           )}
-          
-          {!isUser && message.sources && message.sources.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
-              {message.sources.map((s, si) => (
-                <Badge 
-                  key={si} 
-                  variant="secondary"
-                  className="rounded-full text-[10px] py-1 px-3 flex items-center gap-1.5 font-medium"
-                >
-                  <Database className="w-3 h-3" />
-                  {s}
-                </Badge>
+
+          {/* Charts */}
+          {!isUser && message.charts && message.charts.length > 0 && (
+            <div className="space-y-3 mt-3">
+              {message.charts.map((chart, i) => (
+                <ChartRenderer key={i} chart={chart} />
               ))}
             </div>
           )}
-        </div>
-        
-        <div className="flex items-center gap-3 px-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          <span>{message.time}</span>
-          {!isUser && (
-            <span className="text-primary flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" /> Verificado
-            </span>
+
+          {/* Sources */}
+          {!isUser && message.sources && message.sources.length > 0 && (
+            <div className="mt-4 pt-3 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(30,58,95,0.3)" }}>
+              {message.sources.map((s, si) => (
+                <span
+                  key={si}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(30,58,95,0.25)",
+                    border: "1px solid rgba(30,58,95,0.4)",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    color: "#3d5a7a",
+                  }}
+                >
+                  <Database className="w-3 h-3" style={{ color: "#1e3a5f" }} />
+                  {s}
+                </span>
+              ))}
+              <span className="flex items-center gap-1 ml-auto" style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "9px",
+                color: "#dc2626",
+                opacity: 0.7,
+              }}>
+                <CheckCircle className="w-3 h-3" /> Verificado
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -345,18 +642,34 @@ const ChatBubble = ({ message }: { message: Message }) => {
   );
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 const LoadingIndicator = () => (
-  <div className="flex gap-4">
-    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center animate-pulse">
-      <Bot className="w-5 h-5 text-accent-foreground" />
+  <div className="flex gap-3">
+    <div
+      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
+      style={{ background: "linear-gradient(135deg, #0f1d35, #1e3a5f)", border: "1px solid rgba(30,58,95,0.6)" }}
+    >
+      <Flame className="w-4 h-4 animate-pulse" style={{ color: "#ef4444" }} />
     </div>
-    <div className="bg-card border border-border p-5 rounded-2xl rounded-tl-md backdrop-blur-sm min-w-[200px] flex items-center gap-4">
+    <div
+      className="flex items-center gap-3 px-5 py-4 rounded-2xl"
+      style={{ background: "#080e1a", border: "1px solid rgba(30,58,95,0.4)", borderTopLeftRadius: 4 }}
+    >
       <div className="flex gap-1.5">
-        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
-        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+        {[0, 0.15, 0.3].map((delay, i) => (
+          <span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full animate-bounce"
+            style={{ background: "#dc2626", animationDelay: `${delay}s` }}
+          />
+        ))}
       </div>
-      <span className="text-sm font-medium text-muted-foreground">A processar consulta...</span>
+      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#2d4a6a", letterSpacing: "0.05em" }}>
+        Analisando dados...
+      </span>
     </div>
   </div>
 );
@@ -376,9 +689,8 @@ const Search = () => {
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const currentSession = sessions.find((s) => s.id === currentSessionId);
 
-  /* ─── Effects ─────────────────────────────────────────────────── */
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -386,32 +698,21 @@ const Search = () => {
         const parsed = JSON.parse(saved);
         setSessions(parsed);
         if (parsed.length > 0) setCurrentSessionId(parsed[0].id);
-      } catch (e) {
-        console.error("Failed to parse sessions", e);
-      }
+      } catch (e) { console.error(e); }
     }
   }, []);
 
   useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    }
+    if (sessions.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
   }, [sessions]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentSession?.messages, loading]);
 
-  /* ─── Handlers ────────────────────────────────────────────────── */
   const startNewChat = useCallback(() => {
     const newId = Date.now().toString();
-    const newSession: ChatSession = {
-      id: newId,
-      title: "Nova Consulta",
-      messages: [],
-      date: new Date().toLocaleDateString()
-    };
-    setSessions(prev => [newSession, ...prev]);
+    setSessions((prev) => [{ id: newId, title: "Nova Consulta", messages: [], date: new Date().toLocaleDateString() }, ...prev]);
     setCurrentSessionId(newId);
     setInput("");
     setSidebarOpen(false);
@@ -430,16 +731,12 @@ const Search = () => {
   const deleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Eliminar esta sessão?")) {
-      setSessions(prev => {
-        const filtered = prev.filter(s => s.id !== sessionId);
-        if (filtered.length === 0) {
-          localStorage.removeItem(STORAGE_KEY);
-        }
+      setSessions((prev) => {
+        const filtered = prev.filter((s) => s.id !== sessionId);
+        if (filtered.length === 0) localStorage.removeItem(STORAGE_KEY);
         return filtered;
       });
-      if (currentSessionId === sessionId) {
-        setCurrentSessionId(sessions[0]?.id || null);
-      }
+      if (currentSessionId === sessionId) setCurrentSessionId(sessions[0]?.id || null);
       toast.success("Sessão eliminada");
     }
   }, [currentSessionId, sessions]);
@@ -449,16 +746,9 @@ const Search = () => {
     if (!term || loading) return;
 
     let sessionId = currentSessionId;
-    
-    // Create new session if needed
     if (!sessionId) {
       const newId = Date.now().toString();
-      const newSession: ChatSession = {
-        id: newId,
-        title: term.substring(0, 50),
-        messages: [],
-        date: new Date().toLocaleDateString()
-      };
+      const newSession: ChatSession = { id: newId, title: term.substring(0, 50), messages: [], date: new Date().toLocaleDateString() };
       setSessions([newSession]);
       setCurrentSessionId(newId);
       sessionId = newId;
@@ -467,48 +757,39 @@ const Search = () => {
     setLoading(true);
     setInput("");
 
-    // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
       content: term,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setSessions(prev => prev.map(s => 
-      s.id === sessionId 
-        ? { 
-            ...s, 
-            messages: [...s.messages, userMsg],
-            title: s.messages.length === 0 ? term.substring(0, 50) : s.title 
-          } 
-        : s
-    ));
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? term.substring(0, 50) : s.title }
+          : s
+      )
+    );
 
     try {
-      // Prepare messages for AI
-      const currentMessages = sessions.find(s => s.id === sessionId)?.messages || [];
+      const currentMessages = sessions.find((s) => s.id === sessionId)?.messages || [];
       const aiMessages = [
-        ...currentMessages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user" as const, content: term }
+        ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: term },
       ];
 
       let assistantContent = "";
-      
-      // Stream the response
+
       await streamChat({
         messages: aiMessages,
         onDelta: (chunk) => {
           assistantContent += chunk;
-          
-          // Update the assistant message in real-time
-          setSessions(prev => {
-            return prev.map(s => {
+          setSessions((prev) =>
+            prev.map((s) => {
               if (s.id !== sessionId) return s;
-              
               const msgs = [...s.messages];
               const lastMsg = msgs[msgs.length - 1];
-              
               if (lastMsg?.role === "assistant") {
                 msgs[msgs.length - 1] = { ...lastMsg, content: assistantContent };
               } else {
@@ -516,255 +797,324 @@ const Search = () => {
                   id: (Date.now() + 1).toString(),
                   role: "assistant",
                   content: assistantContent,
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  sources: ["Base de Dados Corporativa"]
+                  time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  sources: ["Base de Dados Corporativa", "AlphaData Market Feed"],
                 });
               }
-              
               return { ...s, messages: msgs };
-            });
-          });
+            })
+          );
         },
-        onDone: () => {
-          setLoading(false);
-        },
+        onDone: () => setLoading(false),
       });
-      
     } catch (error) {
-      console.error("[Search Error]", error);
-      
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `### ❌ Erro na Consulta\n\n${error instanceof Error ? error.message : "Ocorreu um erro desconhecido. Por favor, tente novamente."}`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        content: `### Erro na Consulta\n\n${error instanceof Error ? error.message : "Ocorreu um erro desconhecido."}`,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      
-      setSessions(prev => prev.map(s => 
-        s.id === sessionId 
-          ? { ...s, messages: [...s.messages, errorMsg] } 
-          : s
-      ));
-      
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, messages: [...s.messages, errorMsg] } : s));
       toast.error("Erro ao processar consulta");
       setLoading(false);
     }
   }, [input, loading, currentSessionId, sessions]);
 
-  /* ─── Render ──────────────────────────────────────────────────── */
   return (
-    <div className="flex h-screen bg-background overflow-hidden font-sans">
+    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap');
+
+        .history-scrollbar::-webkit-scrollbar { width: 3px; }
+        .history-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .history-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
+
+        .chat-scrollbar::-webkit-scrollbar { width: 4px; }
+        .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(30,58,95,0.4); border-radius: 10px; }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: #dc2626; }
+      `}</style>
+
       <Sidebar activeItem="/search" />
 
-      {/* Mobile Menu Button */}
+      {/* Mobile Button */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-6 left-6 z-50 lg:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center"
+        className="fixed top-6 left-6 z-50 lg:hidden w-12 h-12 rounded-xl flex items-center justify-center shadow-2xl"
+        style={{ background: "#dc2626" }}
       >
         <AnimatePresence mode="wait">
-          {sidebarOpen ? (
-            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-              <X className="w-6 h-6" />
-            </motion.div>
-          ) : (
-            <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
-              <Menu className="w-6 h-6" />
-            </motion.div>
-          )}
+          {sidebarOpen
+            ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X className="w-5 h-5 text-white" /></motion.div>
+            : <motion.div key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><Menu className="w-5 h-5 text-white" /></motion.div>
+          }
         </AnimatePresence>
       </motion.button>
 
       {/* History Sidebar */}
       <AnimatePresence>
-        {(sidebarOpen || window.innerWidth >= 1024) && (
+        {(sidebarOpen || typeof window !== "undefined" && window.innerWidth >= 1024) && (
           <motion.aside
-            initial={{ x: -320 }}
-            animate={{ x: 0, width: historySidebarExpanded ? 320 : 80 }}
-            exit={{ x: -320 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed lg:relative inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card shadow-2xl lg:shadow-none"
+            initial={{ x: -300 }}
+            animate={{ x: 0, width: historySidebarExpanded ? 280 : 72 }}
+            exit={{ x: -300 }}
+            transition={{ type: "spring", damping: 28, stiffness: 220 }}
+            className="fixed lg:relative inset-y-0 left-0 z-40 flex flex-col"
+            style={{
+              background: "#070d1a",
+              borderRight: "1px solid rgba(30,58,95,0.4)",
+            }}
           >
-            {sidebarOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSidebarOpen(false)}
-                className="fixed inset-0 bg-background/60 backdrop-blur-sm lg:hidden -z-10"
-              />
-            )}
-
+            {/* Toggle */}
             <motion.button
               onClick={() => setHistorySidebarExpanded(!historySidebarExpanded)}
-              className="hidden lg:flex absolute -right-3 top-8 z-50 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-lg items-center justify-center hover:scale-110 transition-transform"
+              className="hidden lg:flex absolute -right-3 top-8 z-50 w-6 h-6 rounded-full items-center justify-center shadow-lg"
+              style={{ background: "#dc2626" }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <motion.div animate={{ rotate: historySidebarExpanded ? 0 : 180 }} transition={{ duration: 0.3 }}>
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5 text-white" />
               </motion.div>
             </motion.button>
 
-            <div className="p-6 space-y-4 pt-24 lg:pt-6">
+            {/* Top */}
+            <div className="p-4 pt-24 lg:pt-5 space-y-3">
               <AnimatePresence mode="wait">
                 {historySidebarExpanded ? (
-                  <motion.div key="expanded" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                    <Button onClick={startNewChat} className="w-full rounded-xl gap-2 font-semibold shadow-lg transition-all duration-300">
-                      <Plus className="w-4 h-4" /> Nova Consulta
-                    </Button>
-                    <div className="flex items-center justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
-                      <span className="flex items-center gap-2"><History className="w-3 h-3" /> Histórico</span>
-                      <button onClick={deleteHistory} className="hover:text-destructive transition-colors" title="Eliminar histórico">
+                  <motion.div key="exp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <button
+                      onClick={startNewChat}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-200 hover:opacity-90"
+                      style={{
+                        background: "linear-gradient(135deg, #dc2626, #991b1b)",
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        letterSpacing: "0.12em",
+                        color: "white",
+                        border: "none",
+                      }}
+                    >
+                      <Plus className="w-4 h-4" /> NOVA CONSULTA
+                    </button>
+
+                    <div className="flex items-center justify-between px-1">
+                      <span style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: "8px",
+                        fontWeight: 700,
+                        letterSpacing: "0.2em",
+                        color: "#1e3a5f",
+                        textTransform: "uppercase",
+                      }}>
+                        Histórico
+                      </span>
+                      <button onClick={deleteHistory} className="p-1 rounded transition-colors hover:text-red-500" style={{ color: "#1e3a5f" }} title="Eliminar histórico">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </motion.div>
                 ) : (
-                  <motion.div key="collapsed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-4">
-                    <Button onClick={startNewChat} size="icon" className="w-12 h-12 rounded-xl shadow-lg" title="Nova Consulta">
-                      <Plus className="w-5 h-5" />
-                    </Button>
-                    <div className="w-8 h-px bg-border" />
+                  <motion.div key="col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-3">
+                    <button
+                      onClick={startNewChat}
+                      title="Nova Consulta"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:opacity-90"
+                      style={{ background: "#dc2626" }}
+                    >
+                      <Plus className="w-5 h-5 text-white" />
+                    </button>
+                    <div className="w-6 h-[1px]" style={{ background: "rgba(30,58,95,0.4)" }} />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
+            {/* Sessions */}
             <ScrollArea.Root className="flex-1 overflow-hidden">
-              <ScrollArea.Viewport className="w-full h-full px-4">
-                <div className="space-y-2 pb-6">
+              <ScrollArea.Viewport className="w-full h-full px-3 history-scrollbar">
+                <div className="space-y-1 pb-6">
                   {sessions.length === 0 ? (
-                    <AnimatePresence mode="wait">
-                      {historySidebarExpanded && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-12 text-muted-foreground text-sm">
-                          <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p>Nenhuma sessão registada</p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    historySidebarExpanded && (
+                      <div className="text-center py-12" style={{ color: "#1e3a5f" }}>
+                        <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-40" />
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px" }}>Sem sessões</p>
+                      </div>
+                    )
                   ) : (
-                    sessions.map(session => (
+                    sessions.map((session) => (
                       <div
                         key={session.id}
-                        className={`group relative rounded-xl transition-all ${
-                          currentSessionId === session.id 
-                            ? 'bg-primary/10 border border-primary/30' 
-                            : 'hover:bg-muted border border-transparent'
-                        }`}
+                        className="group relative rounded-xl transition-all duration-200"
+                        style={{
+                          background: currentSessionId === session.id ? "rgba(220,38,38,0.08)" : "transparent",
+                          border: currentSessionId === session.id ? "1px solid rgba(220,38,38,0.2)" : "1px solid transparent",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (currentSessionId !== session.id) {
+                            (e.currentTarget as HTMLElement).style.background = "rgba(30,58,95,0.1)";
+                            (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,58,95,0.3)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (currentSessionId !== session.id) {
+                            (e.currentTarget as HTMLElement).style.background = "transparent";
+                            (e.currentTarget as HTMLElement).style.borderColor = "transparent";
+                          }
+                        }}
                       >
                         <button
-                          onClick={() => {
-                            setCurrentSessionId(session.id);
-                            setSidebarOpen(false);
-                          }}
-                          className={`w-full p-3 text-left text-sm flex items-center gap-3 ${!historySidebarExpanded && 'justify-center'}`}
+                          onClick={() => { setCurrentSessionId(session.id); setSidebarOpen(false); }}
+                          className={`w-full p-3 text-left text-sm flex items-center gap-2.5 ${!historySidebarExpanded && "justify-center"}`}
                           title={!historySidebarExpanded ? session.title : undefined}
                         >
-                          <MessageSquare className={`flex-shrink-0 ${historySidebarExpanded ? 'w-4 h-4' : 'w-5 h-5'} ${currentSessionId === session.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                          
-                          <AnimatePresence mode="wait">
-                            {historySidebarExpanded && (
-                              <motion.div
-                                initial={{ opacity: 0, width: 0 }}
-                                animate={{ opacity: 1, width: 'auto' }}
-                                exit={{ opacity: 0, width: 0 }}
-                                className="flex items-center gap-3 flex-1 min-w-0"
-                              >
-                                <span className={`truncate flex-1 font-medium ${currentSessionId === session.id ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
-                                  {session.title}
-                                </span>
-                                <ChevronRight className={`w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ${currentSessionId === session.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </button>
-                        
-                        <AnimatePresence>
+                          <MessageSquare
+                            className="flex-shrink-0 w-4 h-4"
+                            style={{ color: currentSessionId === session.id ? "#ef4444" : "#2d4a6a" }}
+                          />
                           {historySidebarExpanded && (
-                            <motion.button
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.8 }}
-                              onClick={(e) => deleteSession(session.id, e)}
-                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                              title="Eliminar sessão"
+                            <span
+                              className="truncate flex-1"
+                              style={{
+                                fontFamily: "'DM Sans', sans-serif",
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                color: currentSessionId === session.id ? "#e2e8f0" : "#3d5a7a",
+                              }}
                             >
-                              <Trash2 className="w-3 h-3" />
-                            </motion.button>
+                              {session.title}
+                            </span>
                           )}
-                        </AnimatePresence>
+                        </button>
+                        {historySidebarExpanded && (
+                          <button
+                            onClick={(e) => deleteSession(session.id, e)}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                            style={{ color: "#2d4a6a" }}
+                            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = "#dc2626"}
+                            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = "#2d4a6a"}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
               </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar orientation="vertical" className="w-2 bg-muted/50">
-                <ScrollArea.Thumb className="bg-muted-foreground/30 rounded-full" />
+              <ScrollArea.Scrollbar orientation="vertical" className="w-1.5">
+                <ScrollArea.Thumb style={{ background: "rgba(30,58,95,0.4)", borderRadius: "10px" }} />
               </ScrollArea.Scrollbar>
             </ScrollArea.Root>
           </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Header activeItem="/search" />
 
-        <main className="flex-1 overflow-y-auto scroll-smooth scrollbar-thin">
-          <div className="max-w-5xl mx-auto w-full px-4 py-8 lg:px-8 flex flex-col min-h-full">
+        <main className="flex-1 overflow-y-auto chat-scrollbar">
+          <div className="max-w-4xl mx-auto w-full px-4 py-8 lg:px-8 flex flex-col min-h-full">
             <AnimatePresence mode="wait">
-              {(!currentSession || currentSession.messages.length === 0) ? (
+              {!currentSession || currentSession.messages.length === 0 ? (
                 <WelcomeScreen onQuickAction={send} />
               ) : (
-                <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 space-y-8 pb-40">
-                  {currentSession.messages.map(msg => (
+                <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 space-y-6 pb-44">
+                  {currentSession.messages.map((msg) => (
                     <ChatBubble key={msg.id} message={msg} />
                   ))}
                   {loading && <LoadingIndicator />}
-                  <div ref={chatBottomRef} className="h-4" />
+                  <div ref={chatBottomRef} />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </main>
 
-        {/* Input Bar */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
-          <div className="max-w-4xl mx-auto pointer-events-auto">
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition duration-500" />
-              <div className="relative flex items-center bg-card border border-border hover:border-primary/40 rounded-2xl shadow-2xl overflow-hidden p-2 transition-all duration-300">
-                <div className="pl-4">
-                  <SearchIcon className="w-5 h-5 text-muted-foreground" />
+        {/* Input */}
+        <div
+          className="absolute bottom-0 left-0 right-0 p-5 md:p-8"
+          style={{ background: "linear-gradient(to top, #050b14 60%, transparent)" }}
+        >
+          <div className="max-w-4xl mx-auto">
+            <div className="relative">
+              {/* Glow */}
+              <div
+                className="absolute -inset-[1px] rounded-2xl pointer-events-none"
+                style={{ background: "linear-gradient(135deg, rgba(220,38,38,0.2), rgba(30,58,95,0.2))", filter: "blur(8px)" }}
+              />
+              <div
+                className="relative flex items-center rounded-2xl overflow-hidden"
+                style={{ background: "#080e1a", border: "1px solid rgba(30,58,95,0.5)" }}
+              >
+                {/* Left icon */}
+                <div className="pl-4 pr-2 flex-shrink-0">
+                  <Flame className="w-4 h-4" style={{ color: "#dc2626", opacity: 0.6 }} />
                 </div>
-                <input 
+
+                <input
                   ref={inputRef}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-base px-4 py-4 placeholder:text-muted-foreground text-foreground focus:outline-none font-light"
-                  placeholder="Pergunte sobre produção, preços, exportações, riscos..."
+                  className="flex-1 bg-transparent border-none focus:outline-none py-4 px-2"
+                  placeholder="Pergunte sobre petróleo, produção, exportações, preços..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                   disabled={loading}
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "14px",
+                    color: "#e2e8f0",
+                    caretColor: "#dc2626",
+                  }}
                 />
-                <Button 
-                  onClick={() => send()}
-                  disabled={!input.trim() || loading}
-                  size="icon"
-                  className="w-12 h-12 rounded-xl mr-1 transition-all duration-300"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </Button>
+
+                <div className="pr-2 flex-shrink-0">
+                  <button
+                    onClick={() => send()}
+                    disabled={!input.trim() || loading}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30"
+                    style={{
+                      background: input.trim() && !loading
+                        ? "linear-gradient(135deg, #dc2626, #991b1b)"
+                        : "rgba(30,58,95,0.3)",
+                    }}
+                  >
+                    {loading
+                      ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      : <Send className="w-4 h-4 text-white" />
+                    }
+                  </button>
+                </div>
               </div>
             </div>
-            
-            <p className="text-center text-xs text-muted-foreground mt-4">
-              Conectado à <span className="text-primary font-medium">Base de Dados AlphaData</span> • 
-              Powered by <span className="text-primary font-medium">Lovable AI</span>
-            </p>
+
+            {/* Footer label */}
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "9px",
+                color: "#1e3a5f",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}>
+                AlphaData © {new Date().getFullYear()}
+              </span>
+              <div className="w-1 h-1 rounded-full" style={{ background: "#dc2626", opacity: 0.4 }} />
+              <span style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "9px",
+                color: "#1e3a5f",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}>
+                Oil & Gas AI Platform
+              </span>
+            </div>
           </div>
         </div>
       </div>

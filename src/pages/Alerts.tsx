@@ -2,67 +2,240 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Bell, AlertTriangle, TrendingUp, TrendingDown, Ship, Globe, 
-  Plus, Settings, Trash2, Check, Info, Mail, Smartphone, 
-  Clock, Filter, Search, ChevronRight, Activity, RefreshCw
+import {
+  Bell, AlertTriangle, TrendingUp, Ship, Globe,
+  Plus, Settings, Trash2, Check, Mail, Smartphone,
+  Clock, Search, ChevronRight, Activity, RefreshCw,
+  Zap, Radio, Eye, EyeOff, SlidersHorizontal,
+  Flame, Info, TriangleAlert, CheckCircle2,
 } from "lucide-react";
-import { 
-  useNotifications, useUserAlerts, useAddUserAlert, 
-  useUpdateUserAlert, useDeleteUserAlert, useMarkNotificationRead 
+import {
+  useNotifications, useUserAlerts, useAddUserAlert,
+  useUpdateUserAlert, useDeleteUserAlert, useMarkNotificationRead
 } from "@/hooks/useData";
-import { format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { pt } from "date-fns/locale";
 
+/* ─────────────────────────────────────────────
+   PALETTE  —  azul escuro · preto · vermelho · branco
+───────────────────────────────────────────── */
+const BG_DEEP  = "#04060D";                        // preto-azulado profundo
+const BG_NAVY  = "#080D1A";                        // painel azul-marinho
+const BG_CARD  = "#0D1526";                        // cartão ligeiramente mais claro
+const BG_HOVER = "#111E33";                        // hover
+const RED      = "#E8192C";                        // vermelho alerta
+const RED_DIM  = "rgba(232,25,44,0.12)";
+const RED_BDR  = "rgba(232,25,44,0.30)";
+const BLUE     = "#1A5CFF";                        // azul elétrico
+const BLUE_MID = "#3B7BFF";                        // azul secundário
+const BLUE_DIM = "rgba(26,92,255,0.15)";
+const BLUE_BDR = "rgba(59,123,255,0.30)";
+const WHITE    = "#FFFFFF";
+const W60      = "rgba(255,255,255,0.60)";
+const W30      = "rgba(255,255,255,0.30)";
+const W10      = "rgba(255,255,255,0.08)";
+const BORDER   = "rgba(255,255,255,0.07)";
+
+/* ─── Severity config ──────────────────────── */
+const SEVERITY: Record<string, { label: string; color: string; bg: string; bdr: string; icon: any }> = {
+  alert:   { label: "Crítico",  color: RED,       bg: RED_DIM,                         bdr: RED_BDR,  icon: Flame },
+  warning: { label: "Aviso",    color: "#FF6B1A", bg: "rgba(255,107,26,0.12)",         bdr: "rgba(255,107,26,0.30)", icon: TriangleAlert },
+  info:    { label: "Info",     color: BLUE_MID,  bg: BLUE_DIM,                        bdr: BLUE_BDR, icon: Info },
+  success: { label: "Sucesso",  color: W60,       bg: W10,                             bdr: BORDER,   icon: CheckCircle2 },
+};
+
+/* ─── Alert type config ────────────────────── */
+const ALERT_TYPES: Record<string, { label: string; color: string; bg: string; bdr: string; icon: any; desc: string }> = {
+  price:        { label: "Preço Crude",  color: WHITE,    bg: W10,       bdr: BORDER,  icon: TrendingUp, desc: "Monitoriza variações de cotação no mercado" },
+  production:   { label: "Produção",     color: BLUE_MID, bg: BLUE_DIM,  bdr: BLUE_BDR, icon: Activity, desc: "Volume diário por bloco e operadora" },
+  export:       { label: "Exportação",   color: BLUE_MID, bg: BLUE_DIM,  bdr: BLUE_BDR, icon: Ship,     desc: "Fluxos e rotas de exportação" },
+  geopolitical: { label: "Geopolítico",  color: RED,      bg: RED_DIM,   bdr: RED_BDR,  icon: Globe,    desc: "Riscos e eventos geopolíticos regionais" },
+};
+
+/* ─── Pulse dot ────────────────────────────── */
+const LiveDot = ({ color = RED }: { color?: string }) => (
+  <span className="relative inline-flex w-2 h-2 shrink-0">
+    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50"
+      style={{ background: color }} />
+    <span className="relative inline-flex rounded-full w-2 h-2" style={{ background: color }} />
+  </span>
+);
+
+/* ─── KPI card ─────────────────────────────── */
+const KPICard = ({
+  label, value, icon: Icon, color, bg, bdr, sub
+}: { label: string; value: number | string; icon: any; color: string; bg: string; bdr: string; sub?: string }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="relative overflow-hidden rounded-2xl p-5 flex flex-col gap-4 group cursor-default"
+    style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}
+    whileHover={{ borderColor: bdr, background: BG_HOVER }}
+    transition={{ duration: 0.18 }}
+  >
+    <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+      style={{ background: color }} />
+    <div className="flex items-center justify-between">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+        <Icon className="w-5 h-5" style={{ color }} />
+      </div>
+      {typeof value === "number" && value > 0 && <LiveDot color={color} />}
+    </div>
+    <div>
+      <p className="text-3xl font-black text-white">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: W30 }}>{label}</p>
+      {sub && <p className="text-[10px] mt-0.5" style={{ color: W30 }}>{sub}</p>}
+    </div>
+  </motion.div>
+);
+
+/* ─── Notification card ────────────────────── */
+const NotificationCard = ({
+  notification, onRead, index
+}: { notification: any; onRead: () => void; index: number }) => {
+  const sev     = SEVERITY[notification.type] || SEVERITY.info;
+  const SevIcon = sev.icon;
+  const isUnread = !notification.is_read;
+  const timeAgo  = formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: pt });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 10 }}
+      transition={{ delay: index * 0.035 }}
+      onClick={() => isUnread && onRead()}
+      className="relative group cursor-pointer"
+    >
+      <div
+        className="rounded-2xl overflow-hidden transition-all duration-200"
+        style={{ background: isUnread ? BG_CARD : BG_NAVY, border: `1px solid ${isUnread ? sev.bdr : BORDER}` }}
+        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = BG_HOVER)}
+        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = isUnread ? BG_CARD : BG_NAVY)}
+      >
+        {/* severity stripe */}
+        {isUnread && (
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl" style={{ background: sev.color }} />
+        )}
+        <div className="flex items-start gap-4 p-4 pl-5">
+          <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5" style={{ background: sev.bg }}>
+            <SevIcon className="w-5 h-5" style={{ color: sev.color }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-sm text-white">{notification.title}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                  style={{ background: sev.bg, color: sev.color, border: `1px solid ${sev.bdr}` }}>
+                  {sev.label}
+                </span>
+                {isUnread && (
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                    style={{ background: BLUE_DIM, color: BLUE_MID, border: `1px solid ${BLUE_BDR}` }}>
+                    Novo
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] shrink-0 flex items-center gap-1" style={{ color: W30 }}>
+                <Clock className="w-3 h-3" /> {timeAgo}
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed line-clamp-2" style={{ color: W30 }}>
+              {notification.message}
+            </p>
+          </div>
+          <div className="shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {isUnread
+              ? <CheckCircle2 className="w-4 h-4" style={{ color: BLUE_MID }} />
+              : <ChevronRight className="w-4 h-4" style={{ color: W30 }} />}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ─── Trigger card ─────────────────────────── */
+const TriggerCard = ({
+  trigger, onToggle, onDelete
+}: { trigger: any; onToggle: (v: boolean) => void; onDelete: () => void }) => {
+  const type    = ALERT_TYPES[trigger.alert_type] || ALERT_TYPES.price;
+  const TypeIcon = type.icon;
+  const active  = trigger.is_enabled;
+
+  return (
+    <motion.div layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+      className="rounded-2xl overflow-hidden group"
+      style={{ background: BG_CARD, border: `1px solid ${active ? type.bdr : BORDER}` }}>
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: active ? type.bg : W10 }}>
+            <TypeIcon className="w-4 h-4" style={{ color: active ? type.color : W30 }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-sm font-bold text-white">{type.label}</span>
+              {active && <LiveDot color={type.color} />}
+            </div>
+            <p className="text-[10px] font-medium" style={{ color: W30 }}>{type.desc}</p>
+            {trigger.threshold_value && (
+              <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-lg text-[10px] font-black"
+                style={{ background: type.bg, color: type.color }}>
+                <SlidersHorizontal className="w-2.5 h-2.5" /> Limite: {trigger.threshold_value}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Switch checked={active} onCheckedChange={onToggle} />
+            <button onClick={onDelete}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+              style={{ color: W30 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = RED; (e.currentTarget as HTMLElement).style.background = RED_DIM; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = W30;  (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        {/* channels */}
+        <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <span className="text-[9px] font-bold uppercase tracking-widest mr-1" style={{ color: W30 }}>via</span>
+          {trigger.notify_email && (
+            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md"
+              style={{ border: `1px solid ${BORDER}`, color: W30 }}>
+              <Mail className="w-2.5 h-2.5" /> Email
+            </span>
+          )}
+          {trigger.notify_app && (
+            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md"
+              style={{ border: `1px solid ${BORDER}`, color: W30 }}>
+              <Smartphone className="w-2.5 h-2.5" /> App
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ─── Main page ────────────────────────────── */
 const Alerts = () => {
   const { data: notifications, isLoading: loadingNotifications } = useNotifications();
-  const { data: userAlerts, isLoading: loadingAlerts } = useUserAlerts();
-  const addAlert = useAddUserAlert();
+  const { data: userAlerts,    isLoading: loadingAlerts }        = useUserAlerts();
+  const addAlert    = useAddUserAlert();
   const updateAlert = useUpdateUserAlert();
   const deleteAlert = useDeleteUserAlert();
-  const markRead = useMarkNotificationRead();
+  const markRead    = useMarkNotificationRead();
 
   const [newTrigger, setNewTrigger] = useState({
-    alert_type: "",
-    threshold_value: "",
-    notify_email: true,
-    notify_app: true,
+    alert_type: "", threshold_value: "", notify_email: true, notify_app: true,
   });
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "price": return <TrendingUp className="h-4 w-4" />;
-      case "production": return <Activity className="h-4 w-4" />;
-      case "export": return <Ship className="h-4 w-4" />;
-      case "geopolitical": return <Globe className="h-4 w-4" />;
-      default: return <Bell className="h-4 w-4" />;
-    }
-  };
-
-  const getSeverityColor = (type: string) => {
-    switch (type) {
-      case "alert": return "bg-red-500/10 text-red-500 border-red-500/20";
-      case "warning": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
-      case "info": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      default: return "bg-muted/50 text-muted-foreground border-border/50";
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "price": return "bg-emerald-500/10 text-emerald-500";
-      case "production": return "bg-blue-500/10 text-blue-500";
-      case "export": return "bg-purple-500/10 text-purple-500";
-      case "geopolitical": return "bg-amber-500/10 text-amber-500";
-      default: return "bg-muted/50 text-muted-foreground";
-    }
-  };
+  const [filterSeverity, setFilterSeverity] = useState("all");
+  const [searchQuery,    setSearchQuery]    = useState("");
+  const [showAll,        setShowAll]        = useState(false);
 
   const handleCreateTrigger = () => {
     if (!newTrigger.alert_type) return;
@@ -70,264 +243,326 @@ const Alerts = () => {
       alert_type: newTrigger.alert_type,
       threshold_value: parseFloat(newTrigger.threshold_value) || undefined,
       notify_email: newTrigger.notify_email,
-      notify_app: newTrigger.notify_app,
+      notify_app:   newTrigger.notify_app,
     });
     setNewTrigger({ alert_type: "", threshold_value: "", notify_email: true, notify_app: true });
   };
 
-  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const unreadCount         = notifications?.filter(n => !n.is_read).length || 0;
+  const criticalCount       = notifications?.filter(n => n.type === "alert").length || 0;
   const activeTriggersCount = userAlerts?.filter(a => a.is_enabled).length || 0;
 
-  const stats = [
-    { label: "Não Lidas", value: unreadCount, icon: Bell, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Alta Prioridade", value: notifications?.filter(n => n.type === "alert").length || 0, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10" },
-    { label: "Gatilhos Ativos", value: activeTriggersCount, icon: Check, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Total Gatilhos", value: userAlerts?.length || 0, icon: Settings, color: "text-amber-500", bg: "bg-amber-500/10" },
+  const displayedNotifications = notifications?.filter(n => {
+    const matchesSev    = filterSeverity === "all" || n.type === filterSeverity;
+    const matchesSearch = !searchQuery
+      || n.title.toLowerCase().includes(searchQuery.toLowerCase())
+      || n.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRead   = showAll ? true : !n.is_read;
+    return matchesSev && matchesSearch && matchesRead;
+  });
+
+  const inputCls = "h-11 rounded-xl text-sm text-white placeholder:text-white/20 focus:ring-0 bg-white/5 border border-white/10 focus:border-blue-500/40";
+
+  const sevFilters = [
+    { key: "all",     label: "Todos",   color: W60,       bg: W10,     bdr: BORDER   },
+    { key: "alert",   label: "Crítico", color: RED,       bg: RED_DIM, bdr: RED_BDR  },
+    { key: "warning", label: "Aviso",   color: "#FF6B1A", bg: "rgba(255,107,26,0.12)", bdr: "rgba(255,107,26,0.30)" },
+    { key: "info",    label: "Info",    color: BLUE_MID,  bg: BLUE_DIM,bdr: BLUE_BDR },
   ];
 
   return (
-    <div className="flex h-screen bg-[#fafafa] dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-screen overflow-hidden font-sans" style={{ background: BG_DEEP, color: WHITE }}>
       <Sidebar activeItem="/alerts" />
-      
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header activeItem="/alerts" />
-        
-        <main className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar p-4 md:p-8">
-          <div className="max-w-7xl mx-auto space-y-8">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20 uppercase tracking-wider">
-                  <Bell className="w-3 h-3" /> Central de Inteligência
+
+        <main className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8" style={{ scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent` }}>
+          <div className="max-w-[1400px] mx-auto space-y-8">
+
+            {/* ── Header ── */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
+                    style={{ background: RED_DIM, color: RED, border: `1px solid ${RED_BDR}` }}>
+                    <Radio className="w-3 h-3 animate-pulse" /> Sistema de Alertas
+                  </span>
+                  {unreadCount > 0 && (
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold" style={{ color: RED }}>
+                      <LiveDot color={RED} /> {unreadCount} não {unreadCount === 1 ? "lida" : "lidas"}
+                    </span>
+                  )}
                 </div>
-                <h1 className="text-3xl font-black tracking-tight text-foreground">Gestão de <span className="text-primary">Alertas</span></h1>
-                <p className="text-muted-foreground text-sm">Configure gatilhos automáticos e monitorize notificações críticas.</p>
+                <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-none text-white">
+                  Central de<br />
+                  <span style={{ color: RED }}>Inteligência</span>
+                </h1>
+                <p className="text-sm max-w-md font-medium" style={{ color: W30 }}>
+                  Monitorização em tempo real de eventos críticos, preços, produção e riscos geopolíticos.
+                </p>
               </div>
+
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="rounded-xl gap-2"><Filter className="w-4 h-4" /> Filtrar</Button>
-                <Button size="sm" className="rounded-xl gap-2 shadow-lg shadow-primary/20"><Check className="w-4 h-4" /> Marcar todas como lidas</Button>
+                <button
+                  onClick={() => setShowAll(p => !p)}
+                  className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all border"
+                  style={{ background: showAll ? W10 : "transparent", borderColor: BORDER, color: showAll ? W60 : W30 }}
+                >
+                  {showAll ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {showAll ? "Todas" : "Não lidas"}
+                </button>
+                <button
+                  onClick={() => notifications?.filter(n => !n.is_read).forEach(n => markRead.mutate(n.id))}
+                  className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                  style={{ background: BLUE_DIM, color: BLUE_MID, border: `1px solid ${BLUE_BDR}` }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "rgba(26,92,255,0.25)")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = BLUE_DIM)}
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Marcar lidas
+                </button>
               </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* ── KPI strip ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat, i) => (
-                <Card key={i} className="bg-white dark:bg-white/5 border-border/50 shadow-sm overflow-hidden group hover:border-primary/30 transition-all">
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
-                      <stat.icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stat.label}</p>
-                      <p className="text-2xl font-black text-foreground">{stat.value}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              <KPICard label="Não Lidas"       value={unreadCount}             icon={Bell}     color={RED}      bg={RED_DIM}  bdr={RED_BDR}  sub={unreadCount > 0 ? "Requerem atenção" : "Tudo em dia"} />
+              <KPICard label="Alta Prioridade" value={criticalCount}           icon={Flame}    color={RED}      bg={RED_DIM}  bdr={RED_BDR} />
+              <KPICard label="Gatilhos Ativos" value={activeTriggersCount}     icon={Zap}      color={BLUE_MID} bg={BLUE_DIM} bdr={BLUE_BDR} sub="Em monitorização" />
+              <KPICard label="Total Gatilhos"  value={userAlerts?.length || 0} icon={Settings} color={W60}      bg={W10}      bdr={BORDER} />
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Notifications List */}
-              <div className="xl:col-span-2 space-y-4">
-                <div className="flex items-center justify-between px-2">
-                  <h2 className="text-lg font-black flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-primary" /> Notificações Recentes
-                  </h2>
-                  <div className="relative w-48">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input placeholder="Procurar..." className="pl-9 h-8 rounded-lg bg-white dark:bg-white/5 border-border/50 text-xs" />
+            {/* ── Main grid ── */}
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8 items-start">
+
+              {/* LEFT — feed */}
+              <div className="space-y-5">
+
+                {/* toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 rounded-2xl"
+                  style={{ background: BG_NAVY, border: `1px solid ${BORDER}` }}>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: W30 }} />
+                    <input
+                      placeholder="Procurar alertas…"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 h-9 rounded-xl text-sm text-white placeholder:text-white/20 bg-white/5 border border-white/10 focus:outline-none focus:border-blue-500/40"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {sevFilters.map(f => {
+                      const isActive = filterSeverity === f.key;
+                      return (
+                        <button key={f.key} onClick={() => setFilterSeverity(f.key)}
+                          className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                          style={{
+                            background: isActive ? f.bg : "transparent",
+                            color: isActive ? f.color : W30,
+                            border: `1px solid ${isActive ? f.bdr : "transparent"}`,
+                          }}>
+                          {f.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                {/* feed label */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4" style={{ color: BLUE_MID }} />
+                    <span className="font-black text-sm text-white">Notificações Recentes</span>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                        style={{ background: RED_DIM, color: RED }}>
+                        {unreadCount} novas
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: W30 }}>
+                    {displayedNotifications?.length || 0} resultado{(displayedNotifications?.length || 0) !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* feed list */}
+                <div className="space-y-2.5">
                   {loadingNotifications ? (
-                    <div className="space-y-3">
-                      {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-24 rounded-2xl bg-white dark:bg-white/5 border border-border/50 animate-pulse" />
-                      ))}
-                    </div>
-                  ) : notifications && notifications.length > 0 ? (
-                    <AnimatePresence>
-                      {notifications.map((notification, i) => (
-                        <motion.div
-                          key={notification.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className={`group p-5 rounded-[1.5rem] border transition-all cursor-pointer relative overflow-hidden ${
-                            notification.is_read 
-                              ? "bg-white dark:bg-white/5 border-border/50 opacity-70" 
-                              : "bg-white dark:bg-primary/5 border-primary/20 shadow-md"
-                          }`}
-                          onClick={() => !notification.is_read && markRead.mutate(notification.id)}
-                        >
-                          {!notification.is_read && (
-                            <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                          )}
-                          <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-xl ${getSeverityColor(notification.type || "info")}`}>
-                              {notification.type === 'alert' ? <AlertTriangle className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-bold text-sm text-foreground">{notification.title}</h4>
-                                  <Badge className={`rounded-full px-2 py-0 text-[9px] font-black uppercase tracking-widest border-none ${getSeverityColor(notification.type || "info")}`}>
-                                    {notification.type === "alert" ? "Crítico" : notification.type === "warning" ? "Aviso" : "Info"}
-                                  </Badge>
-                                </div>
-                                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                                  <Clock className="w-3 h-3" /> {format(new Date(notification.created_at), "dd MMM, HH:mm", { locale: pt })}
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 font-medium">{notification.message}</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity self-center" />
-                          </div>
-                        </motion.div>
+                    [...Array(4)].map((_, i) => (
+                      <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: BG_CARD }} />
+                    ))
+                  ) : displayedNotifications && displayedNotifications.length > 0 ? (
+                    <AnimatePresence mode="popLayout">
+                      {displayedNotifications.map((n, i) => (
+                        <NotificationCard key={n.id} notification={n} onRead={() => markRead.mutate(n.id)} index={i} />
                       ))}
                     </AnimatePresence>
                   ) : (
-                    <Card className="bg-white dark:bg-white/5 border-border/50 rounded-[2rem] p-12 text-center">
-                      <div className="p-4 rounded-full bg-muted/20 w-fit mx-auto mb-4">
-                        <Check className="h-8 w-8 text-muted-foreground" />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="py-20 text-center rounded-2xl flex flex-col items-center gap-4"
+                      style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}>
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: BLUE_DIM }}>
+                        <CheckCircle2 className="w-7 h-7" style={{ color: BLUE_MID }} />
                       </div>
-                      <h3 className="text-lg font-bold">Tudo em dia!</h3>
-                      <p className="text-sm text-muted-foreground">Não existem novas notificações para apresentar.</p>
-                    </Card>
+                      <div>
+                        <p className="font-black text-white">Tudo em dia!</p>
+                        <p className="text-xs mt-0.5 font-medium" style={{ color: W30 }}>
+                          Não existem alertas para os filtros selecionados.
+                        </p>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               </div>
 
-              {/* Sidebar: Triggers & New Form */}
-              <div className="space-y-8">
-                {/* Alert Triggers */}
-                <div className="space-y-4">
-                  <h2 className="text-lg font-black flex items-center gap-2 px-2">
-                    <Settings className="w-5 h-5 text-primary" /> Gatilhos Ativos
-                  </h2>
+              {/* RIGHT — triggers panel */}
+              <div className="space-y-6 sticky top-6">
+
+                {/* active triggers list */}
+                <div>
+                  <div className="flex items-center justify-between mb-4 px-1">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4" style={{ color: BLUE_MID }} />
+                      <span className="font-black text-sm text-white">Gatilhos Ativos</span>
+                    </div>
+                    {activeTriggersCount > 0 && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                        style={{ background: BLUE_DIM, color: BLUE_MID, border: `1px solid ${BLUE_BDR}` }}>
+                        {activeTriggersCount} ativos
+                      </span>
+                    )}
+                  </div>
                   <div className="space-y-3">
                     {loadingAlerts ? (
-                      <div className="h-40 rounded-2xl bg-white dark:bg-white/5 border border-border/50 animate-pulse" />
+                      <div className="h-32 rounded-2xl animate-pulse" style={{ background: BG_CARD }} />
                     ) : userAlerts && userAlerts.length > 0 ? (
-                      userAlerts.map((trigger) => (
-                        <Card key={trigger.id} className="bg-white dark:bg-white/5 border-border/50 rounded-2xl shadow-sm hover:border-primary/20 transition-all overflow-hidden">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-3 flex-1">
-                                <div className={`p-2.5 rounded-xl ${getTypeColor(trigger.alert_type)}`}>
-                                  {getIcon(trigger.alert_type)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-sm text-foreground capitalize">{trigger.alert_type}</h4>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-0.5">
-                                    {trigger.threshold_value ? `Limite: ${trigger.threshold_value}` : "Qualquer variação"}
-                                  </p>
-                                  <div className="flex gap-1.5 mt-2">
-                                    {trigger.notify_email && <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest rounded-md py-0 px-1.5 border-border/50"><Mail className="w-2.5 h-2.5 mr-1" /> Email</Badge>}
-                                    {trigger.notify_app && <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest rounded-md py-0 px-1.5 border-border/50"><Smartphone className="w-2.5 h-2.5 mr-1" /> App</Badge>}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-3">
-                                <Switch 
-                                  checked={trigger.is_enabled}
-                                  onCheckedChange={(checked) => updateAlert.mutate({ id: trigger.id, is_enabled: checked })}
-                                  className="data-[state=checked]:bg-primary"
-                                />
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-                                  onClick={() => deleteAlert.mutate(trigger.id)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
+                      <AnimatePresence>
+                        {userAlerts.map(trigger => (
+                          <TriggerCard key={trigger.id} trigger={trigger}
+                            onToggle={checked => updateAlert.mutate({ id: trigger.id, is_enabled: checked })}
+                            onDelete={() => deleteAlert.mutate(trigger.id)} />
+                        ))}
+                      </AnimatePresence>
                     ) : (
-                      <div className="p-8 text-center border border-dashed border-border/50 rounded-2xl">
-                        <p className="text-xs text-muted-foreground font-medium">Nenhum gatilho configurado.</p>
+                      <div className="p-8 text-center rounded-2xl" style={{ border: `1px dashed ${BORDER}` }}>
+                        <Zap className="w-6 h-6 mx-auto mb-2" style={{ color: W10 }} />
+                        <p className="text-xs font-medium" style={{ color: W30 }}>Nenhum gatilho configurado ainda.</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* New Trigger Form */}
-                <Card className="bg-white dark:bg-white/5 border-border/50 rounded-[2rem] shadow-xl overflow-hidden">
-                  <CardHeader className="bg-primary/5 border-b border-border/50 p-6">
-                    <CardTitle className="text-base font-black flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-primary" /> Novo Gatilho
-                    </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Configure monitorização automática</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Tipo de Alerta</label>
-                      <Select 
-                        value={newTrigger.alert_type} 
-                        onValueChange={(value) => setNewTrigger({...newTrigger, alert_type: value})}
-                      >
-                        <SelectTrigger className="rounded-xl h-11">
-                          <SelectValue placeholder="Selecione o tipo" />
+                <div className="h-px" style={{ background: BORDER }} />
+
+                {/* new trigger form */}
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: BG_NAVY, border: `1px solid ${BORDER}` }}>
+                  {/* header */}
+                  <div className="px-6 py-5 flex items-center gap-3 border-b relative overflow-hidden"
+                    style={{ borderColor: BORDER }}>
+                    <div className="absolute inset-0 opacity-10"
+                      style={{ background: `radial-gradient(ellipse at top left, ${BLUE}, transparent 60%)` }} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 relative"
+                      style={{ background: BLUE_DIM }}>
+                      <Plus className="w-4 h-4" style={{ color: BLUE_MID }} />
+                    </div>
+                    <div>
+                      <p className="font-black text-sm text-white">Novo Gatilho</p>
+                      <p className="text-[10px] font-medium mt-0.5" style={{ color: W30 }}>Configure monitorização automática</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-4">
+                    {/* type */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: W30 }}>Tipo de Alerta</label>
+                      <Select value={newTrigger.alert_type}
+                        onValueChange={v => setNewTrigger({ ...newTrigger, alert_type: v })}>
+                        <SelectTrigger className={inputCls}>
+                          <SelectValue placeholder="Selecione o tipo…" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="price">Preço do Crude</SelectItem>
-                          <SelectItem value="production">Volume de Produção</SelectItem>
-                          <SelectItem value="export">Fluxo de Exportação</SelectItem>
-                          <SelectItem value="geopolitical">Risco Geopolítico</SelectItem>
+                        <SelectContent style={{ background: BG_CARD, borderColor: BORDER }}>
+                          {Object.entries(ALERT_TYPES).map(([key, cfg]) => {
+                            const Icon = cfg.icon;
+                            return (
+                              <SelectItem key={key} value={key}>
+                                <div className="flex items-center gap-2">
+                                  <Icon className="w-3.5 h-3.5" style={{ color: cfg.color }} />
+                                  <span>{cfg.label}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
+                      {newTrigger.alert_type && (
+                        <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                          className="text-[10px] pl-1" style={{ color: W30 }}>
+                          {ALERT_TYPES[newTrigger.alert_type]?.desc}
+                        </motion.p>
+                      )}
                     </div>
-                    
+
+                    {/* threshold */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: W30 }}>
+                        Valor Limite <span className="normal-case font-normal" style={{ color: W10 }}>(opcional)</span>
+                      </label>
+                      <div className="relative">
+                        <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: W30 }} />
+                        <Input
+                          type="number"
+                          placeholder={newTrigger.alert_type === "price" ? "Ex: 85.50 USD" : newTrigger.alert_type === "production" ? "Ex: 50000 bpd" : "Ex: 75"}
+                          value={newTrigger.threshold_value}
+                          onChange={e => setNewTrigger({ ...newTrigger, threshold_value: e.target.value })}
+                          className={`${inputCls} pl-9`}
+                        />
+                      </div>
+                      <p className="text-[10px] pl-1" style={{ color: W10 }}>Notificar apenas quando ultrapassar este valor.</p>
+                    </div>
+
+                    {/* channels */}
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Valor Limite (Threshold)</label>
-                      <Input 
-                        type="number" 
-                        placeholder="Ex: 85.50" 
-                        value={newTrigger.threshold_value}
-                        onChange={(e) => setNewTrigger({...newTrigger, threshold_value: e.target.value})}
-                        className="rounded-xl h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Canais de Notificação</label>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-xs font-bold">Email</span>
-                        </div>
-                        <Switch 
-                          checked={newTrigger.notify_email}
-                          onCheckedChange={(checked) => setNewTrigger({...newTrigger, notify_email: checked})}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-xs font-bold">App Push</span>
-                        </div>
-                        <Switch 
-                          checked={newTrigger.notify_app}
-                          onCheckedChange={(checked) => setNewTrigger({...newTrigger, notify_app: checked})}
-                        />
+                      <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: W30 }}>Canais de Notificação</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { key: "notify_email" as const, icon: Mail,       label: "Email"    },
+                          { key: "notify_app"   as const, icon: Smartphone, label: "App Push" },
+                        ]).map(({ key, icon: Icon, label }) => {
+                          const active = newTrigger[key];
+                          return (
+                            <button key={key}
+                              onClick={() => setNewTrigger(p => ({ ...p, [key]: !active }))}
+                              className="flex items-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border"
+                              style={{
+                                background: active ? BLUE_DIM : W10,
+                                borderColor: active ? BLUE_BDR : BORDER,
+                                color: active ? BLUE_MID : W30,
+                              }}>
+                              <Icon className="w-3.5 h-3.5" />
+                              {label}
+                              {active && <CheckCircle2 className="w-3 h-3 ml-auto" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <Button 
-                      onClick={handleCreateTrigger} 
-                      className="w-full rounded-xl py-6 font-black uppercase tracking-widest shadow-lg shadow-primary/20 gap-2"
+                    {/* CTA */}
+                    <button
+                      onClick={handleCreateTrigger}
                       disabled={!newTrigger.alert_type || addAlert.isPending}
+                      className="w-full h-11 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                      style={{ background: RED }}
+                      onMouseEnter={e => { if (!addAlert.isPending && newTrigger.alert_type) (e.currentTarget as HTMLElement).style.background = "#C4111F"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = RED; }}
                     >
-                      {addAlert.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="h-4 h-4" />}
-                      Ativar Gatilho
-                    </Button>
-                  </CardContent>
-                </Card>
+                      {addAlert.isPending
+                        ? <><RefreshCw className="w-4 h-4 animate-spin" /> A ativar…</>
+                        : <><Zap className="w-4 h-4" /> Ativar Gatilho</>}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -335,9 +570,7 @@ const Alerts = () => {
       </div>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        [data-state="checked"] { background: ${BLUE} !important; }
       `}</style>
     </div>
   );
