@@ -28,7 +28,8 @@ import {
   Calendar,
   ChevronRight,
   Search,
-  Filter
+  Filter,
+  Flame,
 } from "lucide-react";
 import {
   PieChart as RechartsPie,
@@ -50,7 +51,7 @@ import {
   LineChart,
   Line,
   AreaChart,
-  Area
+  Area,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -228,7 +229,7 @@ const operatorsData = [
     projects: ["Agogo", "PAJ"],
     website: "https://www.azule-energy.com",
     contact: null,
-  }
+  },
 ];
 
 const marketShareHistory = [
@@ -245,19 +246,23 @@ const Operators = () => {
   const { data: productionData } = useProductionData();
 
   const filteredOperators = useMemo(() => {
-    return operatorsData.filter(op => 
-      op.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      op.shortName.toLowerCase().includes(searchQuery.toLowerCase())
+    return operatorsData.filter(
+      (op) =>
+        op.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        op.shortName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery]);
 
-  const radarData = useMemo(() => [
-    { subject: 'Eficiência', A: selectedOperator.efficiency, fullMark: 100 },
-    { subject: 'Uptime', A: selectedOperator.uptime, fullMark: 100 },
-    { subject: 'Investimento', A: (selectedOperator.investmentYTD / 2) * 100, fullMark: 100 },
-    { subject: 'Reservas', A: (selectedOperator.reserves / 2.5) * 100, fullMark: 100 },
-    { subject: 'Custos', A: (1 - (selectedOperator.costPerBarrel / 40)) * 100, fullMark: 100 },
-  ], [selectedOperator]);
+  const radarData = useMemo(
+    () => [
+      { subject: "Eficiência", A: selectedOperator.efficiency, fullMark: 100 },
+      { subject: "Uptime", A: selectedOperator.uptime, fullMark: 100 },
+      { subject: "Investimento", A: (selectedOperator.investmentYTD / 2) * 100, fullMark: 100 },
+      { subject: "Reservas", A: (selectedOperator.reserves / 2.5) * 100, fullMark: 100 },
+      { subject: "Custos", A: (1 - selectedOperator.costPerBarrel / 40) * 100, fullMark: 100 },
+    ],
+    [selectedOperator]
+  );
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-zinc-100 selection:bg-primary/30">
@@ -269,104 +274,114 @@ const Operators = () => {
         <Sidebar activeItem="/operators" />
 
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Decorative background elements */}
-          <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-          <div className="absolute bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+          {/* Ambient glows — petroleum palette */}
+          <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-red-900/5 blur-[130px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-sky-900/5 blur-[110px] rounded-full pointer-events-none" />
 
           <Header activeItem="/operators" />
 
           <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
             <div className="max-w-7xl mx-auto space-y-8">
-              
-              {/* Page Header */}
+
+              {/* ── Page Header ── */}
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] uppercase tracking-widest font-bold">
+                    {/* Petroleum sector badge */}
+                    <Badge
+                      variant="outline"
+                      className="bg-red-600/10 text-red-500 border-red-600/20 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em] font-bold gap-1.5"
+                    >
+                      <Flame className="w-2.5 h-2.5 fill-current" />
                       Market Intelligence
                     </Badge>
                   </div>
                   <h1 className="text-4xl font-bold tracking-tight text-white">Operadoras Petrolíferas</h1>
-                  <p className="text-zinc-400 mt-2 max-w-xl">
+                  <p className="text-zinc-400 mt-2 max-w-xl leading-relaxed">
                     Análise detalhada do desempenho, participação de mercado e indicadores operacionais das principais empresas em Angola.
                   </p>
                 </motion.div>
-                
+
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                    <Input 
-                      placeholder="Procurar operadora..." 
+                    <Input
+                      placeholder="Procurar operadora..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-[#16191E] border-zinc-800 w-64 h-11 rounded-xl focus:ring-primary/50"
+                      className="pl-10 bg-[#16191E] border-zinc-800 w-64 h-11 rounded-xl focus:ring-red-600/30 focus:border-red-600/30"
                     />
                   </div>
-                  <DataExportButton 
-                    data={operatorsData} 
+                  <DataExportButton
+                    data={operatorsData}
                     filename="operadoras_angola"
                     columns={[
-                      { key: 'name', header: 'Nome' },
-                      { key: 'production', header: 'Produção (kbpd)' },
-                      { key: 'marketShare', header: 'Quota Mercado (%)' },
-                      { key: 'efficiency', header: 'Eficiência (%)' },
-                      { key: 'headquarters', header: 'Sede' },
-                      { key: 'since', header: 'Desde' },
-                      { key: 'website', header: 'Website' },
+                      { key: "name",        header: "Nome"               },
+                      { key: "production",  header: "Produção (kbpd)"    },
+                      { key: "marketShare", header: "Quota Mercado (%)"  },
+                      { key: "efficiency",  header: "Eficiência (%)"     },
+                      { key: "headquarters",header: "Sede"               },
+                      { key: "since",       header: "Desde"              },
+                      { key: "website",     header: "Website"            },
                     ]}
                   />
                 </div>
               </div>
 
-              {/* Market Overview Cards */}
+              {/* ── Market Overview Cards ── */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                {/* Total Production */}
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-red-600/20 hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+                      <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400">
                         <BarChart3 className="w-5 h-5" />
                       </div>
-                      <Badge className="bg-emerald-500/10 text-emerald-500 border-none">+2.4% vs 2023</Badge>
+                      <Badge className="bg-emerald-500/10 text-emerald-400 border-none text-[10px] font-bold">+2.4% vs 2023</Badge>
                     </div>
-                    <div className="text-3xl font-bold text-white">1.25M <span className="text-sm font-normal text-zinc-500">bpd</span></div>
-                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Produção Total Nacional</div>
+                    <div className="text-3xl font-bold text-white">
+                      1.25M <span className="text-sm font-normal text-zinc-500">bpd</span>
+                    </div>
+                    <div className="text-[10px] text-zinc-500 mt-1 uppercase tracking-widest font-bold">Produção Total Nacional</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                {/* Market Leader */}
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-red-600/20 hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
                         <Building2 className="w-5 h-5" />
                       </div>
-                      <Badge className="bg-blue-500/10 text-blue-500 border-none">14 Ativas</Badge>
+                      <Badge className="bg-sky-500/10 text-sky-400 border-none text-[10px] font-bold">14 Ativas</Badge>
                     </div>
                     <div className="text-3xl font-bold text-white">TotalEnergies</div>
-                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Líder de Mercado (22.8%)</div>
+                    <div className="text-[10px] text-zinc-500 mt-1 uppercase tracking-widest font-bold">Líder de Mercado (22.8%)</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                {/* Efficiency */}
+                <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-red-600/20 hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500">
+                      <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400">
                         <Zap className="w-5 h-5" />
                       </div>
-                      <Badge className="bg-purple-500/10 text-purple-500 border-none">Média 91%</Badge>
+                      <Badge className="bg-violet-500/10 text-violet-400 border-none text-[10px] font-bold">Média 91%</Badge>
                     </div>
                     <div className="text-3xl font-bold text-white">94.2%</div>
-                    <div className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Eficiência Operacional Média</div>
+                    <div className="text-[10px] text-zinc-500 mt-1 uppercase tracking-widest font-bold">Eficiência Operacional Média</div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Main Content Grid */}
+              {/* ── Main Content Grid ── */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
+
                 {/* Left: Operators List */}
                 <div className="lg:col-span-4 space-y-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Lista de Operadoras</h3>
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em]">Lista de Operadoras</h3>
                     <span className="text-[10px] text-zinc-600 font-bold">{filteredOperators.length} EMPRESAS</span>
                   </div>
                   <div className="space-y-2 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
@@ -379,27 +394,45 @@ const Operators = () => {
                           animate={{ opacity: 1, x: 0 }}
                           onClick={() => setSelectedOperator(op)}
                           className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 group ${
-                            selectedOperator.id === op.id 
-                              ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                              : 'bg-[#16191E] text-zinc-400 hover:bg-[#1C2026] border border-zinc-800/50'
+                            selectedOperator.id === op.id
+                              ? "bg-red-700 text-white shadow-lg shadow-red-900/40"
+                              : "bg-[#16191E] text-zinc-400 hover:bg-[#1C2026] border border-zinc-800/50 hover:border-zinc-700"
                           }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
-                              selectedOperator.id === op.id ? 'bg-white/20' : 'bg-zinc-800 text-zinc-500'
-                            }`}>
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg transition-colors ${
+                                selectedOperator.id === op.id
+                                  ? "bg-white/20 text-white"
+                                  : "bg-zinc-800 text-zinc-500"
+                              }`}
+                            >
                               {op.logo}
                             </div>
                             <div className="text-left">
-                              <div className={`font-bold text-sm ${selectedOperator.id === op.id ? 'text-white' : 'text-zinc-200'}`}>
+                              <div
+                                className={`font-bold text-sm ${
+                                  selectedOperator.id === op.id ? "text-white" : "text-zinc-200"
+                                }`}
+                              >
                                 {op.shortName}
                               </div>
-                              <div className={`text-[10px] uppercase tracking-wider font-medium ${selectedOperator.id === op.id ? 'text-white/70' : 'text-zinc-500'}`}>
+                              <div
+                                className={`text-[10px] uppercase tracking-wider font-medium ${
+                                  selectedOperator.id === op.id ? "text-white/65" : "text-zinc-500"
+                                }`}
+                              >
                                 {op.production} kbpd • {op.marketShare}%
                               </div>
                             </div>
                           </div>
-                          <ChevronRight className={`w-4 h-4 transition-transform ${selectedOperator.id === op.id ? 'translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform ${
+                              selectedOperator.id === op.id
+                                ? "translate-x-1 opacity-100"
+                                : "opacity-0 group-hover:opacity-60"
+                            }`}
+                          />
                         </motion.button>
                       ))}
                     </AnimatePresence>
@@ -414,63 +447,94 @@ const Operators = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4 }}
+                      transition={{ duration: 0.35 }}
                       className="space-y-6"
                     >
                       {/* Operator Header Card */}
                       <Card className="bg-gradient-to-br from-[#16191E] to-[#0B0E14] border-zinc-800/50 rounded-3xl overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-8 opacity-5">
-                          <Building2 className="w-32 h-32" />
+                        {/* Subtle decorative BG icon */}
+                        <div className="absolute top-0 right-0 p-8 opacity-[0.04]">
+                          <Building2 className="w-32 h-32 text-white" />
                         </div>
+                        {/* Gold top accent line */}
+                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-600/40 to-transparent" />
+
                         <CardContent className="p-8">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-6">
-                              <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center text-white text-3xl font-black shadow-2xl shadow-primary/40">
+                              {/* Logo badge — operator's own color */}
+                              <div
+                                className="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-2xl shrink-0"
+                                style={{
+                                  background: `linear-gradient(135deg, ${selectedOperator.color}cc, ${selectedOperator.color}88)`,
+                                  boxShadow: `0 16px 40px ${selectedOperator.color}30`,
+                                }}
+                              >
                                 {selectedOperator.logo}
                               </div>
                               <div>
                                 <h2 className="text-3xl font-black text-white tracking-tight">{selectedOperator.name}</h2>
                                 <div className="flex flex-wrap items-center gap-4 mt-2">
                                   <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-                                    <MapPin className="w-3.5 h-3.5 text-primary" /> {selectedOperator.headquarters}, Angola
+                                    <MapPin className="w-3.5 h-3.5 text-red-500" />
+                                    {selectedOperator.headquarters}, Angola
                                   </span>
                                   <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-                                    <Calendar className="w-3.5 h-3.5 text-primary" /> Desde {selectedOperator.since}
+                                    <Calendar className="w-3.5 h-3.5 text-red-500" />
+                                    Desde {selectedOperator.since}
                                   </span>
                                   {selectedOperator.website && (
-                                    <a href={selectedOperator.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-primary font-bold hover:underline">
-                                      <Globe className="w-3.5 h-3.5" /> Website <ExternalLink className="w-3 h-3" />
+                                    <a
+                                      href={selectedOperator.website}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex items-center gap-1.5 text-xs text-red-400 font-bold hover:text-red-300 hover:underline transition-colors"
+                                    >
+                                      <Globe className="w-3.5 h-3.5" />
+                                      Website
+                                      <ExternalLink className="w-3 h-3" />
                                     </a>
                                   )}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right">
-                                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tendência</div>
-                                <div className={`flex items-center justify-end gap-1 font-black ${
-                                  selectedOperator.trend === 'up' ? 'text-emerald-500' : 
-                                  selectedOperator.trend === 'down' ? 'text-rose-500' : 'text-blue-500'
-                                }`}>
-                                  {selectedOperator.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : 
-                                   selectedOperator.trend === 'down' ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-                                  {selectedOperator.trend.toUpperCase()}
-                                </div>
+
+                            {/* Trend indicator */}
+                            <div className="text-right shrink-0">
+                              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Tendência</div>
+                              <div
+                                className={`flex items-center justify-end gap-1.5 font-black text-sm ${
+                                  selectedOperator.trend === "up"
+                                    ? "text-emerald-400"
+                                    : selectedOperator.trend === "down"
+                                    ? "text-red-400"
+                                    : "text-sky-400"
+                                }`}
+                              >
+                                {selectedOperator.trend === "up" ? (
+                                  <TrendingUp className="w-4 h-4" />
+                                ) : selectedOperator.trend === "down" ? (
+                                  <TrendingDown className="w-4 h-4" />
+                                ) : (
+                                  <Minus className="w-4 h-4" />
+                                )}
+                                {selectedOperator.trend.toUpperCase()}
                               </div>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-10">
+                          {/* KPI row */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-10 pt-8 border-t border-zinc-800/60">
                             {[
-                              { label: "Produção", value: `${selectedOperator.production}k`, sub: "bpd", icon: Droplets, color: "text-blue-500" },
-                              { label: "Market Share", value: `${selectedOperator.marketShare}%`, sub: "Nacional", icon: PieChart, color: "text-emerald-500" },
-                              { label: "Investimento", value: `$${selectedOperator.investmentYTD}B`, sub: "YTD 2024", icon: DollarSign, color: "text-amber-500" },
-                              { label: "Eficiência", value: `${selectedOperator.efficiency}%`, sub: "Operacional", icon: Gauge, color: "text-purple-500" },
+                              { label: "Produção",    value: `${selectedOperator.production}k`, sub: "bpd",        icon: Droplets,   color: "text-sky-400"     },
+                              { label: "Market Share",value: `${selectedOperator.marketShare}%`,sub: "Nacional",   icon: PieChart,   color: "text-emerald-400" },
+                              { label: "Investimento",value: `$${selectedOperator.investmentYTD}B`, sub: "YTD 2024", icon: DollarSign, color: "text-amber-400"   },
+                              { label: "Eficiência",  value: `${selectedOperator.efficiency}%`, sub: "Operacional", icon: Gauge,      color: "text-violet-400"  },
                             ].map((stat, i) => (
                               <div key={i} className="space-y-1">
-                                <div className="flex items-center gap-2 text-zinc-500 mb-1">
+                                <div className="flex items-center gap-2 mb-2">
                                   <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest">{stat.label}</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
                                 </div>
                                 <div className="flex items-baseline gap-1">
                                   <span className="text-2xl font-black text-white">{stat.value}</span>
@@ -482,27 +546,36 @@ const Operators = () => {
                         </CardContent>
                       </Card>
 
-                      {/* Detailed Stats Grid */}
+                      {/* Charts row */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Performance Radar */}
-                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors">
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Score de Performance</CardTitle>
+                            <CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-[0.15em]">Score de Performance</CardTitle>
                           </CardHeader>
                           <CardContent className="h-[300px] pt-0">
                             <ResponsiveContainer width="100%" height="100%">
                               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                <PolarGrid stroke="#1f2937" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 'bold' }} />
+                                <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                                <PolarAngleAxis
+                                  dataKey="subject"
+                                  tick={{ fill: "#6b7280", fontSize: 10, fontWeight: "bold" }}
+                                />
                                 <Radar
                                   name={selectedOperator.shortName}
                                   dataKey="A"
                                   stroke={selectedOperator.color}
                                   fill={selectedOperator.color}
-                                  fillOpacity={0.3}
+                                  fillOpacity={0.2}
+                                  strokeWidth={2}
                                 />
-                                <Tooltip 
-                                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#111318",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    borderRadius: "12px",
+                                    color: "#fff",
+                                  }}
                                 />
                               </RadarChart>
                             </ResponsiveContainer>
@@ -510,32 +583,37 @@ const Operators = () => {
                         </Card>
 
                         {/* Market Share History */}
-                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden">
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors">
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Evolução Market Share</CardTitle>
+                            <CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-[0.15em]">Evolução Market Share</CardTitle>
                           </CardHeader>
                           <CardContent className="h-[300px] pt-0">
                             <ResponsiveContainer width="100%" height="100%">
                               <AreaChart data={marketShareHistory}>
                                 <defs>
                                   <linearGradient id="colorMS" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={selectedOperator.color} stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor={selectedOperator.color} stopOpacity={0}/>
+                                    <stop offset="5%"  stopColor={selectedOperator.color} stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor={selectedOperator.color} stopOpacity={0}    />
                                   </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                                 <XAxis dataKey="year" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
-                                <Tooltip 
-                                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#111318",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    borderRadius: "12px",
+                                    color: "#fff",
+                                  }}
                                 />
-                                <Area 
-                                  type="monotone" 
-                                  dataKey={selectedOperator.shortName.replace(' ', '')} 
-                                  stroke={selectedOperator.color} 
-                                  strokeWidth={3}
-                                  fillOpacity={1} 
-                                  fill="url(#colorMS)" 
+                                <Area
+                                  type="monotone"
+                                  dataKey={selectedOperator.shortName.replace(" ", "")}
+                                  stroke={selectedOperator.color}
+                                  strokeWidth={2.5}
+                                  fillOpacity={1}
+                                  fill="url(#colorMS)"
                                 />
                               </AreaChart>
                             </ResponsiveContainer>
@@ -545,17 +623,20 @@ const Operators = () => {
 
                       {/* Projects & Blocks */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl">
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl hover:border-zinc-700 transition-colors">
                           <CardHeader>
                             <div className="flex items-center gap-2">
-                              <Factory className="w-4 h-4 text-primary" />
-                              <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Principais Projetos</CardTitle>
+                              <Factory className="w-4 h-4 text-red-500" />
+                              <CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-[0.15em]">Principais Projetos</CardTitle>
                             </div>
                           </CardHeader>
                           <CardContent>
                             <div className="flex flex-wrap gap-2">
                               {selectedOperator.projects.map((project, i) => (
-                                <Badge key={i} className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border-none py-1.5 px-3 rounded-lg">
+                                <Badge
+                                  key={i}
+                                  className="bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 border border-zinc-700/50 hover:border-zinc-600 py-1.5 px-3 rounded-lg transition-colors"
+                                >
                                   {project}
                                 </Badge>
                               ))}
@@ -563,17 +644,20 @@ const Operators = () => {
                           </CardContent>
                         </Card>
 
-                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl">
+                        <Card className="bg-[#16191E] border-zinc-800/50 rounded-2xl hover:border-zinc-700 transition-colors">
                           <CardHeader>
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-emerald-500" />
-                              <CardTitle className="text-sm font-bold text-white uppercase tracking-widest">Blocos Operados</CardTitle>
+                              <MapPin className="w-4 h-4 text-emerald-400" />
+                              <CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-[0.15em]">Blocos Operados</CardTitle>
                             </div>
                           </CardHeader>
                           <CardContent>
                             <div className="flex flex-wrap gap-2">
                               {selectedOperator.blocks.map((block, i) => (
-                                <Badge key={i} className="bg-emerald-500/10 text-emerald-500 border-none py-1.5 px-3 rounded-lg">
+                                <Badge
+                                  key={i}
+                                  className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 hover:bg-emerald-500/15 py-1.5 px-3 rounded-lg transition-colors"
+                                >
                                   {block}
                                 </Badge>
                               ))}

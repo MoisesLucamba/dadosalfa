@@ -13,18 +13,17 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
-  CheckCircle,
   Info,
   MapPin,
   RefreshCw,
   Loader2,
   Clock,
-  Minus,
   FileDown,
   ArrowUpRight,
   Activity,
   Zap,
-  X
+  X,
+  Flame,
 } from "lucide-react";
 import {
   RadarChart,
@@ -38,9 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
-import { GeopoliticalForecast } from "@/components/dashboard/GeopoliticalForecast";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
 import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
@@ -75,8 +72,6 @@ const Risk = () => {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  
-  // ESTADO PARA O SIMULADOR (Controla a visibilidade)
   const [showSimulator, setShowSimulator] = useState(false);
 
   const fetchRiskData = async () => {
@@ -158,8 +153,7 @@ const Risk = () => {
       "Geopolítico": 0.25, "Regulatório": 0.2, "Fiscal": 0.2,
       "Operacional": 0.15, "Cambial": 0.1, "Ambiental": 0.1,
     };
-    const total = riskScores.reduce((sum, r) => sum + (r.score * (weights[r.category] || 0.15)), 0);
-    return Math.round(total);
+    return Math.round(riskScores.reduce((sum, r) => sum + (r.score * (weights[r.category] || 0.15)), 0));
   }, [riskScores]);
 
   const formatTimeAgo = (dateStr: string) => {
@@ -187,23 +181,36 @@ const Risk = () => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-primary font-semibold text-sm tracking-wider uppercase">
-                  <Zap className="w-4 h-4 fill-current" />
-                  Real-time Intelligence
+                {/* Sector badge */}
+                <div className="flex items-center gap-2 font-semibold text-xs tracking-[0.15em] uppercase text-red-600 dark:text-red-500">
+                  <Flame className="w-3.5 h-3.5 fill-current" />
+                  Petroleum Risk Intelligence
                 </div>
                 <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Risco & Geopolítica</h1>
-                <p className="text-muted-foreground text-lg max-w-2xl">
+                <p className="text-muted-foreground text-base max-w-2xl leading-relaxed">
                   Monitorização avançada de ameaças regulatórias e dinâmicas de poder no setor energético.
                 </p>
               </div>
               
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="lg" className="rounded-full px-6 border-2 hover:bg-secondary/50 transition-all" 
+                {lastUpdated && (
+                  <span className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                    <Clock className="w-3 h-3" />
+                    {formatTimeAgo(lastUpdated)}
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="rounded-full px-6 border-2 hover:bg-secondary/50 transition-all"
                   onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex, lastUpdated: lastUpdated || undefined })}>
                   <FileDown className="w-4 h-4 mr-2" /> Exportar
                 </Button>
-                <Button size="lg" className="rounded-full px-6 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" 
-                  onClick={analyzeRisks} disabled={analyzing}>
+                <Button
+                  size="lg"
+                  className="rounded-full px-6 bg-red-700 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-600 text-white border-0 shadow-lg shadow-red-900/30 hover:shadow-red-700/40 transition-all"
+                  onClick={analyzeRisks}
+                  disabled={analyzing}>
                   {analyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   {analyzing ? "A processar..." : "Atualizar Inteligência"}
                 </Button>
@@ -211,13 +218,21 @@ const Risk = () => {
             </div>
 
             {/* KPI Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               <KPICard 
                 title="Índice Global" 
                 value={globalRiskIndex} 
-                subtitle={globalRiskIndex > 60 ? "Crítico" : globalRiskIndex > 40 ? "Alerta" : "Estável"}
+                subtitle={
+                  globalRiskIndex > 70 ? "Crítico" :
+                  globalRiskIndex > 50 ? "Elevado" :
+                  globalRiskIndex > 30 ? "Moderado" : "Estável"
+                }
                 icon={<Shield className="w-5 h-5" />}
-                color={globalRiskIndex > 60 ? "destructive" : globalRiskIndex > 40 ? "warning" : "success"}
+                color={
+                  globalRiskIndex > 70 ? "destructive" :
+                  globalRiskIndex > 50 ? "warning" :
+                  globalRiskIndex > 30 ? "caution" : "success"
+                }
                 loading={loading}
               />
               <KPICard 
@@ -239,7 +254,10 @@ const Risk = () => {
                 value={alerts.length} 
                 subtitle={`${alerts.filter(a => a.alert_type === 'critical').length} Críticos`}
                 icon={<AlertTriangle className="w-5 h-5" />}
-                color={alerts.length > 0 ? "destructive" : "success"}
+                color={
+                  alerts.filter(a => a.alert_type === 'critical').length > 0 ? "destructive" :
+                  alerts.length > 0 ? "warning" : "success"
+                }
                 loading={loading}
               />
             </div>
@@ -249,13 +267,15 @@ const Risk = () => {
               
               {/* Radar Chart Section */}
               <div className="lg:col-span-7 space-y-8">
-                <Card className="border-none shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm overflow-hidden">
+                <Card className="border border-border/50 shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6">
                     <div>
                       <CardTitle className="text-xl font-bold">Perfil de Risco Multidimensional</CardTitle>
-                      <CardDescription>Análise vetorial por categoria de impacto</CardDescription>
+                      <CardDescription>Análise vectorial por categoria de impacto</CardDescription>
                     </div>
-                    <Activity className="w-5 h-5 text-primary" />
+                    <div className="p-2 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400">
+                      <Activity className="w-5 h-5" />
+                    </div>
                   </CardHeader>
                   <CardContent className="pt-8">
                     <div className="h-[400px] w-full">
@@ -263,14 +283,17 @@ const Risk = () => {
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart data={riskScores.map(r => ({ category: r.category, value: r.score }))}>
                             <PolarGrid stroke="hsl(var(--border))" strokeDasharray="4 4" />
-                            <PolarAngleAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 500 }} />
+                            <PolarAngleAxis
+                              dataKey="category"
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 500 }}
+                            />
                             <Radar
                               name="Risco"
                               dataKey="value"
-                              stroke="hsl(var(--primary))"
-                              fill="hsl(var(--primary))"
-                              fillOpacity={0.15}
-                              strokeWidth={3}
+                              stroke="#dc2626"
+                              fill="#dc2626"
+                              fillOpacity={0.12}
+                              strokeWidth={2.5}
                             />
                             <Tooltip content={<CustomRadarTooltip />} />
                           </RadarChart>
@@ -279,29 +302,52 @@ const Risk = () => {
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
-                      {riskScores.map((risk, i) => (
-                        <div key={i} className="p-4 rounded-2xl bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">{risk.category}</span>
-                            <span className={`text-sm font-black ${risk.score > 60 ? 'text-destructive' : 'text-primary'}`}>{risk.score}</span>
+                      {riskScores.map((risk, i) => {
+                        // Semantic risk colors for petroleum sector
+                        const scoreTextColor =
+                          risk.score > 70 ? "text-red-600 dark:text-red-400" :
+                          risk.score > 50 ? "text-orange-500 dark:text-orange-400" :
+                          risk.score > 30 ? "text-amber-500 dark:text-amber-400" :
+                          "text-emerald-600 dark:text-emerald-400";
+                        const barColor =
+                          risk.score > 70 ? "bg-red-600 dark:bg-red-500" :
+                          risk.score > 50 ? "bg-orange-500 dark:bg-orange-400" :
+                          risk.score > 30 ? "bg-amber-500 dark:bg-amber-400" :
+                          "bg-emerald-600 dark:bg-emerald-400";
+                        return (
+                          <div key={i} className="p-4 rounded-2xl bg-secondary/30 border border-border/50 hover:border-red-500/20 transition-colors group">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.12em]">{risk.category}</span>
+                              <span className={`text-sm font-black ${scoreTextColor}`}>{risk.score}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
+                                style={{ width: `${risk.score}%` }}
+                              />
+                            </div>
                           </div>
-                          <Progress value={risk.score} className="h-1.5" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Alerts & Simulator Button Section */}
-              <div className="lg:col-span-5 space-y-8">
-                <Card className="border-none shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+              {/* Alerts & Simulator Section */}
+              <div className="lg:col-span-5 space-y-6">
+                <Card className="border border-border/50 shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm">
                   <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6">
                     <div>
                       <CardTitle className="text-xl font-bold">Alertas de Segurança</CardTitle>
                       <CardDescription>Eventos críticos em tempo real</CardDescription>
                     </div>
-                    <Badge variant="outline" className="rounded-full">{alerts.length} Ativos</Badge>
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5"
+                    >
+                      {alerts.length} Ativos
+                    </Badge>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="max-h-[400px] overflow-y-auto scrollbar-none">
@@ -311,21 +357,35 @@ const Risk = () => {
                             key={alert.id}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            className="p-5 border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer group"
+                            transition={{ delay: i * 0.08 }}
+                            className="p-5 border-b border-border/40 last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer group"
                           >
                             <div className="flex gap-4">
-                              <div className={`mt-1 p-2 rounded-full h-fit ${
-                                alert.alert_type === 'critical' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                              <div className={`mt-0.5 p-2 rounded-lg h-fit shrink-0 ${
+                                alert.alert_type === 'critical'
+                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                  : alert.alert_type === 'warning'
+                                  ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                               }`}>
-                                {alert.alert_type === 'critical' ? <AlertTriangle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                {alert.alert_type === 'critical'
+                                  ? <AlertTriangle className="w-4 h-4" />
+                                  : alert.alert_type === 'warning'
+                                  ? <AlertCircle className="w-4 h-4" />
+                                  : <Info className="w-4 h-4" />}
                               </div>
-                              <div className="flex-1 space-y-1">
-                                <div className="flex justify-between items-start">
-                                  <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{alert.title}</h4>
-                                  <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap ml-2">{formatTimeAgo(alert.created_at)}</span>
+                              <div className="flex-1 space-y-1 min-w-0">
+                                <div className="flex justify-between items-start gap-2">
+                                  <h4 className="font-bold text-sm group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">{alert.title}</h4>
+                                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0">{formatTimeAgo(alert.created_at)}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{alert.description}</p>
+                                {alert.region && (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 font-mono mt-1">
+                                    <MapPin className="w-2.5 h-2.5" />
+                                    {alert.region}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </motion.div>
@@ -336,24 +396,36 @@ const Risk = () => {
                 </Card>
 
                 {/* SIMULATOR TRIGGER CARD */}
-                <Card className="border-none shadow-xl bg-primary text-primary-foreground overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-8 opacity-10">
-                    <Activity className="w-32 h-32" />
+                <Card className="border border-red-900/20 dark:border-red-900/30 shadow-xl overflow-hidden relative bg-gradient-to-br from-red-950/40 via-[#1a0808]/60 to-background dark:from-red-950/50">
+                  {/* Subtle noise texture overlay */}
+                  <div
+                    className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04]"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+                      backgroundSize: '128px',
+                    }}
+                  />
+                  <div className="absolute top-0 right-0 p-6 opacity-[0.07]">
+                    <Activity className="w-28 h-28 text-red-500" />
                   </div>
-                  <CardHeader>
+                  <CardHeader className="relative z-10">
+                    <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.15em] uppercase text-red-500 dark:text-red-400 mb-1">
+                      <Zap className="w-3 h-3 fill-current" />
+                      Motor de Simulação
+                    </div>
                     <CardTitle className="text-lg">Simulador de Impacto</CardTitle>
-                    <CardDescription className="text-primary-foreground/70">Preveja mudanças regulatórias</CardDescription>
+                    <CardDescription>Preveja mudanças regulatórias</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm mb-6 leading-relaxed">
+                  <CardContent className="relative z-10">
+                    <p className="text-sm mb-6 leading-relaxed text-muted-foreground">
                       Utilize o nosso motor de simulação para calcular o impacto de novas taxas e royalties no seu portfólio.
                     </p>
                     <Button 
-                      variant="secondary" 
-                      className="w-full rounded-full font-bold group"
-                      onClick={() => setShowSimulator(true)} // AÇÃO PARA ABRIR O SIMULADOR
+                      className="w-full rounded-full font-bold bg-red-700 hover:bg-red-600 text-white border-0 shadow-md shadow-red-900/30 hover:shadow-red-700/40 transition-all group"
+                      onClick={() => setShowSimulator(true)}
                     >
-                      Abrir Simulador <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                      Abrir Simulador
+                      <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -376,24 +448,24 @@ const Risk = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 md:p-8"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 md:p-8"
           >
             <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.93, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-background w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl relative border border-border"
+              exit={{ scale: 0.93, y: 20 }}
+              transition={{ type: "spring", damping: 24, stiffness: 280 }}
+              className="bg-background w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl relative border border-border scrollbar-none"
             >
-              {/* Botão para fechar o simulador */}
+              {/* Close button */}
               <button 
                 onClick={() => setShowSimulator(false)}
-                className="absolute top-6 right-6 p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-colors z-10"
+                className="absolute top-5 right-5 p-2 rounded-full bg-secondary hover:bg-red-500/10 hover:text-red-500 text-muted-foreground transition-colors z-10"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
 
               <div className="p-2">
-                {/* O COMPONENTE DO SIMULADOR É RENDERIZADO AQUI */}
                 <RegulatoryImpactSimulator />
               </div>
             </motion.div>
@@ -406,31 +478,41 @@ const Risk = () => {
 
 // --- Sub-components ---
 const KPICard = ({ title, value, subtitle, trend, icon, color = "primary", loading }: any) => {
-  const colorMap = {
-    primary: "text-primary bg-primary/10",
-    destructive: "text-destructive bg-destructive/10",
-    warning: "text-warning bg-warning/10",
-    success: "text-success bg-success/10",
+  // Semantic color map — petroleum risk perception
+  const colorMap: Record<string, { iconCls: string; valCls: string; bgCls: string }> = {
+    primary:     { iconCls: "text-primary",        valCls: "text-foreground",     bgCls: "bg-primary/10"      },
+    destructive: { iconCls: "text-red-600 dark:text-red-400",    valCls: "text-red-600 dark:text-red-400",    bgCls: "bg-red-500/10"     },
+    warning:     { iconCls: "text-orange-600 dark:text-orange-400", valCls: "text-orange-600 dark:text-orange-400", bgCls: "bg-orange-500/10" },
+    caution:     { iconCls: "text-amber-600 dark:text-amber-400",  valCls: "text-amber-600 dark:text-amber-400",  bgCls: "bg-amber-500/10"  },
+    success:     { iconCls: "text-emerald-600 dark:text-emerald-400", valCls: "text-emerald-600 dark:text-emerald-400", bgCls: "bg-emerald-500/10" },
   };
 
+  const c = colorMap[color] || colorMap.primary;
+
   return (
-    <Card className="border-none shadow-lg hover:shadow-xl transition-all bg-white/80 dark:bg-black/40 backdrop-blur-md group">
+    <Card className="border border-border/50 shadow-lg hover:shadow-xl transition-all bg-white/80 dark:bg-black/40 backdrop-blur-md group">
       <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-3 rounded-2xl ${colorMap[color as keyof typeof colorMap]}`}>
+        <div className="flex justify-between items-start mb-5">
+          <div className={`p-3 rounded-2xl ${c.bgCls} ${c.iconCls}`}>
             {icon}
-        </div>
+          </div>
           {trend && (
-            <Badge variant={trend === 'up' ? 'destructive' : 'outline'} className={`rounded-full px-2 py-0 ${trend === 'down' ? "bg-success/10 text-success border-success/20" : ""}`}>
-              {trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            </Badge>
+            <div className={`p-1.5 rounded-lg ${
+              trend === 'up'
+                ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            }`}>
+              {trend === 'up'
+                ? <TrendingUp className="w-3.5 h-3.5" />
+                : <TrendingDown className="w-3.5 h-3.5" />}
+            </div>
           )}
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
           {loading ? <Skeleton className="h-9 w-16" /> : (
             <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black tracking-tighter">{value}</h3>
+              <h3 className={`text-3xl font-black tracking-tighter ${c.valCls}`}>{value}</h3>
               <span className="text-xs font-bold text-muted-foreground">/100</span>
             </div>
           )}
@@ -442,15 +524,24 @@ const KPICard = ({ title, value, subtitle, trend, icon, color = "primary", loadi
 };
 
 const CustomRadarTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-2xl">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{payload[0].payload.category}</p>
-        <p className="text-xl font-black text-primary">{payload[0].value}<span className="text-xs ml-1">Score</span></p>
-      </div>
-    );
-  }
-  return null;
+  if (!active || !payload?.length) return null;
+  const score = payload[0].value;
+  const color =
+    score > 70 ? "#dc2626" :
+    score > 50 ? "#f97316" :
+    score > 30 ? "#f59e0b" :
+    "#10b981";
+  return (
+    <div className="bg-background/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-2xl">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 font-mono">
+        {payload[0].payload.category}
+      </p>
+      <p className="text-2xl font-black" style={{ color }}>
+        {score}
+        <span className="text-xs ml-1 text-muted-foreground font-normal">Score</span>
+      </p>
+    </div>
+  );
 };
 
 export default Risk;

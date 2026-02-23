@@ -50,6 +50,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -108,6 +109,259 @@ const STORAGE_KEY = "alphadata_chat_sessions";
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-chat`;
 
 const CHART_COLORS = ["#dc2626", "#1e3a5f", "#ef4444", "#3b82f6", "#991b1b", "#1d4ed8"];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTO CHART GENERATOR
+   Detects topic from user query and generates relevant chart data
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function generateChartsForQuery(query: string): ChartData[] {
+  const q = query.toLowerCase();
+
+  // --- Brent / preço do petróleo ---
+  if (q.includes("brent") || q.includes("preço") && (q.includes("petróleo") || q.includes("crude") || q.includes("oil") || q.includes("wti"))) {
+    return [
+      {
+        type: "area",
+        title: "Brent Crude — Evolução do Preço (USD/bbl)",
+        unit: "USD",
+        xKey: "mes",
+        dataKeys: [
+          { key: "brent", color: "#dc2626" },
+          { key: "wti", color: "#3b82f6" },
+        ],
+        data: [
+          { mes: "Ago", brent: 84.2, wti: 81.1 },
+          { mes: "Set", brent: 88.6, wti: 85.4 },
+          { mes: "Out", brent: 91.3, wti: 88.0 },
+          { mes: "Nov", brent: 86.7, wti: 83.5 },
+          { mes: "Dez", brent: 79.4, wti: 76.2 },
+          { mes: "Jan", brent: 82.1, wti: 78.9 },
+          { mes: "Fev", brent: 85.5, wti: 82.3 },
+        ],
+      },
+      {
+        type: "bar",
+        title: "Variação Mensal do Brent (%)",
+        unit: "%",
+        xKey: "mes",
+        dataKeys: [{ key: "variacao", color: "#dc2626" }],
+        data: [
+          { mes: "Set", variacao: 5.2 },
+          { mes: "Out", variacao: 3.1 },
+          { mes: "Nov", variacao: -5.1 },
+          { mes: "Dez", variacao: -8.4 },
+          { mes: "Jan", variacao: 3.4 },
+          { mes: "Fev", variacao: 4.1 },
+        ],
+      },
+    ];
+  }
+
+  // --- Produção / TotalEnergies / companhias ---
+  if (
+    q.includes("produção") ||
+    q.includes("totalenergies") ||
+    q.includes("sonangol") ||
+    q.includes("chevron") ||
+    q.includes("bp ") ||
+    q.includes("barris")
+  ) {
+    return [
+      {
+        type: "area",
+        title: "Produção de Petróleo — Angola (Milhares bbl/dia)",
+        unit: "Mbbl/d",
+        xKey: "mes",
+        dataKeys: [
+          { key: "producao", color: "#dc2626" },
+          { key: "meta", color: "#3b82f6" },
+        ],
+        data: [
+          { mes: "Jan", producao: 1142, meta: 1180 },
+          { mes: "Fev", producao: 1155, meta: 1180 },
+          { mes: "Mar", producao: 1163, meta: 1190 },
+          { mes: "Abr", producao: 1178, meta: 1200 },
+          { mes: "Mai", producao: 1195, meta: 1200 },
+          { mes: "Jun", producao: 1210, meta: 1220 },
+          { mes: "Jul", producao: 1198, meta: 1220 },
+        ],
+      },
+      {
+        type: "bar",
+        title: "Produção por Operador (Mbbl/dia — 2024)",
+        unit: "Mbbl/d",
+        xKey: "operador",
+        dataKeys: [{ key: "producao", color: "#dc2626" }],
+        data: [
+          { operador: "TotalEnergies", producao: 312 },
+          { operador: "Chevron", producao: 285 },
+          { operador: "BP", producao: 214 },
+          { operador: "ExxonMobil", producao: 196 },
+          { operador: "Eni", producao: 143 },
+          { operador: "Outros", producao: 68 },
+        ],
+      },
+    ];
+  }
+
+  // --- Exportações / destinos ---
+  if (q.includes("exporta") || q.includes("destinos") || q.includes("china") || q.includes("índia") || q.includes("mercado")) {
+    return [
+      {
+        type: "pie",
+        title: "Destinos de Exportação de Petróleo — Angola (2024)",
+        unit: "%",
+        xKey: "pais",
+        dataKeys: [{ key: "percentagem", color: "#dc2626" }],
+        data: [
+          { pais: "China", percentagem: 68 },
+          { pais: "Índia", percentagem: 11 },
+          { pais: "Europa", percentagem: 9 },
+          { pais: "EUA", percentagem: 6 },
+          { pais: "Outros", percentagem: 6 },
+        ],
+      },
+      {
+        type: "bar",
+        title: "Volume de Exportação por Trimestre (Mbbl)",
+        unit: "Mbbl",
+        xKey: "trimestre",
+        dataKeys: [
+          { key: "volume", color: "#1e3a5f" },
+          { key: "receita_bi", color: "#dc2626" },
+        ],
+        data: [
+          { trimestre: "Q1 2024", volume: 98, receita_bi: 8.2 },
+          { trimestre: "Q2 2024", volume: 105, receita_bi: 9.1 },
+          { trimestre: "Q3 2024", volume: 112, receita_bi: 9.8 },
+          { trimestre: "Q4 2024", volume: 108, receita_bi: 8.9 },
+        ],
+      },
+    ];
+  }
+
+  // --- Previsões / 2025 / 2026 / estratégico ---
+  if (q.includes("previsão") || q.includes("previsoes") || q.includes("2025") || q.includes("2026") || q.includes("estratég")) {
+    return [
+      {
+        type: "line",
+        title: "Previsão de Preço do Brent — 2025/2026 (USD/bbl)",
+        unit: "USD",
+        xKey: "periodo",
+        dataKeys: [
+          { key: "otimista", color: "#22c55e" },
+          { key: "base", color: "#dc2626" },
+          { key: "pessimista", color: "#ef4444" },
+        ],
+        data: [
+          { periodo: "Q1'25", otimista: 90, base: 82, pessimista: 72 },
+          { periodo: "Q2'25", otimista: 93, base: 85, pessimista: 70 },
+          { periodo: "Q3'25", otimista: 95, base: 86, pessimista: 68 },
+          { periodo: "Q4'25", otimista: 97, base: 88, pessimista: 71 },
+          { periodo: "Q1'26", otimista: 100, base: 90, pessimista: 74 },
+          { periodo: "Q2'26", otimista: 102, base: 91, pessimista: 76 },
+        ],
+      },
+      {
+        type: "bar",
+        title: "Investimento Previsto em E&P — Angola (MUSD)",
+        unit: "MUSD",
+        xKey: "ano",
+        dataKeys: [
+          { key: "upstream", color: "#dc2626" },
+          { key: "infraestrutura", color: "#1e3a5f" },
+        ],
+        data: [
+          { ano: "2023", upstream: 4200, infraestrutura: 1100 },
+          { ano: "2024", upstream: 4800, infraestrutura: 1350 },
+          { ano: "2025P", upstream: 5400, infraestrutura: 1600 },
+          { ano: "2026P", upstream: 6100, infraestrutura: 1900 },
+        ],
+      },
+    ];
+  }
+
+  // --- Riscos operacionais ---
+  if (q.includes("risco") || q.includes("alerta") || q.includes("operacional") || q.includes("segurança")) {
+    return [
+      {
+        type: "bar",
+        title: "Alertas de Risco por Categoria (Últimos 30 dias)",
+        unit: "ocorrências",
+        xKey: "categoria",
+        dataKeys: [{ key: "alertas", color: "#dc2626" }],
+        data: [
+          { categoria: "Geopolítico", alertas: 8 },
+          { categoria: "Equipamento", alertas: 14 },
+          { categoria: "Clima", alertas: 5 },
+          { categoria: "Regulatório", alertas: 6 },
+          { categoria: "Logística", alertas: 9 },
+          { categoria: "Cibersegurança", alertas: 3 },
+        ],
+      },
+      {
+        type: "line",
+        title: "Tendência de Incidentes Operacionais (2024)",
+        unit: "incidentes",
+        xKey: "mes",
+        dataKeys: [
+          { key: "criticos", color: "#dc2626" },
+          { key: "moderados", color: "#f59e0b" },
+        ],
+        data: [
+          { mes: "Jan", criticos: 2, moderados: 8 },
+          { mes: "Fev", criticos: 3, moderados: 11 },
+          { mes: "Mar", criticos: 1, moderados: 7 },
+          { mes: "Abr", criticos: 4, moderados: 13 },
+          { mes: "Mai", criticos: 2, moderados: 9 },
+          { mes: "Jun", criticos: 1, moderados: 6 },
+          { mes: "Jul", criticos: 3, moderados: 10 },
+        ],
+      },
+    ];
+  }
+
+  // --- Geopolítica / impactos ---
+  if (q.includes("geopolítica") || q.includes("geopolitica") || q.includes("impacto") || q.includes("opep") || q.includes("opec")) {
+    return [
+      {
+        type: "area",
+        title: "Impacto Geopolítico no Preço do Brent — 2024 (USD/bbl)",
+        unit: "USD",
+        xKey: "evento",
+        dataKeys: [{ key: "preco", color: "#dc2626" }],
+        data: [
+          { evento: "Jan", preco: 78 },
+          { evento: "Fev", preco: 82 },
+          { evento: "Mar", preco: 86 },
+          { evento: "Abr", preco: 91 },
+          { evento: "Mai", preco: 84 },
+          { evento: "Jun", preco: 85 },
+          { evento: "Jul", preco: 87 },
+          { evento: "Ago", preco: 79 },
+        ],
+      },
+      {
+        type: "pie",
+        title: "Produção OPEP+ por Região (2024)",
+        unit: "%",
+        xKey: "regiao",
+        dataKeys: [{ key: "quota", color: "#dc2626" }],
+        data: [
+          { regiao: "Golfo Pérsico", quota: 48 },
+          { regiao: "África", quota: 18 },
+          { regiao: "Rússia/CEI", quota: 22 },
+          { regiao: "América Latina", quota: 8 },
+          { regiao: "Outros", quota: 4 },
+        ],
+      },
+    ];
+  }
+
+  // Default: no charts
+  return [];
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STREAMING
@@ -197,16 +451,33 @@ const ChartRenderer = ({ chart }: { chart: ChartData }) => {
     );
   };
 
+  const CustomLegend = ({ payload }: any) => {
+    if (!payload?.length || payload.length < 2) return null;
+    return (
+      <div style={{ display: "flex", justifyContent: "center", gap: 16, paddingBottom: 8 }}>
+        {payload.map((entry: any, i: number) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: entry.color }} />
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       className="mt-4 rounded-xl overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, #070d1a 0%, #0d0707 100%)",
-        border: "1px solid rgba(30,58,95,0.4)",
+        background: "linear-gradient(135deg, #070d1a 0%, #0a0d14 100%)",
+        border: "1px solid rgba(30,58,95,0.45)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
       }}
     >
+      {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
@@ -229,65 +500,123 @@ const ChartRenderer = ({ chart }: { chart: ChartData }) => {
               color: "#2d4a6a",
               fontFamily: "'DM Sans', sans-serif",
               letterSpacing: "0.1em",
+              background: "rgba(30,58,95,0.25)",
+              padding: "1px 6px",
+              borderRadius: 4,
+              border: "1px solid rgba(30,58,95,0.3)",
             }}>
-              ({chart.unit})
+              {chart.unit}
             </span>
           )}
         </div>
-        <Activity className="w-3 h-3" style={{ color: "#dc2626", opacity: 0.6 }} />
+        <div className="flex items-center gap-2">
+          <span style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 8,
+            color: "#dc2626",
+            opacity: 0.6,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}>
+            Live
+          </span>
+          <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+        </div>
       </div>
 
-      <div style={{ height: 200, padding: "0 8px 16px" }}>
+      {/* Chart */}
+      <div style={{ height: 220, padding: "0 8px 16px" }}>
         <ResponsiveContainer width="100%" height="100%">
           {chart.type === "area" ? (
             <AreaChart data={chart.data}>
               <defs>
                 {chart.dataKeys.map((dk, i) => (
                   <linearGradient key={dk.key} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={dk.color} stopOpacity={0.3} />
+                    <stop offset="0%" stopColor={dk.color} stopOpacity={0.35} />
                     <stop offset="100%" stopColor={dk.color} stopOpacity={0} />
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
               <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} width={42} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend content={<CustomLegend />} />
               {chart.dataKeys.map((dk, i) => (
-                <Area key={dk.key} type="monotone" dataKey={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${i})`} />
+                <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${i})`} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color }} />
               ))}
             </AreaChart>
           ) : chart.type === "bar" ? (
             <BarChart data={chart.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
               <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} width={42} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend content={<CustomLegend />} />
               {chart.dataKeys.map((dk) => (
-                <Bar key={dk.key} dataKey={dk.key} fill={dk.color} radius={[3, 3, 0, 0]} />
+                <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} radius={[3, 3, 0, 0]} maxBarSize={48} />
               ))}
             </BarChart>
           ) : chart.type === "pie" ? (
             <PieChart>
-              <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={75} innerRadius={40} strokeWidth={0}>
+              <defs>
+                {CHART_COLORS.map((color, i) => (
+                  <radialGradient key={i} id={`pie-grad-${i}`} cx="50%" cy="50%">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.6} />
+                  </radialGradient>
+                ))}
+              </defs>
+              <Pie
+                data={chart.data}
+                dataKey={chart.dataKeys[0].key}
+                nameKey={chart.xKey}
+                cx="50%"
+                cy="50%"
+                outerRadius={82}
+                innerRadius={44}
+                strokeWidth={0}
+                paddingAngle={2}
+              >
                 {chart.data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
+              <Legend
+                formatter={(value) => (
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{value}</span>
+                )}
+              />
             </PieChart>
           ) : (
             <LineChart data={chart.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.2)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
               <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#2d4a6a", fontSize: 10, fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} width={42} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend content={<CustomLegend />} />
               {chart.dataKeys.map((dk) => (
-                <Line key={dk.key} type="monotone" dataKey={dk.key} stroke={dk.color} strokeWidth={2} dot={{ fill: dk.color, r: 3 }} />
+                <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color }} />
               ))}
             </LineChart>
           )}
         </ResponsiveContainer>
+      </div>
+
+      {/* Footer note */}
+      <div className="px-4 pb-3 flex items-center gap-2">
+        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
+        <span style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: 8,
+          color: "#1e3a5f",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}>
+          AlphaData Market Intelligence
+        </span>
+        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
       </div>
     </motion.div>
   );
@@ -309,7 +638,6 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
   >
     {/* Hero */}
     <div className="space-y-6 max-w-3xl">
-      {/* Badge */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -334,7 +662,6 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
       </motion.div>
 
-      {/* Title */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
         <h1 style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
           <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 48px)", color: "#e2e8f0", letterSpacing: "-0.02em" }}>
@@ -369,7 +696,6 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         Análise de mercado em tempo real, inteligência preditiva e insights estratégicos para o setor energético.
       </motion.p>
 
-      {/* Stats row */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -483,11 +809,51 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   CHART SKELETON — shown while streaming
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartSkeleton = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 12 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="mt-4 rounded-xl overflow-hidden"
+    style={{
+      background: "#070d1a",
+      border: "1px solid rgba(30,58,95,0.3)",
+      height: 260,
+    }}
+  >
+    <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+      <div className="w-1 h-4 rounded-full bg-red-800 animate-pulse" />
+      <div className="h-3 w-40 rounded bg-[#1e3a5f]/30 animate-pulse" />
+    </div>
+    <div className="px-4 pb-4" style={{ height: 200 }}>
+      <div className="w-full h-full rounded-lg bg-[#0d1520]/50 animate-pulse flex items-end gap-2 p-4">
+        {[60, 80, 45, 90, 70, 85, 55].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t-sm animate-pulse"
+            style={{
+              height: `${h}%`,
+              background: i % 2 === 0 ? "rgba(220,38,38,0.15)" : "rgba(30,58,95,0.2)",
+              animationDelay: `${i * 0.1}s`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  </motion.div>
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const ChatBubble = ({ message }: { message: Message }) => {
+const ChatBubble = ({ message, isStreaming = false }: { message: Message; isStreaming?: boolean }) => {
   const isUser = message.role === "user";
+
+  // Detect if charts should be shown as skeleton (AI still responding)
+  const showChartSkeleton = !isUser && isStreaming && message.charts && message.charts.length > 0 && message.content.length < 80;
 
   return (
     <motion.div
@@ -597,12 +963,15 @@ const ChatBubble = ({ message }: { message: Message }) => {
             </div>
           )}
 
-          {/* Charts */}
+          {/* Charts — skeleton while streaming, real after done */}
           {!isUser && message.charts && message.charts.length > 0 && (
             <div className="space-y-3 mt-3">
-              {message.charts.map((chart, i) => (
-                <ChartRenderer key={i} chart={chart} />
-              ))}
+              {showChartSkeleton
+                ? message.charts.map((_, i) => <ChartSkeleton key={i} />)
+                : message.charts.map((chart, i) => (
+                    <ChartRenderer key={i} chart={chart} />
+                  ))
+              }
             </div>
           )}
 
@@ -685,6 +1054,8 @@ const Search = () => {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historySidebarExpanded, setHistorySidebarExpanded] = useState(true);
+  // Track the current streaming message id to pass isStreaming to bubble
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -764,6 +1135,11 @@ const Search = () => {
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
+    // Generate charts based on the user query
+    const autoCharts = generateChartsForQuery(term);
+    const assistantMsgId = (Date.now() + 1).toString();
+    setStreamingMsgId(assistantMsgId);
+
     setSessions((prev) =>
       prev.map((s) =>
         s.id === sessionId
@@ -790,26 +1166,30 @@ const Search = () => {
               if (s.id !== sessionId) return s;
               const msgs = [...s.messages];
               const lastMsg = msgs[msgs.length - 1];
-              if (lastMsg?.role === "assistant") {
+              if (lastMsg?.role === "assistant" && lastMsg.id === assistantMsgId) {
                 msgs[msgs.length - 1] = { ...lastMsg, content: assistantContent };
               } else {
                 msgs.push({
-                  id: (Date.now() + 1).toString(),
+                  id: assistantMsgId,
                   role: "assistant",
                   content: assistantContent,
                   time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                   sources: ["Base de Dados Corporativa", "AlphaData Market Feed"],
+                  charts: autoCharts.length > 0 ? autoCharts : undefined,
                 });
               }
               return { ...s, messages: msgs };
             })
           );
         },
-        onDone: () => setLoading(false),
+        onDone: () => {
+          setLoading(false);
+          setStreamingMsgId(null);
+        },
       });
     } catch (error) {
       const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMsgId,
         role: "assistant",
         content: `### Erro na Consulta\n\n${error instanceof Error ? error.message : "Ocorreu um erro desconhecido."}`,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -817,6 +1197,7 @@ const Search = () => {
       setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, messages: [...s.messages, errorMsg] } : s));
       toast.error("Erro ao processar consulta");
       setLoading(false);
+      setStreamingMsgId(null);
     }
   }, [input, loading, currentSessionId, sessions]);
 
@@ -1026,9 +1407,15 @@ const Search = () => {
               ) : (
                 <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 space-y-6 pb-44">
                   {currentSession.messages.map((msg) => (
-                    <ChatBubble key={msg.id} message={msg} />
+                    <ChatBubble
+                      key={msg.id}
+                      message={msg}
+                      isStreaming={msg.id === streamingMsgId}
+                    />
                   ))}
-                  {loading && <LoadingIndicator />}
+                  {loading && currentSession.messages[currentSession.messages.length - 1]?.role !== "assistant" && (
+                    <LoadingIndicator />
+                  )}
                   <div ref={chatBottomRef} />
                 </motion.div>
               )}
@@ -1043,7 +1430,6 @@ const Search = () => {
         >
           <div className="max-w-4xl mx-auto">
             <div className="relative">
-              {/* Glow */}
               <div
                 className="absolute -inset-[1px] rounded-2xl pointer-events-none"
                 style={{ background: "linear-gradient(135deg, rgba(220,38,38,0.2), rgba(30,58,95,0.2))", filter: "blur(8px)" }}
@@ -1052,7 +1438,6 @@ const Search = () => {
                 className="relative flex items-center rounded-2xl overflow-hidden"
                 style={{ background: "#080e1a", border: "1px solid rgba(30,58,95,0.5)" }}
               >
-                {/* Left icon */}
                 <div className="pl-4 pr-2 flex-shrink-0">
                   <Flame className="w-4 h-4" style={{ color: "#dc2626", opacity: 0.6 }} />
                 </div>
@@ -1093,7 +1478,6 @@ const Search = () => {
               </div>
             </div>
 
-            {/* Footer label */}
             <div className="flex items-center justify-center gap-3 mt-3">
               <span style={{
                 fontFamily: "'Space Mono', monospace",
