@@ -66,6 +66,7 @@ const navGroups = [
       { icon: Brain, label: "Previsões IA", href: "/predictions", badge: "AI" },
       { icon: AlertTriangle, label: "Risco", href: "/risk" },
       { icon: Building2, label: "Competidores", href: "/competitors" },
+      { icon: Zap, label: "Visão Computacional", href: "/well-simulation", badge: "AI" },
     ]
   },
   {
