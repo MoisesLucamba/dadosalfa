@@ -23,6 +23,7 @@ import Admin from "./pages/Admin";
 import Competitors from "./pages/Competitors";
 import Workspace from "./pages/Workspace";
 import Subscription from "./pages/Subscription";
+import WellSimulation from "./pages/WellSimulation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -174,6 +175,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Subscription />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/well-simulation"
+                  element={
+                    <ProtectedRoute>
+                      <WellSimulation />
                     </ProtectedRoute>
                   }
                 />
