@@ -42,11 +42,10 @@ import { toast } from "sonner";
 import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
 
-/* ─── Design tokens ─────────────────────────────────────── */
+/* ─── Design tokens ──────────────────────────────────────── */
 const ACCENT   = "#E8FF47";  // electric chartreuse
-const DARK_BG  = "#0A0B0D";
-const PANEL_BG = "#111318";
-const BORDER   = "rgba(255,255,255,0.07)";
+const PANEL_BG = "hsl(var(--card))";
+const BORDER   = "hsl(var(--border))";
 
 /* ─── Micro helpers ──────────────────────────────────────── */
 const Dot = ({ color = ACCENT }: { color?: string }) => (
@@ -61,8 +60,7 @@ const KPICard = ({
   <motion.div
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
-    className="relative overflow-hidden rounded-2xl border p-6 flex flex-col gap-4 group"
-    style={{ background: PANEL_BG, borderColor: BORDER }}
+    className="relative overflow-hidden rounded-2xl border border-border/50 p-6 flex flex-col gap-4 group bg-card"
   >
     {/* glow blob */}
     <div
@@ -80,8 +78,8 @@ const KPICard = ({
       )}
     </div>
     <div>
-      <p className="text-3xl font-black text-white tracking-tight">{value}</p>
-      <p className="text-xs text-white/40 font-medium mt-0.5 uppercase tracking-widest">{label}</p>
+      <p className="text-3xl font-black text-foreground tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground font-medium mt-0.5 uppercase tracking-widest">{label}</p>
     </div>
   </motion.div>
 );
@@ -89,8 +87,8 @@ const KPICard = ({
 const SectionHeader = ({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) => (
   <div className="flex items-start justify-between mb-6">
     <div>
-      <h2 className="text-xl font-black text-white">{title}</h2>
-      {sub && <p className="text-xs text-white/40 mt-0.5 font-medium">{sub}</p>}
+      <h2 className="text-xl font-black text-foreground">{title}</h2>
+      {sub && <p className="text-xs text-muted-foreground mt-0.5 font-medium">{sub}</p>}
     </div>
     {action}
   </div>
@@ -199,12 +197,12 @@ const Admin = () => {
   }, [checkingAdmin, isAdmin, navigate]);
 
   if (checkingAdmin) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: DARK_BG }}>
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `${ACCENT}18` }}>
-          <RefreshCw className="w-7 h-7 animate-spin" style={{ color: ACCENT }} />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-accent/10">
+          <RefreshCw className="w-7 h-7 animate-spin text-accent" />
         </div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-white/30">A carregar…</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">A carregar…</p>
       </div>
     </div>
   );
@@ -252,16 +250,15 @@ const Admin = () => {
   ];
 
   /* ── shared table head style ── */
-  const TH = "py-3 px-4 text-[10px] font-black uppercase tracking-widest text-white/30";
+  const TH = "py-3 px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground";
   const TD = "py-3.5 px-4 text-sm";
 
   /* ── shared input/textarea style ── */
-  const inputCls = "bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/20 focus:border-[#E8FF47]/40 focus:ring-0";
+  const inputCls = "bg-muted/50 border-border rounded-xl text-foreground placeholder:text-muted-foreground/40 focus:border-accent/40 focus:ring-0";
 
   return (
     <div
-      className="flex h-screen overflow-hidden font-sans"
-      style={{ background: DARK_BG, color: "#fff" }}
+      className="flex h-screen overflow-hidden font-sans bg-background text-foreground"
     >
       <Sidebar activeItem="/admin" />
 
@@ -282,13 +279,13 @@ const Admin = () => {
                     <Shield className="w-3 h-3" /> Painel Admin
                   </span>
                   <Dot color="#4ade80" />
-                  <span className="text-[11px] text-white/30 font-medium">Sistema operacional</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">Sistema operacional</span>
                 </div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-none text-white">
+                <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-none text-foreground">
                   Gestão do<br />
-                  <span style={{ color: ACCENT }}>Sistema</span>
+                  <span className="text-accent">Sistema</span>
                 </h1>
-                <p className="text-sm text-white/30 max-w-md font-medium">
+                <p className="text-sm text-muted-foreground max-w-md font-medium">
                   Controle centralizado de utilizadores, dados energéticos, riscos e configurações globais da plataforma.
                 </p>
               </div>
