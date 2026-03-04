@@ -827,6 +827,78 @@ export type Database = {
         }
         Relationships: []
       }
+      well_simulations: {
+        Row: {
+          api_gravity: number | null
+          basin: string
+          block: string
+          created_at: string
+          daily_production: number | null
+          depth: number
+          field: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          operator: string
+          risk_level: string | null
+          simulation_data: Json | null
+          status: string | null
+          success_probability: number | null
+          updated_at: string
+          user_id: string
+          water_depth: number
+          well_name: string
+          well_type: string
+        }
+        Insert: {
+          api_gravity?: number | null
+          basin?: string
+          block: string
+          created_at?: string
+          daily_production?: number | null
+          depth?: number
+          field?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          operator: string
+          risk_level?: string | null
+          simulation_data?: Json | null
+          status?: string | null
+          success_probability?: number | null
+          updated_at?: string
+          user_id: string
+          water_depth?: number
+          well_name: string
+          well_type?: string
+        }
+        Update: {
+          api_gravity?: number | null
+          basin?: string
+          block?: string
+          created_at?: string
+          daily_production?: number | null
+          depth?: number
+          field?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          operator?: string
+          risk_level?: string | null
+          simulation_data?: Json | null
+          status?: string | null
+          success_probability?: number | null
+          updated_at?: string
+          user_id?: string
+          water_depth?: number
+          well_name?: string
+          well_type?: string
+        }
+        Relationships: []
+      }
       workspace_activity: {
         Row: {
           action: string
