@@ -4,7 +4,7 @@ import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend,
-  ScatterChart, Scatter, ZAxis, ReferenceLine,
+  ReferenceLine,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { loadLogoAsBase64 } from "@/utils/loadLogoForPDF";
 import {
   Eye, Plus, Download, Save, Upload, Cpu, Activity, Layers,
   BarChart3, TrendingDown, Shield, Crosshair, Droplets, Thermometer,
@@ -111,7 +112,6 @@ function project(x: number, y: number, z: number, fov: number, cx: number, cy: n
 
 /* ─── SEISMIC SCAN OVERLAY ─────────────────────────────────── */
 function SeismicOverlay({ canvas, ctx, W, H, T }: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; W: number; H: number; T: number }) {
-  // Scanline effect
   const scanY = ((T * 60) % H);
   const sg = ctx.createLinearGradient(0, scanY - 30, 0, scanY + 30);
   sg.addColorStop(0, "rgba(0,168,255,0)");
@@ -120,7 +120,6 @@ function SeismicOverlay({ canvas, ctx, W, H, T }: { canvas: HTMLCanvasElement; c
   ctx.fillStyle = sg;
   ctx.fillRect(0, scanY - 30, W, 60);
 
-  // Corner brackets
   const bLen = 22, bW = 2;
   ctx.strokeStyle = "rgba(0,229,160,0.55)";
   ctx.lineWidth = bW;
@@ -130,7 +129,6 @@ function SeismicOverlay({ canvas, ctx, W, H, T }: { canvas: HTMLCanvasElement; c
     ctx.stroke();
   });
 
-  // Crosshair centre
   ctx.strokeStyle = "rgba(0,168,255,0.18)";
   ctx.lineWidth = 0.5;
   ctx.setLineDash([4, 6]);
@@ -169,14 +167,12 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
     resize();
     window.addEventListener("resize", resize);
 
-    // Oil particles
     particles.current = Array.from({ length: 110 }, () => ({
       u: (Math.random() - 0.5) * 6, v: Math.random() * 600,
       vy: -(0.5 + Math.random() * 1.3), r: 1 + Math.random() * 2,
       alpha: 0.25 + Math.random() * 0.55, hue: 172 + Math.random() * 40,
       phase: Math.random() * Math.PI * 2,
     }));
-    // Gas bubbles
     gasParticles.current = Array.from({ length: 30 }, () => ({
       u: (Math.random() - 0.5) * 3, v: Math.random() * 400,
       vy: -(1.2 + Math.random() * 2.1), r: 0.8 + Math.random() * 1.5,
@@ -200,11 +196,34 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
     const onWheel = (e: WheelEvent) => { e.preventDefault(); cam.current.zoom = Math.max(0.3, Math.min(3.2, cam.current.zoom - e.deltaY * 0.001)); };
     const onDblClick = () => { cam.current.autoSpin = !cam.current.autoSpin; };
 
+    // Touch support
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        drag.current = { active: true, lastX: t.clientX, lastY: t.clientY, velX: 0, velY: 0 };
+        cam.current.autoSpin = false;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!drag.current.active || e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const dx = t.clientX - drag.current.lastX, dy = t.clientY - drag.current.lastY;
+      cam.current.yaw += dx * 0.008;
+      cam.current.pitch += dy * 0.006 * blend.current;
+      cam.current.pitch = Math.max(-1.2, Math.min(1.2, cam.current.pitch));
+      drag.current.lastX = t.clientX; drag.current.lastY = t.clientY;
+    };
+    const onTouchEnd = () => { drag.current.active = false; };
+
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("dblclick", onDblClick);
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
     canvas.style.cursor = "grab";
 
     const draw = (ts: number) => {
@@ -246,7 +265,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       bgR.addColorStop(0, "#040f22"); bgR.addColorStop(0.6, "#020a18"); bgR.addColorStop(1, "#010510");
       ctx.fillStyle = bgR; ctx.fillRect(0, 0, W, H);
 
-      // Subtle grid
       ctx.strokeStyle = "rgba(0,60,120,0.07)";
       ctx.lineWidth = 0.5;
       for (let gx = 0; gx < W; gx += 28) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
@@ -258,7 +276,7 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       const devX = 68 * (w.depth / 5000) * Math.sin(w.inc * Math.PI / 180);
       const devZ = 24 * (w.depth / 5000);
 
-      // ── GEOLOGICAL LAYERS (with more detail) ──
+      // ── GEOLOGICAL LAYERS ──
       const layers = [
         { y0: BED_Y, y1: BED_Y - 28, col: "#5c2a0a", label: "ARGILA (CL)", perm: "0.01 mD", por: "28%" },
         { y0: BED_Y - 28, y1: BED_Y - 65, col: "#3d1f0a", label: "FOLHELHO (SH)", perm: "0.001 mD", por: "18%" },
@@ -296,8 +314,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       });
 
       // ── WATER DEPTH INDICATOR ──
-      const wdRatio = w.wd / 2000;
-      const wdY = SEA_Y - wdRatio * 60;
       const [wd1x, wd1y] = toScreen(-HALF - 8, BED_Y, 0);
       const [wd2x, wd2y] = toScreen(-HALF - 8, SEA_Y, 0);
       ctx.save();
@@ -330,17 +346,14 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
           ctx.fillStyle = ["#253a56", "#192838", "#1e2f45", "#1a2b40", "#172638", "#1e2d42"][fi]; ctx.fill();
           ctx.strokeStyle = "rgba(0,168,255,0.2)"; ctx.lineWidth = 0.7; ctx.stroke();
         });
-        // Flare stack
         const fp = toScreen(62, hy + 26, 0);
         const fR = 6 + Math.sin(t * 4.5) * 4;
         const fg = ctx.createRadialGradient(fp[0], fp[1], 0, fp[0], fp[1], fR * 3);
         fg.addColorStop(0, "rgba(255,220,0,0.95)"); fg.addColorStop(0.25, "rgba(255,120,0,0.6)"); fg.addColorStop(1, "rgba(255,60,0,0)");
         ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fp[0], fp[1], fR * 3, 0, Math.PI * 2); ctx.fill();
-        // Turret
         const tp = toScreen(-10, hy - 5, 0);
         ctx.fillStyle = "#1a2e4a"; ctx.beginPath(); ctx.arc(tp[0], tp[1], 8 * zoom, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(0,168,255,0.4)"; ctx.lineWidth = 1.5; ctx.stroke();
-        // FPSO label
         ctx.fillStyle = "rgba(180,215,255,0.55)"; ctx.font = "bold 8px 'Courier New',monospace"; ctx.textAlign = "center";
         const lp = toScreen(0, hy + 14, 0);
         ctx.fillText("FPSO " + w.op.toUpperCase().slice(0, 8), lp[0], lp[1]); ctx.textAlign = "left";
@@ -348,24 +361,19 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
 
       // ── UMBILICAL / RISER SYSTEM ──
       {
-        const rPts = [
-          toScreen(0, SEA_Y, 0), toScreen(4, SEA_Y * 0.65, 2), toScreen(2, SEA_Y * 0.3, 1), toScreen(0, BED_Y, 0)
-        ];
-        // Main riser
+        const rPts = [toScreen(0, SEA_Y, 0), toScreen(4, SEA_Y * 0.65, 2), toScreen(2, SEA_Y * 0.3, 1), toScreen(0, BED_Y, 0)];
         ctx.beginPath(); ctx.moveTo(rPts[0][0], rPts[0][1]);
         rPts.slice(1).forEach(([sx, sy]) => ctx.lineTo(sx, sy));
         ctx.strokeStyle = "#3a5c80"; ctx.lineWidth = 5.5 * zoom; ctx.lineCap = "round"; ctx.stroke();
-        // Umbilical bundle
         ctx.beginPath(); ctx.moveTo(rPts[0][0] + 3, rPts[0][1]);
         rPts.slice(1).forEach(([sx, sy]) => ctx.lineTo(sx + 3, sy));
         ctx.strokeStyle = "#2a4060"; ctx.lineWidth = 2.5 * zoom; ctx.stroke();
-        // Bend restrictor at seabed
         const br = toScreen(0, BED_Y + 5, 0);
         ctx.fillStyle = "#2a4a6a"; ctx.beginPath(); ctx.arc(br[0], br[1], 5 * zoom, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(0,168,255,0.4)"; ctx.lineWidth = 1; ctx.stroke();
       }
 
-      // ── WELLBORE (deviated) ──
+      // ── WELLBORE ──
       {
         const nPts = 32;
         const wPts = Array.from({ length: nPts + 1 }, (_, i) => {
@@ -373,35 +381,28 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
           const kick = u > 0.15 ? Math.sin((u - 0.15) * Math.PI * 0.6) : 0;
           return toScreen(kick * devX, BED_Y + (TOTAL_D - BED_Y) * u, kick * devZ * 0.4);
         });
-        // Casing outline
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
         ctx.strokeStyle = "#2a4a6a"; ctx.lineWidth = 11 * zoom; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
-        // Cement sheath
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
         ctx.strokeStyle = "rgba(180,160,100,0.18)"; ctx.lineWidth = 13.5 * zoom; ctx.stroke();
-        // Production tubing
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
         ctx.strokeStyle = "#4a82b8"; ctx.lineWidth = 7 * zoom;
         ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,120,220,0.5)"; ctx.stroke(); ctx.shadowBlur = 0;
-        // Inner bore glow
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
         ctx.strokeStyle = "rgba(140,220,255,0.22)"; ctx.lineWidth = 2.5 * zoom; ctx.stroke();
 
-        // Kickoff point annotation
         const kp = wPts[Math.floor(nPts * 0.15)];
         ctx.fillStyle = "rgba(255,184,48,0.85)"; ctx.font = "7px 'Courier New',monospace";
-        ctx.fillText("KOP", kp[0] + 8, kp[1]); 
+        ctx.fillText("KOP", kp[0] + 8, kp[1]);
         ctx.beginPath(); ctx.arc(kp[0], kp[1], 3.5, 0, Math.PI * 2);
         ctx.fillStyle = "#ffb830"; ctx.fill();
 
-        // TD annotation
         const td = wPts[nPts];
         ctx.fillStyle = "rgba(0,229,160,0.85)"; ctx.font = "7px 'Courier New',monospace";
         ctx.fillText(`TD ${w.depth}m`, td[0] + 8, td[1]);
         ctx.beginPath(); ctx.arc(td[0], td[1], 4, 0, Math.PI * 2);
         ctx.fillStyle = "#00e5a0"; ctx.fill();
 
-        // Survey stations
         [0.25, 0.5, 0.75].forEach(u => {
           const idx = Math.floor(u * nPts);
           const [sx, sy] = wPts[idx];
@@ -440,7 +441,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
         rg.addColorStop(1, "rgba(0,100,60,0)");
         ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(rx, ry, 80 * zoom, 0, Math.PI * 2); ctx.fill();
 
-        // GOC / OWC annotations
         const [goc1x, goc1y] = toScreen(-HALF, RES_Y * 0.88, -HALF);
         const [goc2x, goc2y] = toScreen(HALF, RES_Y * 0.88, -HALF);
         ctx.strokeStyle = "rgba(255,184,48,0.45)"; ctx.lineWidth = 0.8; ctx.setLineDash([5, 5]);
@@ -466,7 +466,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
         ctx.fillStyle = `rgba(0,168,255,${0.75 * pA})`;
         ctx.shadowBlur = 8; ctx.shadowColor = "#00a8ff";
         ctx.beginPath(); ctx.arc(sx, sy, 3.5 * zoom, 0, Math.PI * 2); ctx.fill();
-        // Perf gun direction
         const pdir = toScreen(kick + 10, BED_Y + (TOTAL_D - BED_Y) * u, Math.sin(pi * 1.1) * 12 + 8);
         ctx.strokeStyle = `rgba(0,168,255,${0.35 * pA})`; ctx.lineWidth = 1; ctx.shadowBlur = 0;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pdir[0], pdir[1]); ctx.stroke();
@@ -506,7 +505,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       const drawPanel = (x: number, y: number, w2: number, h2: number, col: string) => {
         ctx.fillStyle = "rgba(2,6,20,0.88)"; ctx.beginPath(); ctx.roundRect(x, y, w2, h2, 4); ctx.fill();
         ctx.strokeStyle = col + "30"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(x, y, w2, h2, 4); ctx.stroke();
-        // Inner glow
         ctx.strokeStyle = col + "12"; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w2 - 4, h2 - 4, 3); ctx.stroke();
       };
 
@@ -528,7 +526,6 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
         ctx.fillText(h.unit, px + 8 + ctx.measureText(h.label).width + 3, py + 11);
         ctx.fillStyle = h.col; ctx.font = "bold 13px 'Courier New',monospace";
         ctx.fillText(h.value, px + 8, py + 26);
-        // Live dot
         const ldAlpha = 0.5 + Math.sin(t * 4 + i) * 0.5;
         ctx.fillStyle = `rgba(0,229,160,${ldAlpha})`;
         ctx.beginPath(); ctx.arc(px + panW - 8, py + 8, 2.5, 0, Math.PI * 2); ctx.fill();
@@ -538,9 +535,7 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       const rpx = W - 130, rpy = 48;
       drawPanel(rpx, rpy, 118, 82, "#00a8ff");
       ctx.fillStyle = "#00a8ff80"; ctx.font = "6.5px 'Courier New',monospace"; ctx.fillText("TRAJECTÓRIA", rpx + 8, rpy + 12);
-      [
-        ["MD", `${w.md}m`], ["TVD", `${w.tvd}m`], ["INC MAX", `${w.inc}°`], ["WD", `${w.wd}m`],
-      ].forEach(([k, v], i) => {
+      [["MD", `${w.md}m`], ["TVD", `${w.tvd}m`], ["INC MAX", `${w.inc}°`], ["WD", `${w.wd}m`]].forEach(([k, v], i) => {
         ctx.fillStyle = "rgba(120,165,220,0.6)"; ctx.font = "6px 'Courier New',monospace"; ctx.fillText(k as string, rpx + 8, rpy + 24 + i * 14);
         ctx.fillStyle = "#b4d4ff"; ctx.font = "bold 9px 'Courier New',monospace";
         ctx.textAlign = "right"; ctx.fillText(v as string, rpx + 110, rpy + 24 + i * 14); ctx.textAlign = "left";
@@ -598,6 +593,9 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       canvas.removeEventListener("mousemove", onMove);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("dblclick", onDblClick);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
     };
   }, []);
 
@@ -659,47 +657,35 @@ function RiskBar({ label, value, threshold }: { label: string; value: number; th
       </div>
       <div className="relative h-[3px] bg-[#0a1830] rounded-full">
         <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1.2, ease: "easeOut" }}
-          className="h-full rounded-full" style={{ background: `linear-gradient(90deg, ${col}80, ${col})`, boxShadow: `0 0 6px ${col}50` }} />
-        <div className="absolute top-[-4px] h-[11px] w-[1.5px] rounded-full opacity-60" style={{ left: `${threshold}%`, background: "#ff4365" }} />
+          className="absolute h-full rounded-full" style={{ background: col, boxShadow: `0 0 8px ${col}60` }} />
+        <div className="absolute h-3 w-[1px] top-1/2 -translate-y-1/2" style={{ left: `${threshold}%`, background: "rgba(255,255,255,0.25)" }} />
       </div>
     </div>
   );
 }
 
-/* ─── TELEMETRY TICKER ──────────────────────────────────────── */
+/* ─── TELEMETRY TICKER ─────────────────────────────────────── */
 function TelemetryTicker({ well }: { well: typeof DEFAULT_WELLS[0] }) {
-  const [vals, setVals] = useState({ bhp: well.bhp, temp: well.temp, wcut: well.wcut, gor: well.gor });
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setVals(v => ({
-        bhp: +(v.bhp + (Math.random() - 0.5) * 8).toFixed(0),
-        temp: +(v.temp + (Math.random() - 0.5) * 0.4).toFixed(1),
-        wcut: +(v.wcut + (Math.random() - 0.5) * 0.15).toFixed(2),
-        gor: +(v.gor + (Math.random() - 0.5) * 3).toFixed(0),
-      }));
-    }, 1800);
-    return () => clearInterval(iv);
-  }, []);
-
   const items = [
-    { k: "BHP", v: `${vals.bhp} bar`, col: "#00a8ff" },
-    { k: "TEMP", v: `${vals.temp}°C`, col: "#ffb830" },
-    { k: "W-CUT", v: `${vals.wcut}%`, col: vals.wcut > 30 ? "#ff4365" : "#00e5a0" },
-    { k: "GOR", v: `${vals.gor} scf/bbl`, col: "#a855f7" },
-    { k: "INCL", v: `${well.inc}°`, col: "#00e5a0" },
-    { k: "API", v: `${well.api}°`, col: "#00a8ff" },
+    { k: "PROD", v: `${(well.prod / 1000).toFixed(1)}k bbl/d`, col: "#00a8ff" },
+    { k: "BHP", v: `${well.bhp.toLocaleString()} bar`, col: "#ffb830" },
+    { k: "GOR", v: `${well.gor} scf/bbl`, col: "#a855f7" },
+    { k: "W-CUT", v: `${well.wcut}%`, col: well.wcut > 30 ? "#ff4365" : "#00e5a0" },
+    { k: "API", v: `${well.api}°`, col: "#00e5a0" },
+    { k: "TEMP", v: `${well.temp}°C`, col: "#ffb830" },
+    { k: "MD", v: `${well.md.toLocaleString()}m`, col: "#00a8ff" },
+    { k: "TVD", v: `${well.tvd.toLocaleString()}m`, col: "#6a9ec4" },
+    { k: "INC", v: `${well.inc}°`, col: "#6a9ec4" },
+    { k: "WD", v: `${well.wd.toLocaleString()}m`, col: "#00a8ff" },
   ];
-
   return (
-    <div className="flex gap-0 border border-[#0a2040] rounded-lg overflow-hidden bg-[#020a18]">
-      <div className="px-3 py-2 bg-[#001830] border-r border-[#0a2040] flex items-center">
-        <span className="text-[9px] font-mono text-[#00a8ff] tracking-widest whitespace-nowrap">TELEMETRIA LIVE</span>
-        <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
-          className="w-1.5 h-1.5 rounded-full bg-[#00e5a0] ml-2" />
+    <div className="border border-[#0a2040] bg-[#020913] rounded-lg flex items-center overflow-hidden">
+      <div className="px-3 py-1.5 border-r border-[#0a2040] flex-shrink-0">
+        <span className="text-[8px] text-[#00e5a0] font-mono tracking-wider">● LIVE TELEMETRY</span>
       </div>
       <div className="flex gap-0 overflow-x-auto flex-1">
-        {items.map(({ k, v, col }, i) => (
-          <div key={k} className={`flex flex-col px-4 py-2 border-r border-[#0a2040] last:border-0 min-w-fit`}>
+        {items.map(({ k, v, col }) => (
+          <div key={k} className="flex flex-col px-4 py-2 border-r border-[#0a2040] last:border-0 min-w-fit">
             <span className="text-[8.5px] font-mono" style={{ color: col + "80" }}>{k}</span>
             <span className="text-[11px] font-bold font-mono" style={{ color: col }}>{v}</span>
           </div>
@@ -709,117 +695,389 @@ function TelemetryTicker({ well }: { well: typeof DEFAULT_WELLS[0] }) {
   );
 }
 
-/* ─── PDF EXPORT ─────────────────────────────────────────────── */
-function generateSimulationPDF(well: typeof DEFAULT_WELLS[0]) {
+/* ─── CAPTURE CANVAS ─────────────────────────────────────────── */
+function captureCanvasAsBase64(canvasEl: HTMLCanvasElement | null): string | null {
+  if (!canvasEl) return null;
+  try {
+    return canvasEl.toDataURL("image/png");
+  } catch {
+    return null;
+  }
+}
+
+/* ─── PROFESSIONAL PDF EXPORT ─────────────────────────────────── */
+async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HTMLCanvasElement | null) {
   const doc = new jsPDF();
-  const w = doc.internal.pageSize.getWidth();
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
 
-  doc.setFillColor(4, 10, 26);
-  doc.rect(0, 0, w, 297, "F");
-  doc.setTextColor(0, 168, 255);
-  doc.setFontSize(26);
-  doc.text("AlphaData", 20, 38);
-  doc.setFontSize(9);
-  doc.setTextColor(80, 140, 190);
-  doc.text("WELL SIMULATION & RESERVOIR ENGINEERING  ·  RELATÓRIO TÉCNICO CONFIDENCIAL", 20, 50);
-  doc.setDrawColor(0, 168, 255);
-  doc.line(20, 57, w - 20, 57);
+  // Load logo
+  let logoBase64: string | null = null;
+  try { logoBase64 = await loadLogoAsBase64(); } catch {}
 
-  doc.setFontSize(20);
-  doc.setTextColor(220, 238, 255);
-  doc.text(well.name, 20, 80);
-  doc.setFontSize(10);
-  doc.setTextColor(0, 229, 160);
-  doc.text(`${well.block}  ·  ${well.op}  ·  ${well.field} FIELD`, 20, 93);
-  doc.setFontSize(8);
-  doc.setTextColor(80, 120, 160);
-  doc.text(`Coordenadas: ${well.lat.toFixed(4)}°S, ${well.lng.toFixed(4)}°E  ·  Gerado: ${new Date().toLocaleString("pt-AO")}`, 20, 103);
-  doc.setDrawColor(0, 60, 100);
-  doc.line(20, 108, w - 20, 108);
+  // ═══════════════════ PAGE 1: COVER ═══════════════════
+  // Background
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, W, H, "F");
 
-  const info = [
-    ["Campo / Bacia", `${well.field} / ${well.basin}`],
-    ["Bloco / Operadora", `${well.block} / ${well.op}`],
-    ["Tipo de Poço", well.type],
-    ["Medida Total (MD)", `${well.md.toLocaleString()} m`],
-    ["Profundidade Vertical (TVD)", `${well.tvd.toLocaleString()} m`],
-    ["Lâmina d'Água (WD)", `${well.wd.toLocaleString()} m`],
-    ["Inclinação Máxima", `${well.inc}°`],
-    ["API Gravity", `${well.api}° API`],
-    ["Pressão de Fundo (BHP)", `${well.bhp.toLocaleString()} bar`],
-    ["Temperatura do Reservatório", `${well.temp}°C`],
-    ["Produção Diária", `${well.prod.toLocaleString()} bbl/d`],
-    ["GOR", `${well.gor} scf/bbl`],
-    ["Water Cut", `${well.wcut}%`],
-    ["Probabilidade de Sucesso", `${well.prob}%`],
-    ["Nível de Risco", well.risk],
-    ["Status Operacional", well.status],
-  ];
+  // Top accent line
+  doc.setFillColor(220, 38, 38);
+  doc.rect(0, 0, W, 4, "F");
 
-  let y = 120;
-  info.forEach(([k, v]) => {
-    doc.setFillColor(8, 16, 34);
-    doc.rect(20, y - 5, w - 40, 10, "F");
-    doc.setTextColor(80, 130, 180);
-    doc.setFontSize(8);
-    doc.text(k, 24, y + 1);
-    doc.setTextColor(210, 228, 248);
-    doc.text(String(v), 100, y + 1);
-    y += 11;
-    if (y > 270) { doc.addPage(); doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F"); y = 30; }
-  });
-
-  // Page 2
-  doc.addPage();
-  doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F");
-  doc.setTextColor(0, 168, 255); doc.setFontSize(14);
-  doc.text("Dados de Produção — Histórico e Previsão IA", 20, 25);
-  doc.setFontSize(8); doc.setTextColor(80, 120, 160);
-  doc.text(`Modelo: LSTM + Random Forest  ·  Amostras: 12,847  ·  Precisão: 94.7%`, 20, 33);
-
-  autoTable(doc, {
-    startY: 40,
-    head: [["Mês", "Prod. Real (bbl/d)", "Capacidade Inst.", "Previsão IA", "Injecção de Água"]],
-    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString("pt-AO"), d.cap.toLocaleString("pt-AO"), d.ai.toLocaleString("pt-AO"), d.inj.toLocaleString("pt-AO")]),
-    theme: "grid",
-    headStyles: { fillColor: [0, 30, 60], textColor: [0, 168, 255], fontSize: 8, fontStyle: "bold" },
-    bodyStyles: { fillColor: [8, 16, 34], textColor: [190, 215, 240], fontSize: 8 },
-    alternateRowStyles: { fillColor: [12, 22, 42] },
-  });
-
-  // Page 3
-  doc.addPage();
-  doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F");
-  doc.setTextColor(0, 168, 255); doc.setFontSize(14);
-  doc.text("Matriz de Riscos Operacionais", 20, 25);
-
-  autoTable(doc, {
-    startY: 35,
-    head: [["Factor de Risco", "Valor (%)", "Limiar (%)", "Estado", "Prioridade"]],
-    body: RISK_DATA.map(r => {
-      const s = r.v >= r.t ? "⚠ CRÍTICO" : r.v >= r.t * 0.75 ? "⚡ ATENÇÃO" : "✓ OK";
-      const p = r.v >= r.t ? "ALTA" : r.v >= r.t * 0.75 ? "MÉDIA" : "BAIXA";
-      return [r.f, `${r.v}`, `${r.t}`, s, p];
-    }),
-    theme: "grid",
-    headStyles: { fillColor: [0, 30, 60], textColor: [0, 168, 255], fontSize: 8, fontStyle: "bold" },
-    bodyStyles: { fillColor: [8, 16, 34], textColor: [190, 215, 240], fontSize: 8 },
-    alternateRowStyles: { fillColor: [12, 22, 42] },
-  });
-
-  // Footer
-  const pages = doc.internal.pages.length - 1;
-  for (let i = 1; i <= pages; i++) {
-    doc.setPage(i);
-    doc.setFillColor(4, 10, 26); doc.rect(0, 284, w, 13, "F");
-    doc.setDrawColor(0, 40, 80); doc.line(20, 284, w - 20, 284);
-    doc.setFontSize(7); doc.setTextColor(60, 100, 140);
-    doc.text(`AlphaData Well Simulation Platform  ·  CONFIDENCIAL  ·  ${new Date().toLocaleDateString("pt-AO")}`, 20, 291);
-    doc.text(`Pág. ${i} / ${pages}`, w - 30, 291);
+  // Logo
+  if (logoBase64) {
+    try { doc.addImage(logoBase64, "PNG", 20, 16, 32, 32); } catch {}
   }
 
+  // Company name
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("ALPHADATA", 58, 30);
+  doc.setFontSize(8);
+  doc.setTextColor(220, 38, 38);
+  doc.setFont("helvetica", "bold");
+  doc.text("OIL & GAS ANALYTICS", 58, 38);
+
+  // Divider
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(2);
+  doc.line(20, 55, W - 20, 55);
+
+  // Report title
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text("Relatorio de Simulacao", 20, 78);
+  doc.text("de Poco", 20, 92);
+
+  doc.setFontSize(14);
+  doc.setTextColor(220, 38, 38);
+  doc.setFont("helvetica", "bold");
+  doc.text(well.name.toUpperCase(), 20, 108);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${well.block}  |  ${well.op}  |  ${well.field} Field`, 20, 118);
+  doc.text(`Bacia: ${well.basin}  |  Tipo: ${well.type}`, 20, 126);
+  doc.text(`Coordenadas: ${well.lat.toFixed(4)}S, ${well.lng.toFixed(4)}E`, 20, 134);
+
+  // Info box
+  const boxY = 148;
+  doc.setFillColor(243, 244, 246);
+  doc.roundedRect(20, boxY, W - 40, 48, 3, 3, "F");
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(20, boxY, W - 40, 48, 3, 3, "S");
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("INFORMACOES DO RELATORIO", 28, boxY + 10);
+  doc.setDrawColor(203, 213, 225);
+  doc.line(28, boxY + 13, W - 28, boxY + 13);
+
+  doc.setFontSize(9);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Tipo: Simulacao de Poco`, 28, boxY + 22);
+  doc.text(`Periodo: Actual`, 28, boxY + 30);
+  doc.text(`Gerado: ${new Date().toLocaleDateString("pt-AO")} as ${new Date().toLocaleTimeString("pt-AO")}`, 28, boxY + 38);
+  doc.text(`Status: ${well.status}`, W / 2 + 10, boxY + 22);
+  doc.text(`Risco: ${well.risk}`, W / 2 + 10, boxY + 30);
+  doc.text(`Probabilidade: ${well.prob}%`, W / 2 + 10, boxY + 38);
+
+  // Data sources
+  const dsY = boxY + 60;
+  doc.setFillColor(243, 244, 246);
+  doc.roundedRect(20, dsY, W - 40, 36, 3, 3, "F");
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(20, dsY, W - 40, 36, 3, 3, "S");
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("FONTES DE DADOS", 28, dsY + 10);
+  doc.setDrawColor(203, 213, 225);
+  doc.line(28, dsY + 13, W - 28, dsY + 13);
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  const sources = ["BPEP - Balanco Petroleiro", "ANP - Agencia Nacional Petroleo", "Modelo IA LSTM + Random Forest"];
+  sources.forEach((s, i) => doc.text(`• ${s}`, 28, dsY + 22 + i * 5));
+
+  // Confidential notice
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text("CONFIDENCIAL — Este documento contem informacoes confidenciais. Distribuicao restrita a destinatarios autorizados.", 20, H - 20);
+
+  // Footer line
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(1);
+  doc.line(20, H - 12, W - 20, H - 12);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text("AlphaData Analytics  |  www.alphadata.ao", 20, H - 7);
+  doc.text("Pag. 1", W - 35, H - 7);
+
+  // ═══════════════════ PAGE 2: 3D VISUALIZATION ═══════════════════
+  doc.addPage();
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, W, H, "F");
+
+  // Header
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 18, "F");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`AlphaData  |  ${well.name}  |  Simulacao 3D`, 20, 12);
+  doc.text("Pag. 2", W - 35, 12);
+
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Visualizacao 3D do Poco", 20, 36);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.text("Captura da simulacao interactiva com camadas geologicas, FPSO, e trajectoria do poco.", 20, 44);
+
+  // 3D Canvas screenshot
+  const canvasImg = captureCanvasAsBase64(canvasEl);
+  if (canvasImg) {
+    const imgW = W - 40;
+    const imgH = imgW * 0.6;
+    doc.setFillColor(4, 15, 34);
+    doc.roundedRect(20, 50, imgW, imgH, 3, 3, "F");
+    try { doc.addImage(canvasImg, "PNG", 20, 50, imgW, imgH); } catch {}
+    doc.setDrawColor(0, 168, 255);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(20, 50, imgW, imgH, 3, 3, "S");
+
+    // Legend below image
+    const legY = 50 + imgH + 8;
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("LEGENDA DA VISUALIZACAO", 20, legY);
+    doc.setDrawColor(203, 213, 225);
+    doc.line(20, legY + 2, W - 20, legY + 2);
+
+    const legends = [
+      { color: [0, 229, 160] as [number, number, number], label: "Zona do Reservatorio — Area de alta produtividade com saturacao de oleo" },
+      { color: [255, 67, 101] as [number, number, number], label: "Falha Geologica — Descontinuidade estrutural que pode afectar a integridade do poco" },
+      { color: [255, 184, 48] as [number, number, number], label: "GOC/OWC — Contactos Gas-Oleo e Oleo-Agua que definem os limites do reservatorio" },
+      { color: [0, 168, 255] as [number, number, number], label: "Perfuracoes — Intervalos completados para fluxo de hidrocarbonetos" },
+      { color: [74, 130, 184] as [number, number, number], label: "Coluna de Producao — Tubulacao principal para elevacao dos fluidos" },
+      { color: [37, 58, 86] as [number, number, number], label: "FPSO — Unidade flutuante de producao, armazenamento e descarga" },
+    ];
+
+    legends.forEach((leg, i) => {
+      const ly = legY + 8 + i * 10;
+      doc.setFillColor(...leg.color);
+      doc.circle(24, ly - 1, 2, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      doc.text(leg.label, 30, ly);
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text("[Visualizacao 3D nao disponivel — abra a pagina no browser para capturar]", 20, 70);
+  }
+
+  // Footer
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.5);
+  doc.line(20, H - 12, W - 20, H - 12);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+
+  // ═══════════════════ PAGE 3: TECHNICAL DATA ═══════════════════
+  doc.addPage();
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, W, H, "F");
+
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 18, "F");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`AlphaData  |  ${well.name}  |  Ficha Tecnica`, 20, 12);
+  doc.text("Pag. 3", W - 35, 12);
+
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Ficha Tecnica do Poco", 20, 36);
+
+  const techData = [
+    ["Parametro", "Valor", "Unidade", "Descricao"],
+    ["Nome do Poco", well.name, "—", "Identificacao unica do poco"],
+    ["Campo / Bacia", `${well.field} / ${well.basin}`, "—", "Localizacao do campo na bacia sedimentar"],
+    ["Bloco / Operadora", `${well.block} / ${well.op}`, "—", "Concessao e operadora responsavel"],
+    ["Tipo de Poco", well.type, "—", "Classificacao operacional (Exploracao/Producao/Dev.)"],
+    ["Medida Total (MD)", well.md.toLocaleString(), "metros", "Comprimento total da trajectoria perfurada"],
+    ["Prof. Vertical (TVD)", well.tvd.toLocaleString(), "metros", "Profundidade vertical verdadeira"],
+    ["Lamina d'Agua (WD)", well.wd.toLocaleString(), "metros", "Prof. da coluna de agua acima do fundo marinho"],
+    ["Inclinacao Maxima", String(well.inc), "graus", "Angulo maximo de desvio do poco"],
+    ["API Gravity", String(well.api), "°API", "Densidade do oleo — quanto maior, mais leve"],
+    ["Pressao de Fundo (BHP)", well.bhp.toLocaleString(), "bar", "Pressao no fundo do poco durante operacao"],
+    ["Temperatura Reserv.", String(well.temp), "°C", "Temperatura medida no reservatorio"],
+    ["Producao Diaria", well.prod.toLocaleString(), "bbl/d", "Volume de producao diaria actual"],
+    ["GOR", String(well.gor), "scf/bbl", "Razao Gas-Oleo"],
+    ["Water Cut", String(well.wcut), "%", "Percentagem de agua na producao total"],
+    ["Prob. Sucesso", String(well.prob), "%", "Estimativa IA de probabilidade de sucesso"],
+    ["Nivel de Risco", well.risk, "—", "Avaliacao de risco operacional"],
+    ["Status", well.status, "—", "Estado actual da operacao"],
+  ];
+
+  autoTable(doc, {
+    startY: 44,
+    head: [techData[0]],
+    body: techData.slice(1),
+    theme: "grid",
+    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [243, 244, 246] },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 }, 1: { cellWidth: 35 }, 2: { cellWidth: 20 }, 3: { cellWidth: 'auto' } },
+    styles: { cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.3 },
+  });
+
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.5);
+  doc.line(20, H - 12, W - 20, H - 12);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+
+  // ═══════════════════ PAGE 4: PRODUCTION DATA ═══════════════════
+  doc.addPage();
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, W, H, "F");
+
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 18, "F");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`AlphaData  |  ${well.name}  |  Dados de Producao`, 20, 12);
+  doc.text("Pag. 4", W - 35, 12);
+
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Dados de Producao — Historico e Previsao IA", 20, 36);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.text("Modelo: LSTM + Random Forest  |  Amostras: 12.847  |  Precisao: 94.7%", 20, 44);
+
+  autoTable(doc, {
+    startY: 52,
+    head: [["Mes", "Prod. Real (bbl/d)", "Capacidade Inst.", "Previsao IA", "Injeccao de Agua"]],
+    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString("pt-AO"), d.cap.toLocaleString("pt-AO"), d.ai.toLocaleString("pt-AO"), d.inj.toLocaleString("pt-AO")]),
+    theme: "grid",
+    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 8 },
+    alternateRowStyles: { fillColor: [243, 244, 246] },
+    styles: { cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.3 },
+  });
+
+  // Decline data
+  const decY = (doc as any).lastAutoTable?.finalY + 16 || 160;
+  doc.setFontSize(12);
+  doc.setTextColor(10, 10, 10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Curva de Declinio de Producao", 20, decY);
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.text("Modelo exponencial com previsao IA ate 2030", 20, decY + 7);
+
+  autoTable(doc, {
+    startY: decY + 12,
+    head: [["Ano", "Producao Real (bbl/d)", "Previsao IA (bbl/d)", "Variacao"]],
+    body: DECLINE.map(d => {
+      const var_ = d.r && d.p ? `${(((d.p - d.r) / d.r) * 100).toFixed(1)}%` : "—";
+      return [d.y, d.r ? d.r.toLocaleString("pt-AO") : "—", d.p.toLocaleString("pt-AO"), var_];
+    }),
+    theme: "grid",
+    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 8 },
+    alternateRowStyles: { fillColor: [243, 244, 246] },
+    styles: { cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.3 },
+  });
+
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.5);
+  doc.line(20, H - 12, W - 20, H - 12);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+
+  // ═══════════════════ PAGE 5: RISK MATRIX ═══════════════════
+  doc.addPage();
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, W, H, "F");
+
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 18, "F");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`AlphaData  |  ${well.name}  |  Matriz de Riscos`, 20, 12);
+  doc.text("Pag. 5", W - 35, 12);
+
+  doc.setTextColor(10, 10, 10);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Matriz de Riscos Operacionais", 20, 36);
+
+  autoTable(doc, {
+    startY: 44,
+    head: [["Factor de Risco", "Valor (%)", "Limiar (%)", "Estado", "Prioridade", "Acao Recomendada"]],
+    body: RISK_DATA.map(r => {
+      const s = r.v >= r.t ? "CRITICO" : r.v >= r.t * 0.75 ? "ATENCAO" : "OK";
+      const p = r.v >= r.t ? "ALTA" : r.v >= r.t * 0.75 ? "MEDIA" : "BAIXA";
+      const a = r.v >= r.t ? "Intervencao imediata" : r.v >= r.t * 0.75 ? "Monitoramento continuo" : "Operacao normal";
+      return [r.f, `${r.v}`, `${r.t}`, s, p, a];
+    }),
+    theme: "grid",
+    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 7.5, fontStyle: "bold" },
+    bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [243, 244, 246] },
+    styles: { cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.3 },
+    didParseCell: (data: any) => {
+      if (data.column.index === 3 && data.section === 'body') {
+        const val = data.cell.raw;
+        if (val === "CRITICO") { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = "bold"; }
+        else if (val === "ATENCAO") { data.cell.styles.textColor = [234, 179, 8]; data.cell.styles.fontStyle = "bold"; }
+        else { data.cell.styles.textColor = [34, 197, 94]; }
+      }
+    },
+  });
+
+  // Petrophysical data
+  const petroY = (doc as any).lastAutoTable?.finalY + 16 || 160;
+  doc.setFontSize(12);
+  doc.setTextColor(10, 10, 10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Analise Petrofisica", 20, petroY);
+
+  autoTable(doc, {
+    startY: petroY + 6,
+    head: [["Parametro", "Poco Actual", "Media da Bacia", "Diferenca"]],
+    body: GEO_RADAR.map(g => [g.s, `${g.A}`, `${g.B}`, `${g.A > g.B ? "+" : ""}${g.A - g.B}`]),
+    theme: "grid",
+    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 8 },
+    alternateRowStyles: { fillColor: [243, 244, 246] },
+    styles: { cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.3 },
+  });
+
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.5);
+  doc.line(20, H - 12, W - 20, H - 12);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+
   doc.save(`AlphaData_WellSim_${well.name.replace(/\s+/g, "_")}.pdf`);
-  toast.success("PDF exportado com sucesso!");
+  toast.success("PDF exportado com sucesso — 5 páginas!");
 }
 
 /* ─── MAIN ───────────────────────────────────────────────────── */
@@ -839,6 +1097,7 @@ export default function WellSimulation() {
   const [savedSimulations, setSavedSimulations] = useState<any[]>([]);
   const [loadingDB, setLoadingDB] = useState(false);
   const [newWell, setNewWell] = useState({ name: "", block: "", operator: "", field: "", basin: "Congo", type: "Exploração", depth: 3000, wd: 1000 });
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const riskCol = (r: string) => r === "Baixo" ? "#00e5a0" : r === "Médio" ? "#ffb830" : "#ff4365";
 
@@ -852,7 +1111,7 @@ export default function WellSimulation() {
   useEffect(() => { fetchSimulations(); }, [fetchSimulations]);
 
   const handleProcess = () => {
-    if (uploads.length === 0) return;
+    if (uploads.length === 0) { toast.error("Seleccione pelo menos um tipo de dados"); return; }
     setProcessing(true); setProgress(0);
     const iv = setInterval(() => {
       setProgress(p => {
@@ -875,7 +1134,7 @@ export default function WellSimulation() {
     });
     setSaving(false);
     if (error) toast.error("Erro ao salvar: " + error.message);
-    else { toast.success("Simulação salva!"); fetchSimulations(); }
+    else { toast.success("Simulação guardada com sucesso!"); fetchSimulations(); }
   };
 
   const handleCreateNew = async () => {
@@ -902,10 +1161,36 @@ export default function WellSimulation() {
     else { toast.success("Simulação eliminada"); fetchSimulations(); }
   };
 
+  const handleExportPDF = async () => {
+    const canvasEl = canvasContainerRef.current?.querySelector("canvas") || null;
+    await generateSimulationPDF(selected, canvasEl);
+  };
+
+  const handleLoadSavedSim = (sim: any) => {
+    const matchedWell = DEFAULT_WELLS.find(w => w.name === sim.well_name);
+    if (matchedWell) {
+      setSelected(matchedWell);
+      toast.success(`Poço ${sim.well_name} carregado`);
+    } else {
+      toast.info(`Dados do poço ${sim.well_name} visualizados`);
+    }
+  };
+
+  // Button style helper
+  const btnEffect = "transition-all duration-200 active:scale-[0.97] hover:shadow-lg";
+
   return (
     <div className="flex min-h-screen bg-[#020913]">
-      <Sidebar activeItem="well-simulation" isMobileOpen={sidebarOpen} setIsMobileOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col min-h-screen">
+      {/* FIXED SIDEBAR */}
+      <div className="hidden lg:block sticky top-0 h-screen z-40 flex-shrink-0">
+        <Sidebar activeItem="/well-simulation" isMobileOpen={sidebarOpen} setIsMobileOpen={setSidebarOpen} />
+      </div>
+      {/* Mobile sidebar */}
+      <div className="lg:hidden">
+        <Sidebar activeItem="/well-simulation" isMobileOpen={sidebarOpen} setIsMobileOpen={setSidebarOpen} />
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         <Header />
         <main className="flex-1 p-3 md:p-5 space-y-4 pb-20 md:pb-5 overflow-auto">
 
@@ -930,12 +1215,21 @@ export default function WellSimulation() {
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 text-[11px] font-mono"
-                  onClick={() => setShowNewDialog(true)}><Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Poço</Button>
-                <Button variant="outline" size="sm" className="border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 text-[11px] font-mono"
-                  onClick={() => generateSimulationPDF(selected)}><Download className="w-3.5 h-3.5 mr-1.5" /> Relatório PDF</Button>
-                <Button size="sm" className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 text-[11px] font-mono"
-                  onClick={handleSave} disabled={saving}><Save className="w-3.5 h-3.5 mr-1.5" />{saving ? "A salvar..." : "Guardar"}</Button>
+                <Button variant="outline" size="sm"
+                  className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[11px] font-mono ${btnEffect}`}
+                  onClick={() => setShowNewDialog(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Poço
+                </Button>
+                <Button variant="outline" size="sm"
+                  className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[11px] font-mono ${btnEffect}`}
+                  onClick={handleExportPDF}>
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Relatório PDF
+                </Button>
+                <Button size="sm"
+                  className={`bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 text-[11px] font-mono ${btnEffect}`}
+                  onClick={handleSave} disabled={saving}>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />{saving ? "A salvar..." : "Guardar"}
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -948,8 +1242,8 @@ export default function WellSimulation() {
             {DEFAULT_WELLS.map((w) => {
               const active = selected.id === w.id;
               return (
-                <motion.button key={w.id} onClick={() => setSelected(w)} whileHover={{ y: -1 }}
-                  className={`flex-shrink-0 p-3 rounded-lg text-left border transition-all font-mono min-w-[130px] ${active
+                <motion.button key={w.id} onClick={() => setSelected(w)} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                  className={`flex-shrink-0 p-3 rounded-lg text-left border transition-all font-mono min-w-[130px] ${btnEffect} ${active
                     ? "bg-[#001830] border-[#00a8ff]/40 shadow-lg shadow-[#00a8ff]/10"
                     : "bg-[#030d20] border-[#0a1e38] hover:border-[#00a8ff]/20"}`}>
                   <div className={`text-[11px] font-bold whitespace-nowrap ${active ? "text-[#00a8ff]" : "text-[#b4d4f4]"}`}>{w.name}</div>
@@ -974,23 +1268,25 @@ export default function WellSimulation() {
               <CardHeader className="py-2.5 px-4 flex-row items-center justify-between border-b border-[#0a2040]">
                 <CardTitle className="text-[10px] font-mono tracking-widest uppercase flex items-center gap-2 text-[#4a8ab4]">
                   <Boxes className="w-4 h-4 text-[#00e5a0]" />
-                  {viewMode === "2d" ? "Secção Transversal 2D" : viewMode === "blend" ? "Vista Híbrida" : "Visualização 3D Interactiva"} — {selected.name}
-                  <span className="text-[#2a5272] ml-2">· arrastar para rodar · scroll para zoom · dblclick auto-spin</span>
+                  <span className="hidden sm:inline">
+                    {viewMode === "2d" ? "Secção Transversal 2D" : viewMode === "blend" ? "Vista Híbrida" : "Visualização 3D Interactiva"} — {selected.name}
+                  </span>
+                  <span className="sm:hidden text-[9px]">{selected.name}</span>
                 </CardTitle>
                 <div className="flex gap-1">
-                  {[{ id: "2d", label: "SECTION" }, { id: "blend", label: "HYBRID" }, { id: "3d", label: "3D VIEW" }].map(v => (
-                    <Button key={v.id} size="sm" className={`h-6 text-[9px] px-2 font-mono tracking-wider ${viewMode === v.id
+                  {[{ id: "2d", label: "2D" }, { id: "blend", label: "HYB" }, { id: "3d", label: "3D" }].map(v => (
+                    <Button key={v.id} size="sm" className={`h-6 text-[9px] px-2 font-mono tracking-wider ${btnEffect} ${viewMode === v.id
                       ? "bg-[#00a8ff]/15 border border-[#00a8ff]/40 text-[#00a8ff]"
-                      : "bg-transparent border border-[#0a2040] text-[#3a6a8a] hover:text-[#00a8ff]"}`}
+                      : "bg-transparent border border-[#0a2040] text-[#3a6a8a] hover:text-[#00a8ff] hover:border-[#00a8ff]/30"}`}
                       onClick={() => setViewMode(v.id)}>{v.label}</Button>
                   ))}
                 </div>
               </CardHeader>
-              <div className="h-[360px] md:h-[520px] bg-[#020913] relative">
+              <div ref={canvasContainerRef} className="h-[300px] md:h-[520px] bg-[#020913] relative">
                 <WellCanvas well={selected} viewMode={viewMode} />
               </div>
               <div className="flex gap-4 p-3 border-t border-[#0a2040] flex-wrap">
-                {[["#00e5a0", "Reservatório"], ["#ff4365", "Falha Geológica"], ["#ffb830", "GOC/OWC"], ["#00a8ff", "Perfurações"], ["#4a82b8", "Coluna"], ["rgba(180,210,255,0.5)", "Legenda"]].map(([col, lab]) => (
+                {[["#00e5a0", "Reservatório"], ["#ff4365", "Falha"], ["#ffb830", "GOC/OWC"], ["#00a8ff", "Perfurações"], ["#4a82b8", "Coluna"]].map(([col, lab]) => (
                   <div key={lab as string} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full" style={{ background: col as string }} />
                     <span className="text-[9px] text-[#3a6a8a] font-mono">{lab}</span>
@@ -1001,7 +1297,6 @@ export default function WellSimulation() {
 
             {/* ── RIGHT PANEL ── */}
             <div className="flex flex-col gap-3">
-
               {/* Well tech specs */}
               <Card className="border-[#0a2040] bg-[#020913]">
                 <CardHeader className="py-2.5 px-4 border-b border-[#0a2040]">
@@ -1014,15 +1309,10 @@ export default function WellSimulation() {
                 </CardHeader>
                 <CardContent className="py-2 px-4">
                   {[
-                    ["Operadora", selected.op],
-                    ["Bloco", selected.block],
-                    ["Bacia", selected.basin],
-                    ["Tipo", selected.type],
-                    ["MD / TVD", `${selected.md}m / ${selected.tvd}m`],
-                    ["Incl. Máx.", `${selected.inc}°`],
-                    ["API Gravity", `${selected.api}° API`],
-                    ["BHP", `${selected.bhp.toLocaleString()} bar`],
-                    ["Temp. Res.", `${selected.temp}°C`],
+                    ["Operadora", selected.op], ["Bloco", selected.block], ["Bacia", selected.basin],
+                    ["Tipo", selected.type], ["MD / TVD", `${selected.md}m / ${selected.tvd}m`],
+                    ["Incl. Máx.", `${selected.inc}°`], ["API Gravity", `${selected.api}° API`],
+                    ["BHP", `${selected.bhp.toLocaleString()} bar`], ["Temp. Res.", `${selected.temp}°C`],
                   ].map(([k, v]) => (
                     <div key={k as string} className="flex justify-between border-b border-[#0a1830] py-1.5 last:border-0">
                       <span className="text-[9.5px] text-[#3a6a8a] font-mono">{k}</span>
@@ -1035,67 +1325,40 @@ export default function WellSimulation() {
               {/* Gauges */}
               <Card className="border-[#0a2040] bg-[#020913] p-4">
                 <p className="text-[9px] text-[#2a5272] tracking-widest mb-3 uppercase font-mono">Indicadores Chave</p>
-                <div className="grid grid-cols-3 gap-1 justify-items-center">
-                  <Gauge value={selected.prob} label="SUCESSO" color={selected.prob > 85 ? "#00e5a0" : "#ffb830"} unit="%" />
-                  <Gauge value={Math.round(selected.api)} max={50} label="API °GRAV" color="#00a8ff" unit="°API" />
-                  <Gauge value={Math.round(selected.prod / 1000)} max={30} label="PROD/DIA" color="#00e5a0" unit="kbbl/d" />
+                <div className="grid grid-cols-3 gap-2">
+                  <Gauge value={selected.prob} label="Sucesso" color="#00e5a0" unit="%" />
+                  <Gauge value={selected.prod} max={30000} label="Prod." color="#00a8ff" unit="bbl/d" />
+                  <Gauge value={selected.wcut} label="Water Cut" color={selected.wcut > 30 ? "#ff4365" : "#ffb830"} unit="%" />
                 </div>
               </Card>
 
-              {/* Pressure & GOR */}
+              {/* Risk summary */}
               <Card className="border-[#0a2040] bg-[#020913] p-4">
-                <p className="text-[9px] text-[#2a5272] tracking-widest mb-3 uppercase font-mono">Parâmetros de Fluido</p>
-                <div className="space-y-2.5">
-                  {[
-                    { label: "GOR (Gas-Oil Ratio)", value: selected.gor, max: 1200, col: "#a855f7" },
-                    { label: "Water Cut", value: selected.wcut, max: 100, col: selected.wcut > 30 ? "#ff4365" : "#00e5a0" },
-                    { label: "Prod. Diária (kbbl/d)", value: Math.round(selected.prod / 1000), max: 30, col: "#00a8ff" },
-                  ].map(({ label, value, max, col }) => (
-                    <div key={label}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-[9px] text-[#3a6a8a] font-mono">{label}</span>
-                        <span className="text-[10px] font-bold font-mono" style={{ color: col }}>{value}</span>
-                      </div>
-                      <div className="h-[3px] bg-[#0a1830] rounded-full">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (value / max) * 100)}%` }}
-                          transition={{ duration: 1.2 }} className="h-full rounded-full"
-                          style={{ background: `linear-gradient(90deg, ${col}60, ${col})` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-[9px] text-[#2a5272] tracking-widest mb-3 uppercase font-mono">Riscos Operacionais</p>
+                {RISK_DATA.slice(0, 4).map(r => <RiskBar key={r.f} label={r.f} value={r.v} threshold={r.t} />)}
               </Card>
 
-              {/* AI Model */}
-              <Card className="border-[#0a2040] bg-[#020913] p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[9px] text-[#2a5272] tracking-widest uppercase font-mono flex items-center gap-2">
-                    <Cpu className="w-3.5 h-3.5 text-[#00a8ff]" /> Motor de IA
-                  </p>
-                  <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }}
-                    className="text-[8px] font-mono text-[#00e5a0] border border-[#00e5a0]/30 px-1.5 py-0.5 rounded">
-                    ● ACTIVO
-                  </motion.span>
-                </div>
-                {[["Arquitectura", "LSTM + Random Forest"], ["Precisão do Modelo", "94.7%"], ["Amostras Treino", "12,847"], ["Horizon. Previsão", "24 meses"], ["Última Calibração", "Hoje 06:12"]].map(([k, v]) => (
-                  <div key={k} className="flex justify-between mb-1.5 border-b border-[#0a1830] pb-1.5 last:border-0">
-                    <span className="text-[9px] text-[#2a5272] font-mono">{k}</span>
-                    <span className="text-[9px] text-[#6a9ec4] font-bold font-mono">{v}</span>
-                  </div>
-                ))}
-                <div className="h-[3px] bg-[#0a1830] rounded-full mt-2 overflow-hidden">
-                  <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-[#00a8ff] to-transparent" />
-                </div>
-              </Card>
+              {/* Quick actions */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm"
+                  className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[10px] font-mono w-full ${btnEffect}`}
+                  onClick={handleExportPDF}>
+                  <FileText className="w-3 h-3 mr-1" /> PDF
+                </Button>
+                <Button variant="outline" size="sm"
+                  className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00e5a0]/40 hover:bg-[#001830] text-[10px] font-mono w-full ${btnEffect}`}
+                  onClick={handleSave} disabled={saving}>
+                  <Save className="w-3 h-3 mr-1" /> Guardar
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* ── DATA INGESTION ROW ── */}
+          {/* ── UPLOAD SECTION ── */}
           <Card className="border-[#0a2040] bg-[#020913]">
             <CardHeader className="py-2.5 px-4 border-b border-[#0a2040]">
               <CardTitle className="text-[10px] font-mono tracking-widest uppercase text-[#3a6a8a] flex items-center gap-2">
-                <Upload className="w-4 h-4 text-[#00a8ff]" /> Ingestão de Dados Técnicos — {selected.field}
+                <Upload className="w-4 h-4 text-[#00a8ff]" /> Upload de Dados & Processamento IA
               </CardTitle>
             </CardHeader>
             <CardContent className="flex gap-2.5 flex-wrap items-center p-4">
@@ -1110,8 +1373,9 @@ export default function WellSimulation() {
                 const up = uploads.includes(i);
                 const IconComp = Icon as any;
                 return (
-                  <motion.button key={i} whileHover={{ y: -2 }} onClick={() => setUploads(u => up ? u.filter(x => x !== i) : [...u, i])}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all min-w-[100px] ${up
+                  <motion.button key={i} whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}
+                    onClick={() => setUploads(u => up ? u.filter(x => x !== i) : [...u, i])}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all min-w-[100px] ${btnEffect} ${up
                       ? "border-[#00a8ff]/40 bg-[#001830] text-[#00a8ff]"
                       : "border-[#0a1e38] bg-[#030d20] text-[#3a6a8a] hover:border-[#00a8ff]/25 hover:text-[#6a9ec4]"}`}>
                     <IconComp className="w-5 h-5" />
@@ -1122,7 +1386,7 @@ export default function WellSimulation() {
               })}
               <div className="ml-auto flex flex-col gap-2 items-end">
                 <Button disabled={processing || uploads.length === 0} onClick={handleProcess}
-                  className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-[11px]">
+                  className={`bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-[11px] ${btnEffect}`}>
                   <Zap className="w-4 h-4 mr-1.5" />
                   {processing ? `Processando ${Math.round(progress)}%` : `Processar com IA (${uploads.length} ficheiros)`}
                 </Button>
@@ -1141,7 +1405,7 @@ export default function WellSimulation() {
           {/* ── CHARTS ── */}
           <Card className="border-[#0a2040] bg-[#020913]">
             <Tabs value={tab} onValueChange={setTab}>
-              <div className="border-b border-[#0a2040] px-4">
+              <div className="border-b border-[#0a2040] px-4 overflow-x-auto">
                 <TabsList className="bg-transparent h-auto p-0 gap-0">
                   {[
                     { id: "prod", label: "Produção", icon: Activity },
@@ -1151,20 +1415,18 @@ export default function WellSimulation() {
                     { id: "decline", label: "Declínio", icon: TrendingDown },
                   ].map(t => (
                     <TabsTrigger key={t.id} value={t.id}
-                      className="text-[9.5px] tracking-widest uppercase font-mono rounded-none border-b-2 border-transparent data-[state=active]:border-[#00a8ff] data-[state=active]:bg-transparent data-[state=active]:text-[#00a8ff] text-[#3a6a8a] px-4 py-2.5">
-                      <t.icon className="w-3.5 h-3.5 mr-1.5" />{t.label}
+                      className={`text-[9.5px] tracking-widest uppercase font-mono rounded-none border-b-2 border-transparent data-[state=active]:border-[#00a8ff] data-[state=active]:bg-transparent data-[state=active]:text-[#00a8ff] text-[#3a6a8a] px-3 md:px-4 py-2.5 ${btnEffect}`}>
+                      <t.icon className="w-3.5 h-3.5 mr-1" /><span className="hidden sm:inline">{t.label}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
               </div>
               <div className="p-4">
-
-                {/* PRODUCTION */}
                 <TabsContent value="prod" className="mt-0">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Produção vs Capacidade vs Previsão IA — {selected.block}</p>
                     <div className="flex gap-3 text-[9px] font-mono">
-                      {[["#00a8ff", "Real"], ["#3a6a8a", "Capacidade"], ["#00e5a0", "IA"], ["#6a4ab8", "Injecção"]].map(([c, l]) => (
+                      {[["#00a8ff", "Real"], ["#3a6a8a", "Cap."], ["#00e5a0", "IA"], ["#6a4ab8", "Inj."]].map(([c, l]) => (
                         <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
                       ))}
                     </div>
@@ -1172,104 +1434,72 @@ export default function WellSimulation() {
                   <ResponsiveContainer width="100%" height={270}>
                     <AreaChart data={PROD_DATA}>
                       <defs>
-                        <linearGradient id="gReal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#00a8ff" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="#00a8ff" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="gInj" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6a4ab8" stopOpacity={0.15} />
-                          <stop offset="100%" stopColor="#6a4ab8" stopOpacity={0} />
-                        </linearGradient>
+                        <linearGradient id="gReal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#00a8ff" stopOpacity={0.25} /><stop offset="100%" stopColor="#00a8ff" stopOpacity={0} /></linearGradient>
+                        <linearGradient id="gInj" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6a4ab8" stopOpacity={0.15} /><stop offset="100%" stopColor="#6a4ab8" stopOpacity={0} /></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
                       <XAxis dataKey="m" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Area type="monotone" dataKey="cap" stroke="#2a4a6a" strokeDasharray="5 5" strokeWidth={1.2} fill="none" name="Capacidade Inst." />
+                      <Area type="monotone" dataKey="cap" stroke="#2a4a6a" strokeDasharray="5 5" strokeWidth={1.2} fill="none" name="Capacidade" />
                       <Area type="monotone" dataKey="real" stroke="#00a8ff" strokeWidth={2.5} fill="url(#gReal)" name="Produção Real" />
                       <Area type="monotone" dataKey="ai" stroke="#00e5a0" strokeDasharray="6 3" strokeWidth={2} fill="none" name="Previsão IA" />
-                      <Area type="monotone" dataKey="inj" stroke="#6a4ab8" strokeWidth={1.5} fill="url(#gInj)" name="Injecção Água" />
+                      <Area type="monotone" dataKey="inj" stroke="#6a4ab8" strokeWidth={1.5} fill="url(#gInj)" name="Injecção" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </TabsContent>
 
-                {/* PRESSURE */}
                 <TabsContent value="pressure" className="mt-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Curva de Pressão vs Profundidade — {selected.name}</p>
-                    <div className="flex gap-3 text-[9px] font-mono">
-                      {[["#ff4365", "Fract."], ["#00a8ff", "Poro"], ["#00e5a0", "Lama"], ["#3a6a8a", "Hidrost."]].map(([c, l]) => (
-                        <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Curva de Pressão vs Profundidade — {selected.name}</p>
                   <ResponsiveContainer width="100%" height={270}>
                     <LineChart data={PRESSURE_DEPTH} layout="vertical">
                       <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
-                      <XAxis type="number" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} label={{ value: "Pressão (MPa)", position: "insideBottom", offset: -2, fill: "#2a5272", fontSize: 9 }} />
+                      <XAxis type="number" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} />
                       <YAxis type="number" dataKey="depth" reversed tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}m`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Line type="monotone" dataKey="frac" stroke="#ff4365" strokeWidth={1.8} dot={false} name="Pressão Fractura" />
-                      <Line type="monotone" dataKey="pore" stroke="#00a8ff" strokeWidth={2} dot={false} name="Pressão de Poros" />
-                      <Line type="monotone" dataKey="mud" stroke="#00e5a0" strokeWidth={1.8} strokeDasharray="6 3" dot={false} name="Janela de Lama" />
-                      <Line type="monotone" dataKey="hydro" stroke="#2a4a6a" strokeWidth={1.2} strokeDasharray="3 4" dot={false} name="Gradiente Hidrost." />
+                      <Line type="monotone" dataKey="frac" stroke="#ff4365" strokeWidth={1.8} dot={false} name="Fractura" />
+                      <Line type="monotone" dataKey="pore" stroke="#00a8ff" strokeWidth={2} dot={false} name="Poros" />
+                      <Line type="monotone" dataKey="mud" stroke="#00e5a0" strokeWidth={1.8} strokeDasharray="6 3" dot={false} name="Lama" />
+                      <Line type="monotone" dataKey="hydro" stroke="#2a4a6a" strokeWidth={1.2} strokeDasharray="3 4" dot={false} name="Hidrost." />
                     </LineChart>
                   </ResponsiveContainer>
                 </TabsContent>
 
-                {/* GEO */}
                 <TabsContent value="geo" className="mt-0">
-                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Análise Petrofísica — {selected.field} vs Média da Bacia</p>
+                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Análise Petrofísica — {selected.field}</p>
                   <ResponsiveContainer width="100%" height={270}>
                     <RadarChart data={GEO_RADAR} cx="50%" cy="50%" outerRadius="68%">
                       <PolarGrid stroke="rgba(0,60,100,0.6)" />
                       <PolarAngleAxis dataKey="s" tick={{ fontSize: 9.5, fill: "#2a5272", fontFamily: "Courier New" }} />
                       <PolarRadiusAxis angle={30} tick={{ fontSize: 7, fill: "#1a3a5a" }} />
                       <Radar name="Poço Actual" dataKey="A" stroke="#00a8ff" fill="#00a8ff" fillOpacity={0.12} strokeWidth={2} dot={{ fill: "#00a8ff", r: 3 }} />
-                      <Radar name="Média da Bacia" dataKey="B" stroke="#ffb830" fill="#ffb830" fillOpacity={0.06} strokeWidth={1.5} dot={{ fill: "#ffb830", r: 2 }} />
+                      <Radar name="Média Bacia" dataKey="B" stroke="#ffb830" fill="#ffb830" fillOpacity={0.06} strokeWidth={1.5} dot={{ fill: "#ffb830", r: 2 }} />
                       <Legend wrapperStyle={{ fontSize: 9, fontFamily: "Courier New", color: "#3a6a8a" }} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </TabsContent>
 
-                {/* RISK */}
                 <TabsContent value="risk" className="mt-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Matriz de Riscos Operacionais — {selected.name}</p>
-                    <div className="flex gap-2 text-[9px] font-mono">
-                      <span className="text-[#ff4365] border border-[#ff4365]/30 px-1.5 py-0.5 rounded bg-[#ff4365]/8">CRÍTICO ≥ limiar</span>
-                      <span className="text-[#ffb830] border border-[#ffb830]/30 px-1.5 py-0.5 rounded bg-[#ffb830]/8">ATENÇÃO ≥75%</span>
-                      <span className="text-[#00e5a0] border border-[#00e5a0]/30 px-1.5 py-0.5 rounded bg-[#00e5a0]/8">OK</span>
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Matriz de Riscos — {selected.name}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
                     {RISK_DATA.map(r => <RiskBar key={r.f} label={r.f} value={r.v} threshold={r.t} />)}
                   </div>
                 </TabsContent>
 
-                {/* DECLINE */}
                 <TabsContent value="decline" className="mt-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Curva de Declínio de Produção — Modelo Exponencial</p>
-                    <div className="flex gap-3 text-[9px] font-mono">
-                      {[["#00a8ff", "Real"], ["#ffb830", "Previsão IA"]].map(([c, l]) => (
-                        <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Curva de Declínio — Modelo Exponencial</p>
                   <ResponsiveContainer width="100%" height={270}>
                     <LineChart data={DECLINE}>
                       <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
                       <XAxis dataKey="y" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <ReferenceLine x="2025" stroke="rgba(0,168,255,0.2)" strokeDasharray="4 4" label={{ value: "HOJE", fill: "#2a5272", fontSize: 8, fontFamily: "Courier New" }} />
-                      <Line type="monotone" dataKey="r" stroke="#00a8ff" strokeWidth={2.5} dot={{ fill: "#00a8ff", r: 4, strokeWidth: 0 }} name="Real (bbl/d)" connectNulls={false} />
-                      <Line type="monotone" dataKey="p" stroke="#ffb830" strokeWidth={2} strokeDasharray="7 3" dot={{ fill: "#ffb830", r: 3, strokeWidth: 0 }} name="Previsão IA (bbl/d)" />
+                      <ReferenceLine x="2025" stroke="rgba(0,168,255,0.2)" strokeDasharray="4 4" />
+                      <Line type="monotone" dataKey="r" stroke="#00a8ff" strokeWidth={2.5} dot={{ fill: "#00a8ff", r: 4, strokeWidth: 0 }} name="Real" connectNulls={false} />
+                      <Line type="monotone" dataKey="p" stroke="#ffb830" strokeWidth={2} strokeDasharray="7 3" dot={{ fill: "#ffb830", r: 3, strokeWidth: 0 }} name="Previsão IA" />
                     </LineChart>
                   </ResponsiveContainer>
                 </TabsContent>
-
               </div>
             </Tabs>
           </Card>
@@ -1288,19 +1518,20 @@ export default function WellSimulation() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-[#0a1830] hover:bg-transparent">
-                    {["Poço", "Bloco", "Operadora", "Bacia / Tipo", "MD (m)", "API°", "Sucesso", "Status", "Acção"].map(h => (
+                    {["Poço", "Bloco", "Operadora", "Bacia", "MD", "API°", "Sucesso", "Status", "Acção"].map(h => (
                       <TableHead key={h} className="text-[9px] font-mono text-[#2a5272] tracking-wider">{h}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {DEFAULT_WELLS.map(w => (
-                    <TableRow key={w.id} className={`border-[#0a1830] cursor-pointer transition-colors ${selected.id === w.id ? "bg-[#001830]" : "hover:bg-[#030d20]"}`}
+                    <TableRow key={w.id}
+                      className={`border-[#0a1830] cursor-pointer transition-all ${selected.id === w.id ? "bg-[#001830]" : "hover:bg-[#030d20]"}`}
                       onClick={() => setSelected(w)}>
                       <TableCell className="text-[10px] font-bold font-mono text-[#b4d4f4]">{w.name}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#3a6a8a]">{w.block}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#3a6a8a]">{w.op}</TableCell>
-                      <TableCell><span className="text-[9px] font-mono text-[#2a5272]">{w.basin} · {w.type}</span></TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{w.basin}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#4a7a9a]">{w.md.toLocaleString()}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#4a7a9a]">{w.api}°</TableCell>
                       <TableCell>
@@ -1317,7 +1548,7 @@ export default function WellSimulation() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#00a8ff]">
+                        <Button variant="ghost" size="sm" className={`h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#00a8ff] ${btnEffect}`}>
                           <Eye className="w-3 h-3 mr-1" /> Ver
                         </Button>
                       </TableCell>
@@ -1329,17 +1560,23 @@ export default function WellSimulation() {
                       <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.block}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.operator}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.basin}</TableCell>
-                      <TableCell className="text-[9px] font-mono text-[#2a5272]">—</TableCell>
-                      <TableCell className="text-[9px] font-mono text-[#2a5272]">—</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.depth?.toLocaleString() || "—"}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.api_gravity || "—"}</TableCell>
                       <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.success_probability || 0}%</TableCell>
                       <TableCell>
                         <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded border bg-[#3a6a8a]/8 text-[#3a6a8a] border-[#3a6a8a]/25">{s.status}</span>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#ff4365]"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className={`h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#00a8ff] ${btnEffect}`}
+                            onClick={() => handleLoadSavedSim(s)}>
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className={`h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#ff4365] ${btnEffect}`}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1360,18 +1597,27 @@ export default function WellSimulation() {
             <DialogDescription className="text-[#3a6a8a] text-[11px] font-mono">Introduza os parâmetros iniciais para criar uma nova simulação.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Nome do Poço *</Label>
-              <Input value={newWell.name} onChange={e => setNewWell(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Girassol-5" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Bloco</Label>
-                <Input value={newWell.block} onChange={e => setNewWell(p => ({ ...p, block: e.target.value }))} placeholder="Bloco 17" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Operadora</Label>
-                <Input value={newWell.operator} onChange={e => setNewWell(p => ({ ...p, operator: e.target.value }))} placeholder="TotalEnergies" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
+            <div>
+              <Label className="text-[10px] font-mono text-[#3a6a8a]">Nome do Poço *</Label>
+              <Input value={newWell.name} onChange={e => setNewWell(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Girassol-5" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Campo</Label>
-                <Input value={newWell.field} onChange={e => setNewWell(p => ({ ...p, field: e.target.value }))} placeholder="Girassol" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Bacia Sedimentar</Label>
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Bloco</Label>
+                <Input value={newWell.block} onChange={e => setNewWell(p => ({ ...p, block: e.target.value }))} placeholder="Bloco 17" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Operadora</Label>
+                <Input value={newWell.operator} onChange={e => setNewWell(p => ({ ...p, operator: e.target.value }))} placeholder="TotalEnergies" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Campo</Label>
+                <Input value={newWell.field} onChange={e => setNewWell(p => ({ ...p, field: e.target.value }))} placeholder="Girassol" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Bacia</Label>
                 <Select value={newWell.basin} onValueChange={v => setNewWell(p => ({ ...p, basin: v }))}>
                   <SelectTrigger className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#030d20] border-[#0a2040]">
@@ -1381,16 +1627,21 @@ export default function WellSimulation() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Prof. Total MD (m)</Label>
-                <Input type="number" value={newWell.depth} onChange={e => setNewWell(p => ({ ...p, depth: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
-              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Lâmina d'Água (m)</Label>
-                <Input type="number" value={newWell.wd} onChange={e => setNewWell(p => ({ ...p, wd: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Prof. Total MD (m)</Label>
+                <Input type="number" value={newWell.depth} onChange={e => setNewWell(p => ({ ...p, depth: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-mono text-[#3a6a8a]">Lâmina d'Água (m)</Label>
+                <Input type="number" value={newWell.wd} onChange={e => setNewWell(p => ({ ...p, wd: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" />
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewDialog(false)} className="border-[#0a2040] text-[#3a6a8a] font-mono text-sm">Cancelar</Button>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}
+              className={`border-[#0a2040] text-[#3a6a8a] font-mono text-sm ${btnEffect}`}>Cancelar</Button>
             <Button onClick={handleCreateNew} disabled={saving || !newWell.name}
-              className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-sm">
+              className={`bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-sm ${btnEffect}`}>
               {saving ? "A criar..." : "Criar Simulação"}
             </Button>
           </DialogFooter>
