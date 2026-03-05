@@ -4,6 +4,7 @@ import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend,
+  ScatterChart, Scatter, ZAxis, ReferenceLine,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -29,30 +30,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Eye, Plus, Download, Save, Upload, Cpu, Activity, Layers,
   BarChart3, TrendingDown, Shield, Crosshair, Droplets, Thermometer,
-  FileText, Trash2, Zap,
+  FileText, Trash2, Zap, AlertTriangle, CheckCircle2, XCircle,
+  Gauge as GaugeIcon, Radio, Waves, Boxes, Drill,
 } from "lucide-react";
 
-/* ─── WELL DATA (Angolan basins) ─────────────────────────────── */
+/* ─── WELL DATA ─────────────────────────────────────────────── */
 const DEFAULT_WELLS = [
-  { id: "w1", name: "Girassol-4", block: "Bloco 17", op: "TotalEnergies", field: "Girassol", basin: "Congo", type: "Produção", depth: 4250, wd: 1360, status: "Concluído", prob: 92, risk: "Baixo", prod: 18500, api: 30.2, lat: -7.35, lng: 11.82 },
-  { id: "w2", name: "Dalia-7", block: "Bloco 17", op: "TotalEnergies", field: "Dalia", basin: "Congo", type: "Desenvolvimento", depth: 3890, wd: 1400, status: "Em análise", prob: 85, risk: "Médio", prod: 15200, api: 23.6, lat: -7.42, lng: 11.75 },
-  { id: "w3", name: "Kaombo Norte-2", block: "Bloco 32", op: "TotalEnergies", field: "Kaombo", basin: "Congo", type: "Exploração", depth: 4680, wd: 1950, status: "Concluído", prob: 78, risk: "Médio", prod: 22400, api: 27.8, lat: -7.58, lng: 11.64 },
-  { id: "w4", name: "Plutónio-A3", block: "Bloco 18", op: "BP", field: "Plutónio", basin: "Congo", type: "Produção", depth: 3540, wd: 1300, status: "Concluído", prob: 88, risk: "Baixo", prod: 16800, api: 33.1, lat: -7.68, lng: 11.55 },
-  { id: "w5", name: "Kissanje-5", block: "Bloco 15/06", op: "Eni Angola", field: "Kissanje", basin: "Kwanza", type: "Avaliação", depth: 3980, wd: 850, status: "Em análise", prob: 71, risk: "Alto", prod: 8900, api: 29.4, lat: -8.12, lng: 12.34 },
-  { id: "w6", name: "Mafumeira Sul-1", block: "Bloco 0", op: "Chevron", field: "Mafumeira Sul", basin: "Cabinda", type: "Exploração", depth: 2450, wd: 65, status: "Concluído", prob: 94, risk: "Baixo", prod: 11200, api: 36.5, lat: -5.42, lng: 12.08 },
-  { id: "w7", name: "Pazflor-B2", block: "Bloco 17", op: "TotalEnergies", field: "Pazflor", basin: "Congo", type: "Desenvolvimento", depth: 4120, wd: 1200, status: "Pendente", prob: 82, risk: "Médio", prod: 19600, api: 25.9, lat: -7.31, lng: 11.88 },
-  { id: "w8", name: "CLOV-E1", block: "Bloco 17", op: "TotalEnergies", field: "CLOV", basin: "Congo", type: "Produção", depth: 3750, wd: 1350, status: "Concluído", prob: 90, risk: "Baixo", prod: 21000, api: 31.7, lat: -7.39, lng: 11.79 },
+  { id: "w1", name: "Girassol-4", block: "Bloco 17", op: "TotalEnergies", field: "Girassol", basin: "Congo", type: "Produção", depth: 4250, wd: 1360, status: "Concluído", prob: 92, risk: "Baixo", prod: 18500, api: 30.2, gor: 485, wcut: 12.4, bhp: 4280, temp: 178, lat: -7.35, lng: 11.82, tvd: 4180, md: 4250, inc: 22.4 },
+  { id: "w2", name: "Dalia-7", block: "Bloco 17", op: "TotalEnergies", field: "Dalia", basin: "Congo", type: "Desenvolvimento", depth: 3890, wd: 1400, status: "Em análise", prob: 85, risk: "Médio", prod: 15200, api: 23.6, gor: 612, wcut: 28.7, bhp: 3920, temp: 164, lat: -7.42, lng: 11.75, tvd: 3750, md: 3890, inc: 31.2 },
+  { id: "w3", name: "Kaombo Norte-2", block: "Bloco 32", op: "TotalEnergies", field: "Kaombo", basin: "Congo", type: "Exploração", depth: 4680, wd: 1950, status: "Concluído", prob: 78, risk: "Médio", prod: 22400, api: 27.8, gor: 341, wcut: 8.2, bhp: 4890, temp: 198, lat: -7.58, lng: 11.64, tvd: 4520, md: 4680, inc: 18.6 },
+  { id: "w4", name: "Plutónio-A3", block: "Bloco 18", op: "BP", field: "Plutónio", basin: "Congo", type: "Produção", depth: 3540, wd: 1300, status: "Concluído", prob: 88, risk: "Baixo", prod: 16800, api: 33.1, gor: 278, wcut: 5.1, bhp: 3650, temp: 152, lat: -7.68, lng: 11.55, tvd: 3400, md: 3540, inc: 14.8 },
+  { id: "w5", name: "Kissanje-5", block: "Bloco 15/06", op: "Eni Angola", field: "Kissanje", basin: "Kwanza", type: "Avaliação", depth: 3980, wd: 850, status: "Em análise", prob: 71, risk: "Alto", prod: 8900, api: 29.4, gor: 892, wcut: 44.3, bhp: 3210, temp: 141, lat: -8.12, lng: 12.34, tvd: 3820, md: 3980, inc: 27.9 },
+  { id: "w6", name: "Mafumeira Sul-1", block: "Bloco 0", op: "Chevron", field: "Mafumeira Sul", basin: "Cabinda", type: "Exploração", depth: 2450, wd: 65, status: "Concluído", prob: 94, risk: "Baixo", prod: 11200, api: 36.5, gor: 195, wcut: 3.8, bhp: 2580, temp: 112, lat: -5.42, lng: 12.08, tvd: 2420, md: 2450, inc: 8.4 },
+  { id: "w7", name: "Pazflor-B2", block: "Bloco 17", op: "TotalEnergies", field: "Pazflor", basin: "Congo", type: "Desenvolvimento", depth: 4120, wd: 1200, status: "Pendente", prob: 82, risk: "Médio", prod: 19600, api: 25.9, gor: 524, wcut: 18.9, bhp: 4180, temp: 172, lat: -7.31, lng: 11.88, tvd: 3980, md: 4120, inc: 24.1 },
+  { id: "w8", name: "CLOV-E1", block: "Bloco 17", op: "TotalEnergies", field: "CLOV", basin: "Congo", type: "Produção", depth: 3750, wd: 1350, status: "Concluído", prob: 90, risk: "Baixo", prod: 21000, api: 31.7, gor: 318, wcut: 9.6, bhp: 3880, temp: 159, lat: -7.39, lng: 11.79, tvd: 3600, md: 3750, inc: 19.3 },
 ];
 
 const PROD_DATA = [
-  { m: "Jan", real: 145200, cap: 168000, ai: 142000 },
-  { m: "Fev", real: 142800, cap: 168000, ai: 139500 },
-  { m: "Mar", real: 139500, cap: 165000, ai: 137000 },
-  { m: "Abr", real: 137200, cap: 165000, ai: 134500 },
-  { m: "Mai", real: 135100, cap: 162000, ai: 132000 },
-  { m: "Jun", real: 133800, cap: 162000, ai: 130000 },
-  { m: "Jul", real: 131500, cap: 160000, ai: 128000 },
-  { m: "Ago", real: 129800, cap: 160000, ai: 126500 },
+  { m: "Jan", real: 145200, cap: 168000, ai: 142000, inj: 82000 },
+  { m: "Fev", real: 142800, cap: 168000, ai: 139500, inj: 80500 },
+  { m: "Mar", real: 139500, cap: 165000, ai: 137000, inj: 79200 },
+  { m: "Abr", real: 137200, cap: 165000, ai: 134500, inj: 78100 },
+  { m: "Mai", real: 135100, cap: 162000, ai: 132000, inj: 76800 },
+  { m: "Jun", real: 133800, cap: 162000, ai: 130000, inj: 75400 },
+  { m: "Jul", real: 131500, cap: 160000, ai: 128000, inj: 74100 },
+  { m: "Ago", real: 129800, cap: 160000, ai: 126500, inj: 73200 },
 ];
 
 const GEO_RADAR = [
@@ -66,14 +68,18 @@ const GEO_RADAR = [
 
 const RISK_DATA = [
   { f: "Pressão do Reserv.", v: 72, t: 80 },
-  { f: "Integridade", v: 88, t: 90 },
+  { f: "Integridade do Poço", v: 88, t: 90 },
   { f: "Risco Geológico", v: 45, t: 60 },
   { f: "Subsidência", v: 32, t: 50 },
-  { f: "Corrosão", v: 58, t: 70 },
-  { f: "H₂S / CO₂", v: 25, t: 40 },
+  { f: "Corrosão (CO₂/H₂S)", v: 58, t: 70 },
+  { f: "Concentração H₂S", v: 25, t: 40 },
+  { f: "Pressão Anular", v: 61, t: 75 },
+  { f: "Intrusão de Água", v: 44, t: 55 },
 ];
 
 const DECLINE = [
+  { y: "2022", r: 28900, p: 28900 },
+  { y: "2023", r: 27400, p: 27600 },
   { y: "2024", r: 26500, p: 26500 },
   { y: "2025", r: 24200, p: 24800 },
   { y: "2026", r: 22100, p: 23200 },
@@ -83,7 +89,15 @@ const DECLINE = [
   { y: "2030", r: null, p: 18000 },
 ];
 
-/* ─── 3D MATH HELPERS ────────────────────────────────────────── */
+const PRESSURE_DEPTH = Array.from({ length: 40 }, (_, i) => ({
+  depth: (i + 1) * 100,
+  pore: 95 + i * 18.2 + Math.sin(i * 0.4) * 12,
+  frac: 145 + i * 28.4 + Math.cos(i * 0.3) * 8,
+  mud: 110 + i * 22 + Math.sin(i * 0.6) * 6,
+  hydro: 70 + i * 10,
+}));
+
+/* ─── 3D MATH ─────────────────────────────────────────────────── */
 function rotateY(x: number, y: number, z: number, a: number): [number, number, number] {
   return [x * Math.cos(a) + z * Math.sin(a), y, -x * Math.sin(a) + z * Math.cos(a)];
 }
@@ -95,7 +109,37 @@ function project(x: number, y: number, z: number, fov: number, cx: number, cy: n
   return [cx + x * scale, cy + y * scale, scale];
 }
 
-/* ─── WELL CANVAS (custom 3D) ─────────────────────────────────── */
+/* ─── SEISMIC SCAN OVERLAY ─────────────────────────────────── */
+function SeismicOverlay({ canvas, ctx, W, H, T }: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; W: number; H: number; T: number }) {
+  // Scanline effect
+  const scanY = ((T * 60) % H);
+  const sg = ctx.createLinearGradient(0, scanY - 30, 0, scanY + 30);
+  sg.addColorStop(0, "rgba(0,168,255,0)");
+  sg.addColorStop(0.5, "rgba(0,168,255,0.07)");
+  sg.addColorStop(1, "rgba(0,168,255,0)");
+  ctx.fillStyle = sg;
+  ctx.fillRect(0, scanY - 30, W, 60);
+
+  // Corner brackets
+  const bLen = 22, bW = 2;
+  ctx.strokeStyle = "rgba(0,229,160,0.55)";
+  ctx.lineWidth = bW;
+  [[0, 0, 1, 1], [W, 0, -1, 1], [0, H, 1, -1], [W, H, -1, -1]].forEach(([bx, by, dx, dy]) => {
+    ctx.beginPath();
+    ctx.moveTo(bx + dx * bLen, by); ctx.lineTo(bx, by); ctx.lineTo(bx, by + dy * bLen);
+    ctx.stroke();
+  });
+
+  // Crosshair centre
+  ctx.strokeStyle = "rgba(0,168,255,0.18)";
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/* ─── WELL CANVAS ─────────────────────────────────────────────── */
 function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; viewMode?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
@@ -103,15 +147,19 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
   const cam = useRef({ yaw: 0.4, pitch: 0.3, zoom: 1, autoSpin: true });
   const drag = useRef({ active: false, lastX: 0, lastY: 0, velX: 0, velY: 0 });
   const particles = useRef<any[]>([]);
+  const gasParticles = useRef<any[]>([]);
   const viewModeRef = useRef(viewMode);
   const blend = useRef(1);
+  const wellRef = useRef(well);
   useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
+  useEffect(() => { wellRef.current = well; }, [well]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       canvas.width = canvas.offsetWidth * dpr;
@@ -120,13 +168,25 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
     };
     resize();
     window.addEventListener("resize", resize);
-    particles.current = Array.from({ length: 90 }, () => ({
-      u: (Math.random() - 0.5) * 8, v: Math.random() * 600,
-      vy: -(0.4 + Math.random() * 1.1), r: 1 + Math.random() * 2.5,
-      alpha: 0.3 + Math.random() * 0.5, hue: 175 + Math.random() * 50,
+
+    // Oil particles
+    particles.current = Array.from({ length: 110 }, () => ({
+      u: (Math.random() - 0.5) * 6, v: Math.random() * 600,
+      vy: -(0.5 + Math.random() * 1.3), r: 1 + Math.random() * 2,
+      alpha: 0.25 + Math.random() * 0.55, hue: 172 + Math.random() * 40,
+      phase: Math.random() * Math.PI * 2,
+    }));
+    // Gas bubbles
+    gasParticles.current = Array.from({ length: 30 }, () => ({
+      u: (Math.random() - 0.5) * 3, v: Math.random() * 400,
+      vy: -(1.2 + Math.random() * 2.1), r: 0.8 + Math.random() * 1.5,
+      alpha: 0.2 + Math.random() * 0.4, phase: Math.random() * Math.PI * 2,
     }));
 
-    const onDown = (e: MouseEvent) => { drag.current = { active: true, lastX: e.clientX, lastY: e.clientY, velX: 0, velY: 0 }; cam.current.autoSpin = false; canvas.style.cursor = "grabbing"; };
+    const onDown = (e: MouseEvent) => {
+      drag.current = { active: true, lastX: e.clientX, lastY: e.clientY, velX: 0, velY: 0 };
+      cam.current.autoSpin = false; canvas.style.cursor = "grabbing";
+    };
     const onMove = (e: MouseEvent) => {
       if (!drag.current.active) return;
       const dx = e.clientX - drag.current.lastX, dy = e.clientY - drag.current.lastY;
@@ -137,7 +197,7 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
       drag.current.velX = dx; drag.current.velY = dy;
     };
     const onUp = () => { drag.current.active = false; canvas.style.cursor = "grab"; };
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); cam.current.zoom = Math.max(0.35, Math.min(2.8, cam.current.zoom - e.deltaY * 0.001)); };
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); cam.current.zoom = Math.max(0.3, Math.min(3.2, cam.current.zoom - e.deltaY * 0.001)); };
     const onDblClick = () => { cam.current.autoSpin = !cam.current.autoSpin; };
 
     canvas.addEventListener("mousedown", onDown);
@@ -147,11 +207,11 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
     canvas.addEventListener("dblclick", onDblClick);
     canvas.style.cursor = "grab";
 
-    const C = { bg: "#030e22", primary: "#00a8ff", green: "#00e5a0", amber: "#ffb830", red: "#ff4365", textMuted: "rgba(180,210,255,0.45)", textDim: "rgba(120,165,220,0.6)", border: "rgba(0,168,255,0.12)" };
-
     const draw = (ts: number) => {
       T.current = ts * 0.001;
+      const t = T.current;
       const W = canvas.offsetWidth, H = canvas.offsetHeight;
+      const w = wellRef.current;
       ctx.clearRect(0, 0, W, H);
 
       const vm = viewModeRef.current;
@@ -167,13 +227,13 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
           cam.current.pitch = Math.max(-1.2, Math.min(1.2, cam.current.pitch));
         }
       }
-      if (cam.current.autoSpin) cam.current.yaw += (0.004 + 0.003 * b);
+      if (cam.current.autoSpin) cam.current.yaw += (0.0035 + 0.0025 * b);
 
       const { yaw, pitch, zoom } = cam.current;
       const ePitch = pitch * b + (-0.04) * (1 - b);
       const eYaw = yaw * b + (Math.PI * 0.07) * (1 - b);
-      const cx = W / 2, cy = H / 2;
-      const fov = 360 * zoom;
+      const cx = W / 2, cy = H * 0.48;
+      const fov = 380 * zoom;
 
       const toScreen = (wx: number, wy: number, wz: number) => {
         let [x, y, z] = rotateX(wx, wy, wz, ePitch);
@@ -181,182 +241,379 @@ function WellCanvas({ well, viewMode = "3d" }: { well: typeof DEFAULT_WELLS[0]; 
         return project(x, y, z, fov, cx, cy);
       };
 
-      // Background
-      const bgR = ctx.createRadialGradient(cx, cy * 0.4, 0, cx, cy, Math.max(W, H) * 0.85);
-      bgR.addColorStop(0, "#030e22"); bgR.addColorStop(1, "#010512");
+      // ── BACKGROUND ──
+      const bgR = ctx.createRadialGradient(cx, cy * 0.35, 0, cx, cy, Math.max(W, H) * 0.9);
+      bgR.addColorStop(0, "#040f22"); bgR.addColorStop(0.6, "#020a18"); bgR.addColorStop(1, "#010510");
       ctx.fillStyle = bgR; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(0,20,60,0.02)";
-      for (let sl = 0; sl < H; sl += 2) ctx.fillRect(0, sl, W, 1);
 
-      const SEA_Y = 85, BED_Y = 0, HALF = 130;
-      const TOTAL_D = -420 * (well.depth / 5000);
-      const RES_Y = TOTAL_D * 0.75;
-      const devX = 65 * (well.depth / 5000);
-      const devZ = 22 * (well.depth / 5000);
+      // Subtle grid
+      ctx.strokeStyle = "rgba(0,60,120,0.07)";
+      ctx.lineWidth = 0.5;
+      for (let gx = 0; gx < W; gx += 28) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (let gy = 0; gy < H; gy += 28) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
 
-      // Geological layers
+      const SEA_Y = 82, BED_Y = 0, HALF = 138;
+      const TOTAL_D = -430 * (w.depth / 5000);
+      const RES_Y = TOTAL_D * 0.76;
+      const devX = 68 * (w.depth / 5000) * Math.sin(w.inc * Math.PI / 180);
+      const devZ = 24 * (w.depth / 5000);
+
+      // ── GEOLOGICAL LAYERS (with more detail) ──
       const layers = [
-        { y0: BED_Y, y1: BED_Y - 30, col: "#5c2a0a", label: "ARGILA" },
-        { y0: BED_Y - 30, y1: BED_Y - 68, col: "#3a1a06", label: "FOLHELHO" },
-        { y0: BED_Y - 68, y1: BED_Y - 125, col: "#2a3a15", label: "ARENITO" },
-        { y0: BED_Y - 125, y1: BED_Y - 192, col: "#1a2a0f", label: "CALCÁRIO" },
-        { y0: BED_Y - 192, y1: TOTAL_D + 30, col: "#0a1c08", label: "RESERVATÓRIO" },
+        { y0: BED_Y, y1: BED_Y - 28, col: "#5c2a0a", label: "ARGILA (CL)", perm: "0.01 mD", por: "28%" },
+        { y0: BED_Y - 28, y1: BED_Y - 65, col: "#3d1f0a", label: "FOLHELHO (SH)", perm: "0.001 mD", por: "18%" },
+        { y0: BED_Y - 65, y1: BED_Y - 118, col: "#2e3d18", label: "ARENITO (SS)", perm: "185 mD", por: "24%" },
+        { y0: BED_Y - 118, y1: BED_Y - 188, col: "#1e2e0e", label: "CALCÁRIO (LS)", perm: "42 mD", por: "19%" },
+        { y0: BED_Y - 188, y1: TOTAL_D + 25, col: "#0e1e0a", label: "RESERVATÓRIO (SS/LS)", perm: `${Math.round(w.api * 6.4)} mD`, por: `${(w.api * 0.62).toFixed(1)}%` },
       ];
-      layers.forEach(({ y0, y1, col, label }) => {
+
+      layers.forEach(({ y0, y1, col, label, perm, por }) => {
         const corners = [
           [-HALF, y0, HALF], [HALF, y0, HALF], [HALF, y0, -HALF], [-HALF, y0, -HALF],
           [-HALF, y1, HALF], [HALF, y1, HALF], [HALF, y1, -HALF], [-HALF, y1, -HALF],
         ].map(([x, y, z]) => toScreen(x, y, z));
+
         if (b > 0.04) {
-          [[0, 1, 2, 3], [0, 1, 5, 4], [1, 2, 6, 5], [3, 2, 6, 7], [0, 3, 7, 4]].forEach((f, fi) => {
-            ctx.beginPath(); f.forEach((ci, ii) => { const [sx, sy] = corners[ci]; ii === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy); }); ctx.closePath();
-            ctx.fillStyle = col + Math.round([0.9, 0.62, 0.72, 0.48, 0.58][fi] * 200).toString(16).padStart(2, "0");
-            ctx.globalAlpha = b; ctx.fill(); ctx.globalAlpha = 1;
+          const faces = [[0, 1, 2, 3], [0, 1, 5, 4], [1, 2, 6, 5], [3, 2, 6, 7], [0, 3, 7, 4]];
+          const opacities = [0.88, 0.62, 0.72, 0.48, 0.58];
+          faces.forEach((f, fi) => {
+            ctx.beginPath();
+            f.forEach((ci, ii) => { const [sx, sy] = corners[ci]; ii === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy); });
+            ctx.closePath();
+            ctx.fillStyle = col + Math.round(opacities[fi] * 200).toString(16).padStart(2, "0");
+            ctx.globalAlpha = b; ctx.fill();
+            ctx.strokeStyle = "rgba(0,80,40,0.12)"; ctx.lineWidth = 0.5; ctx.stroke();
+            ctx.globalAlpha = 1;
           });
-          const [lx, ly] = toScreen(HALF + 5, (y0 + y1) / 2, -HALF);
-          ctx.fillStyle = `rgba(100,190,100,${b * 0.42})`; ctx.font = "8px 'Courier New',monospace"; ctx.fillText(label, lx, ly);
+          const [lx, ly] = toScreen(HALF + 6, (y0 + y1) / 2, -HALF);
+          ctx.fillStyle = `rgba(120,210,130,${b * 0.55})`;
+          ctx.font = "7.5px 'Courier New',monospace";
+          ctx.fillText(label, lx, ly - 4);
+          ctx.fillStyle = `rgba(80,180,100,${b * 0.35})`;
+          ctx.font = "6.5px 'Courier New',monospace";
+          ctx.fillText(`φ:${por}  k:${perm}`, lx, ly + 6);
         }
       });
 
-      // Sea surface
+      // ── WATER DEPTH INDICATOR ──
+      const wdRatio = w.wd / 2000;
+      const wdY = SEA_Y - wdRatio * 60;
+      const [wd1x, wd1y] = toScreen(-HALF - 8, BED_Y, 0);
+      const [wd2x, wd2y] = toScreen(-HALF - 8, SEA_Y, 0);
+      ctx.save();
+      ctx.strokeStyle = "rgba(0,140,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(wd1x, wd1y); ctx.lineTo(wd2x, wd2y); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+      ctx.fillStyle = "rgba(0,140,255,0.7)"; ctx.font = "7px 'Courier New',monospace";
+      ctx.fillText(`WD ${w.wd}m`, wd2x - 8, wd2y - 4);
+
+      // ── SEA SURFACE ──
       {
         const surf = [[-HALF, SEA_Y, HALF], [HALF, SEA_Y, HALF], [HALF, SEA_Y, -HALF], [-HALF, SEA_Y, -HALF]]
-          .map(([x, _y, z]) => toScreen(x, SEA_Y + Math.sin(x * 0.05 + T.current) * 2, z));
+          .map(([x, _y, z]) => toScreen(x, SEA_Y + Math.sin(x * 0.05 + t) * 2.2 + Math.sin(x * 0.09 - t * 0.7) * 1.1, z));
         ctx.beginPath(); surf.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)); ctx.closePath();
-        ctx.fillStyle = "rgba(0,80,180,0.15)"; ctx.fill();
-        ctx.strokeStyle = `rgba(0,168,255,${0.28 + Math.sin(T.current) * 0.08})`; ctx.lineWidth = 1.5; ctx.stroke();
+        const seaG = ctx.createLinearGradient(0, surf[0][1], 0, surf[0][1] + 20);
+        seaG.addColorStop(0, "rgba(0,90,200,0.22)"); seaG.addColorStop(1, "rgba(0,40,120,0)");
+        ctx.fillStyle = seaG; ctx.fill();
+        ctx.strokeStyle = `rgba(0,168,255,${0.3 + Math.sin(t) * 0.1})`; ctx.lineWidth = 1.8; ctx.stroke();
       }
 
-      // FPSO
+      // ── FPSO ──
       {
-        const hy = SEA_Y + 5, hw = 70, hh = 10, hd = 22;
-        const hull = [[-hw, hy, -hd], [hw, hy, -hd], [hw, hy, hd], [-hw, hy, hd], [-hw, hy - hh, -hd], [hw, hy - hh, -hd], [hw, hy - hh, hd], [-hw, hy - hh, hd]]
-          .map(([x, y, z]) => toScreen(x, y, z));
+        const hy = SEA_Y + 4, hw = 74, hh = 9, hd = 20;
+        const hull = [
+          [-hw, hy, -hd], [hw, hy, -hd], [hw, hy, hd], [-hw, hy, hd],
+          [-hw, hy - hh, -hd], [hw, hy - hh, -hd], [hw, hy - hh, hd], [-hw, hy - hh, hd],
+        ].map(([x, y, z]) => toScreen(x, y, z));
         [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [0, 3, 7, 4], [1, 2, 6, 5]].forEach((f, fi) => {
           ctx.beginPath(); f.forEach((ci, ii) => ii === 0 ? ctx.moveTo(hull[ci][0], hull[ci][1]) : ctx.lineTo(hull[ci][0], hull[ci][1])); ctx.closePath();
-          ctx.fillStyle = ["#2a3d5e", "#1a2a3e", "#243550", "#1e3048", "#1a2840", "#243050"][fi]; ctx.fill();
-          ctx.strokeStyle = "rgba(0,168,255,0.25)"; ctx.lineWidth = 0.8; ctx.stroke();
+          ctx.fillStyle = ["#253a56", "#192838", "#1e2f45", "#1a2b40", "#172638", "#1e2d42"][fi]; ctx.fill();
+          ctx.strokeStyle = "rgba(0,168,255,0.2)"; ctx.lineWidth = 0.7; ctx.stroke();
         });
-        const fp = toScreen(62, hy + 22, 0);
-        const fR = 7 + Math.sin(T.current * 4) * 4;
-        const fg = ctx.createRadialGradient(fp[0], fp[1], 0, fp[0], fp[1], fR * 2.5);
-        fg.addColorStop(0, "rgba(255,210,0,0.95)"); fg.addColorStop(0.3, "rgba(255,100,0,0.55)"); fg.addColorStop(1, "rgba(255,80,0,0)");
-        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fp[0], fp[1], fR * 2.5, 0, Math.PI * 2); ctx.fill();
+        // Flare stack
+        const fp = toScreen(62, hy + 26, 0);
+        const fR = 6 + Math.sin(t * 4.5) * 4;
+        const fg = ctx.createRadialGradient(fp[0], fp[1], 0, fp[0], fp[1], fR * 3);
+        fg.addColorStop(0, "rgba(255,220,0,0.95)"); fg.addColorStop(0.25, "rgba(255,120,0,0.6)"); fg.addColorStop(1, "rgba(255,60,0,0)");
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fp[0], fp[1], fR * 3, 0, Math.PI * 2); ctx.fill();
+        // Turret
+        const tp = toScreen(-10, hy - 5, 0);
+        ctx.fillStyle = "#1a2e4a"; ctx.beginPath(); ctx.arc(tp[0], tp[1], 8 * zoom, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(0,168,255,0.4)"; ctx.lineWidth = 1.5; ctx.stroke();
+        // FPSO label
+        ctx.fillStyle = "rgba(180,215,255,0.55)"; ctx.font = "bold 8px 'Courier New',monospace"; ctx.textAlign = "center";
+        const lp = toScreen(0, hy + 14, 0);
+        ctx.fillText("FPSO " + w.op.toUpperCase().slice(0, 8), lp[0], lp[1]); ctx.textAlign = "left";
       }
 
-      // Riser
+      // ── UMBILICAL / RISER SYSTEM ──
       {
-        const rPts = [SEA_Y, SEA_Y * 0.55, SEA_Y * 0.25, BED_Y].map(ry => toScreen(0, ry, 0));
-        ctx.beginPath(); ctx.moveTo(rPts[0][0], rPts[0][1]); rPts.slice(1).forEach(([sx, sy]) => ctx.lineTo(sx, sy));
-        ctx.strokeStyle = "#3a6090"; ctx.lineWidth = 5 * zoom; ctx.stroke();
+        const rPts = [
+          toScreen(0, SEA_Y, 0), toScreen(4, SEA_Y * 0.65, 2), toScreen(2, SEA_Y * 0.3, 1), toScreen(0, BED_Y, 0)
+        ];
+        // Main riser
+        ctx.beginPath(); ctx.moveTo(rPts[0][0], rPts[0][1]);
+        rPts.slice(1).forEach(([sx, sy]) => ctx.lineTo(sx, sy));
+        ctx.strokeStyle = "#3a5c80"; ctx.lineWidth = 5.5 * zoom; ctx.lineCap = "round"; ctx.stroke();
+        // Umbilical bundle
+        ctx.beginPath(); ctx.moveTo(rPts[0][0] + 3, rPts[0][1]);
+        rPts.slice(1).forEach(([sx, sy]) => ctx.lineTo(sx + 3, sy));
+        ctx.strokeStyle = "#2a4060"; ctx.lineWidth = 2.5 * zoom; ctx.stroke();
+        // Bend restrictor at seabed
+        const br = toScreen(0, BED_Y + 5, 0);
+        ctx.fillStyle = "#2a4a6a"; ctx.beginPath(); ctx.arc(br[0], br[1], 5 * zoom, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(0,168,255,0.4)"; ctx.lineWidth = 1; ctx.stroke();
       }
 
-      // Wellbore
+      // ── WELLBORE (deviated) ──
       {
-        const nPts = 24;
+        const nPts = 32;
         const wPts = Array.from({ length: nPts + 1 }, (_, i) => {
           const u = i / nPts;
-          return toScreen(Math.sin(u * 0.7) * devX, BED_Y + (TOTAL_D - BED_Y) * u, Math.sin(u * 0.5) * devZ);
+          const kick = u > 0.15 ? Math.sin((u - 0.15) * Math.PI * 0.6) : 0;
+          return toScreen(kick * devX, BED_Y + (TOTAL_D - BED_Y) * u, kick * devZ * 0.4);
         });
+        // Casing outline
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
-        ctx.strokeStyle = "#4a7aaa"; ctx.lineWidth = 7 * zoom; ctx.lineJoin = "round"; ctx.lineCap = "round";
-        ctx.shadowBlur = 6; ctx.shadowColor = "rgba(0,100,200,0.4)"; ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#2a4a6a"; ctx.lineWidth = 11 * zoom; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+        // Cement sheath
         ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
-        ctx.strokeStyle = "rgba(120,200,255,0.18)"; ctx.lineWidth = 2.5 * zoom; ctx.stroke();
+        ctx.strokeStyle = "rgba(180,160,100,0.18)"; ctx.lineWidth = 13.5 * zoom; ctx.stroke();
+        // Production tubing
+        ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
+        ctx.strokeStyle = "#4a82b8"; ctx.lineWidth = 7 * zoom;
+        ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,120,220,0.5)"; ctx.stroke(); ctx.shadowBlur = 0;
+        // Inner bore glow
+        ctx.beginPath(); wPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy));
+        ctx.strokeStyle = "rgba(140,220,255,0.22)"; ctx.lineWidth = 2.5 * zoom; ctx.stroke();
+
+        // Kickoff point annotation
+        const kp = wPts[Math.floor(nPts * 0.15)];
+        ctx.fillStyle = "rgba(255,184,48,0.85)"; ctx.font = "7px 'Courier New',monospace";
+        ctx.fillText("KOP", kp[0] + 8, kp[1]); 
+        ctx.beginPath(); ctx.arc(kp[0], kp[1], 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffb830"; ctx.fill();
+
+        // TD annotation
+        const td = wPts[nPts];
+        ctx.fillStyle = "rgba(0,229,160,0.85)"; ctx.font = "7px 'Courier New',monospace";
+        ctx.fillText(`TD ${w.depth}m`, td[0] + 8, td[1]);
+        ctx.beginPath(); ctx.arc(td[0], td[1], 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#00e5a0"; ctx.fill();
+
+        // Survey stations
+        [0.25, 0.5, 0.75].forEach(u => {
+          const idx = Math.floor(u * nPts);
+          const [sx, sy] = wPts[idx];
+          const inc = (w.inc * u).toFixed(1);
+          ctx.fillStyle = "rgba(0,168,255,0.5)"; ctx.font = "6px 'Courier New',monospace";
+          ctx.fillText(`${inc}°`, sx + 6, sy - 2);
+          ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0,168,255,0.6)"; ctx.fill();
+        });
       }
 
-      // Fault line
-      if (well.risk !== "Baixo") {
-        const f1 = toScreen(-92, BED_Y - 18, 22), f2 = toScreen(-62, TOTAL_D + 35, -12);
-        ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = "rgba(255,67,101,0.55)"; ctx.lineWidth = 1.8;
-        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,67,101,0.5)";
-        ctx.beginPath(); ctx.moveTo(f1[0], f1[1]); ctx.lineTo(f2[0], f2[1]); ctx.stroke();
-        ctx.setLineDash([]); ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255,67,101,0.82)"; ctx.font = "bold 9px 'Courier New',monospace";
-        ctx.fillText("FALHA", f1[0] + 4, f1[1] + 14); ctx.restore();
+      // ── FAULT PLANE ──
+      if (w.risk !== "Baixo") {
+        const fPts = [
+          toScreen(-95, BED_Y - 15, 25), toScreen(-68, TOTAL_D + 40, -15),
+          toScreen(-58, TOTAL_D + 40, -5), toScreen(-85, BED_Y - 15, 35),
+        ];
+        ctx.beginPath(); fPts.forEach(([sx, sy], i) => i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)); ctx.closePath();
+        ctx.fillStyle = "rgba(255,67,101,0.08)"; ctx.fill();
+        ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = "rgba(255,67,101,0.6)"; ctx.lineWidth = 1.6;
+        ctx.shadowBlur = 12; ctx.shadowColor = "rgba(255,67,101,0.45)";
+        ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0;
+        const [fax, fay] = toScreen(-92, BED_Y - 22, 28);
+        ctx.fillStyle = "rgba(255,67,101,0.9)"; ctx.font = "bold 8px 'Courier New',monospace";
+        ctx.fillText(`FALHA · ${w.risk === "Alto" ? "ACTIVA" : "INACTIVA"}`, fax, fay); ctx.restore();
       }
 
-      // Reservoir glow
+      // ── RESERVOIR ZONE ──
       {
-        const [rx, ry] = toScreen(devX * 0.78, RES_Y, 0);
-        const pulse = 0.7 + Math.sin(T.current * 1.5) * 0.3;
-        const rg = ctx.createRadialGradient(rx, ry, 0, rx, ry, 72 * zoom);
-        rg.addColorStop(0, `rgba(0,229,160,${0.38 * pulse})`); rg.addColorStop(1, "rgba(0,100,60,0)");
-        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(rx, ry, 72 * zoom, 0, Math.PI * 2); ctx.fill();
+        const kick = Math.sin(0.76 * 0.6) * devX;
+        const [rx, ry] = toScreen(kick * 0.88, RES_Y, 0);
+        const pulse = 0.65 + Math.sin(t * 1.4) * 0.35;
+        const rg = ctx.createRadialGradient(rx, ry, 0, rx, ry, 80 * zoom);
+        rg.addColorStop(0, `rgba(0,229,160,${0.4 * pulse})`);
+        rg.addColorStop(0.4, `rgba(0,180,120,${0.18 * pulse})`);
+        rg.addColorStop(1, "rgba(0,100,60,0)");
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(rx, ry, 80 * zoom, 0, Math.PI * 2); ctx.fill();
+
+        // GOC / OWC annotations
+        const [goc1x, goc1y] = toScreen(-HALF, RES_Y * 0.88, -HALF);
+        const [goc2x, goc2y] = toScreen(HALF, RES_Y * 0.88, -HALF);
+        ctx.strokeStyle = "rgba(255,184,48,0.45)"; ctx.lineWidth = 0.8; ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(goc1x, goc1y); ctx.lineTo(goc2x, goc2y); ctx.stroke();
+        ctx.fillStyle = "rgba(255,184,48,0.7)"; ctx.font = "7px 'Courier New',monospace";
+        ctx.fillText("GOC", goc2x + 4, goc2y);
+
+        const [owc1x, owc1y] = toScreen(-HALF, RES_Y * 0.98, -HALF);
+        const [owc2x, owc2y] = toScreen(HALF, RES_Y * 0.98, -HALF);
+        ctx.strokeStyle = "rgba(0,140,255,0.45)"; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(owc1x, owc1y); ctx.lineTo(owc2x, owc2y); ctx.stroke();
+        ctx.fillStyle = "rgba(0,140,255,0.7)"; ctx.font = "7px 'Courier New',monospace";
+        ctx.fillText("OWC", owc2x + 4, owc2y);
+        ctx.setLineDash([]);
       }
 
-      // Perforations
-      for (let pi = 0; pi < 6; pi++) {
-        const u = 0.72 + pi * 0.04;
-        const [sx, sy] = toScreen(Math.sin(u * 0.7) * devX, BED_Y + (TOTAL_D - BED_Y) * u, Math.sin(pi * 1.1) * 11);
-        const pA = 0.5 + Math.sin(T.current * 3 + pi * 1.2) * 0.5;
-        ctx.fillStyle = `rgba(0,168,255,${0.72 * pA})`; ctx.shadowBlur = 7; ctx.shadowColor = "#00a8ff";
-        ctx.beginPath(); ctx.arc(sx, sy, 3 * zoom, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      // ── PERFORATIONS ──
+      for (let pi = 0; pi < 8; pi++) {
+        const u = 0.70 + pi * 0.036;
+        const kick = Math.sin(u * 0.6) * devX;
+        const [sx, sy] = toScreen(kick, BED_Y + (TOTAL_D - BED_Y) * u, Math.sin(pi * 1.1) * 12);
+        const pA = 0.5 + Math.sin(t * 3 + pi * 1.2) * 0.5;
+        ctx.fillStyle = `rgba(0,168,255,${0.75 * pA})`;
+        ctx.shadowBlur = 8; ctx.shadowColor = "#00a8ff";
+        ctx.beginPath(); ctx.arc(sx, sy, 3.5 * zoom, 0, Math.PI * 2); ctx.fill();
+        // Perf gun direction
+        const pdir = toScreen(kick + 10, BED_Y + (TOTAL_D - BED_Y) * u, Math.sin(pi * 1.1) * 12 + 8);
+        ctx.strokeStyle = `rgba(0,168,255,${0.35 * pA})`; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pdir[0], pdir[1]); ctx.stroke();
       }
+      ctx.shadowBlur = 0;
 
-      // Oil particles
+      // ── OIL PARTICLES ──
       particles.current.forEach(p => {
         p.v += p.vy;
-        if (p.v < -SEA_Y * 0.25) p.v = 600;
-        const u = Math.max(0, Math.min(1, (600 - p.v) / 600));
-        const [sx, sy, sc] = toScreen(
-          Math.sin(u * 0.7) * devX + p.u * 0.3,
-          BED_Y + (TOTAL_D - BED_Y) * u * 0.9 + (600 - p.v) * 0.25,
-          Math.sin(u * 0.5) * devZ + p.u * 0.15
-        );
+        if (p.v < -SEA_Y * 0.2) p.v = 580;
+        const u = Math.max(0, Math.min(1, (580 - p.v) / 580));
+        const kick = Math.sin(u * 0.6) * devX;
+        const [sx, sy, sc] = toScreen(kick + p.u * 0.25, BED_Y + (TOTAL_D - BED_Y) * u * 0.92 + (580 - p.v) * 0.22, Math.sin(u * 0.5) * devZ * 0.4 + p.u * 0.12);
         if (sc < 0) return;
-        const a = p.alpha * (0.4 + Math.sin(T.current * 2 + p.v * 0.03) * 0.4);
-        ctx.fillStyle = `hsla(${p.hue},80%,65%,${a})`;
-        ctx.beginPath(); ctx.arc(sx, sy, p.r * sc * 1.8, 0, Math.PI * 2); ctx.fill();
+        const a = p.alpha * (0.45 + Math.sin(t * 2 + p.phase) * 0.35);
+        ctx.fillStyle = `hsla(${p.hue},78%,62%,${a})`;
+        ctx.beginPath(); ctx.arc(sx, sy, p.r * sc * 1.9, 0, Math.PI * 2); ctx.fill();
       });
 
-      // HUD
+      // ── GAS BUBBLES ──
+      gasParticles.current.forEach(p => {
+        p.v += p.vy;
+        if (p.v < -SEA_Y * 0.1) p.v = 380;
+        const u = Math.max(0, Math.min(1, (380 - p.v) / 380));
+        const kick = Math.sin(u * 0.6) * devX * 0.6;
+        const [sx, sy, sc] = toScreen(kick + p.u * 0.18, BED_Y + (TOTAL_D - BED_Y) * u * 0.7 + (380 - p.v) * 0.3, p.u * 0.08);
+        if (sc < 0) return;
+        const a = p.alpha * (0.3 + Math.sin(t * 3 + p.phase) * 0.4);
+        ctx.strokeStyle = `rgba(200,230,255,${a})`; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(sx, sy, p.r * sc * 1.5, 0, Math.PI * 2); ctx.stroke();
+      });
+
+      // ── SEISMIC OVERLAY ──
+      SeismicOverlay({ canvas, ctx, W, H, T: t });
+
+      // ── HUD PANELS ──
+      const drawPanel = (x: number, y: number, w2: number, h2: number, col: string) => {
+        ctx.fillStyle = "rgba(2,6,20,0.88)"; ctx.beginPath(); ctx.roundRect(x, y, w2, h2, 4); ctx.fill();
+        ctx.strokeStyle = col + "30"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(x, y, w2, h2, 4); ctx.stroke();
+        // Inner glow
+        ctx.strokeStyle = col + "12"; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w2 - 4, h2 - 4, 3); ctx.stroke();
+      };
+
       const hud = [
-        { label: "PRESSÃO", value: `${(well.depth * 0.1).toFixed(0)} BAR`, col: "#00a8ff" },
-        { label: "TEMP", value: `${(120 + well.depth * 0.015).toFixed(0)}°C`, col: "#ffb830" },
-        { label: "API", value: `${well.api}°`, col: "#00e5a0" },
-        { label: "PROD", value: `${(well.prod / 1000).toFixed(1)}k bbl/d`, col: "#00a8ff" },
+        { label: "BHP", unit: "BAR", value: `${w.bhp.toLocaleString()}`, col: "#00a8ff" },
+        { label: "TEMP RES.", unit: "°C", value: `${w.temp}`, col: "#ffb830" },
+        { label: "API GRAV.", unit: "°API", value: `${w.api}`, col: "#00e5a0" },
+        { label: "GOR", unit: "SCF/BBL", value: `${w.gor}`, col: "#a855f7" },
+        { label: "W-CUT", unit: "%", value: `${w.wcut}`, col: w.wcut > 30 ? "#ff4365" : "#00e5a0" },
+        { label: "PROD", unit: "bbl/d", value: `${(w.prod / 1000).toFixed(1)}k`, col: "#00a8ff" },
       ];
       hud.forEach((h, i) => {
-        const hx = 12, hy2 = 52 + i * 38;
-        ctx.fillStyle = "rgba(2,8,24,0.82)"; ctx.beginPath(); ctx.roundRect(hx, hy2, 112, 30, 5); ctx.fill();
-        ctx.strokeStyle = h.col + "40"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(hx, hy2, 112, 30, 5); ctx.stroke();
-        ctx.fillStyle = h.col + "90"; ctx.font = "7px 'Courier New',monospace"; ctx.fillText(h.label, hx + 7, hy2 + 11);
-        ctx.fillStyle = h.col; ctx.font = "bold 11px 'Courier New',monospace"; ctx.fillText(h.value, hx + 7, hy2 + 23);
+        const panH = 34, panW = 118, margin = 10;
+        const px = margin, py = 48 + i * (panH + 5);
+        drawPanel(px, py, panW, panH, h.col);
+        ctx.fillStyle = h.col + "80"; ctx.font = "6.5px 'Courier New',monospace";
+        ctx.fillText(h.label, px + 8, py + 11);
+        ctx.fillStyle = "rgba(120,150,200,0.5)"; ctx.font = "5.5px 'Courier New',monospace";
+        ctx.fillText(h.unit, px + 8 + ctx.measureText(h.label).width + 3, py + 11);
+        ctx.fillStyle = h.col; ctx.font = "bold 13px 'Courier New',monospace";
+        ctx.fillText(h.value, px + 8, py + 26);
+        // Live dot
+        const ldAlpha = 0.5 + Math.sin(t * 4 + i) * 0.5;
+        ctx.fillStyle = `rgba(0,229,160,${ldAlpha})`;
+        ctx.beginPath(); ctx.arc(px + panW - 8, py + 8, 2.5, 0, Math.PI * 2); ctx.fill();
       });
 
-      // Risk badge
-      const rCol = well.risk === "Baixo" ? "#00e5a0" : well.risk === "Médio" ? "#ffb830" : "#ff4365";
-      ctx.fillStyle = "rgba(2,8,24,0.85)"; ctx.beginPath(); ctx.roundRect(W - 132, 12, 120, 34, 5); ctx.fill();
-      ctx.fillStyle = rCol; ctx.font = "bold 9px 'Courier New',monospace"; ctx.fillText(`RISCO ${well.risk.toUpperCase()}`, W - 110, 33);
+      // ── RIGHT SIDE: TRAJECTORY INFO ──
+      const rpx = W - 130, rpy = 48;
+      drawPanel(rpx, rpy, 118, 82, "#00a8ff");
+      ctx.fillStyle = "#00a8ff80"; ctx.font = "6.5px 'Courier New',monospace"; ctx.fillText("TRAJECTÓRIA", rpx + 8, rpy + 12);
+      [
+        ["MD", `${w.md}m`], ["TVD", `${w.tvd}m`], ["INC MAX", `${w.inc}°`], ["WD", `${w.wd}m`],
+      ].forEach(([k, v], i) => {
+        ctx.fillStyle = "rgba(120,165,220,0.6)"; ctx.font = "6px 'Courier New',monospace"; ctx.fillText(k as string, rpx + 8, rpy + 24 + i * 14);
+        ctx.fillStyle = "#b4d4ff"; ctx.font = "bold 9px 'Courier New',monospace";
+        ctx.textAlign = "right"; ctx.fillText(v as string, rpx + 110, rpy + 24 + i * 14); ctx.textAlign = "left";
+      });
 
-      // Title
-      ctx.fillStyle = "rgba(2,8,24,0.78)"; ctx.beginPath(); ctx.roundRect(cx - 102, 10, 204, 34, 5); ctx.fill();
-      ctx.fillStyle = "#00a8ff"; ctx.font = "bold 11px 'Courier New',monospace"; ctx.textAlign = "center"; ctx.fillText(well.name.toUpperCase(), cx, 28);
-      ctx.fillStyle = "rgba(180,210,255,0.45)"; ctx.font = "8px 'Courier New',monospace"; ctx.fillText(`${well.block} · ${well.op}`, cx, 41); ctx.textAlign = "left";
+      // ── RISK BADGE ──
+      const rCol = w.risk === "Baixo" ? "#00e5a0" : w.risk === "Médio" ? "#ffb830" : "#ff4365";
+      drawPanel(W - 130, rpy + 90, 118, 26, rCol);
+      ctx.fillStyle = rCol; ctx.font = "bold 8.5px 'Courier New',monospace";
+      const rText = `● RISCO ${w.risk.toUpperCase()}`;
+      ctx.fillText(rText, W - 130 + (118 - ctx.measureText(rText).width) / 2, rpy + 90 + 16);
+
+      // ── WELL NAME TITLE ──
+      const titleW = 220;
+      drawPanel(cx - titleW / 2, 8, titleW, 38, "#00a8ff");
+      ctx.fillStyle = "#00a8ff"; ctx.font = "bold 12px 'Courier New',monospace"; ctx.textAlign = "center";
+      ctx.fillText(w.name.toUpperCase(), cx, 24);
+      ctx.fillStyle = "rgba(180,210,255,0.5)"; ctx.font = "7.5px 'Courier New',monospace";
+      ctx.fillText(`${w.block}  ·  ${w.op}  ·  ${w.basin.toUpperCase()}`, cx, 38);
+      ctx.textAlign = "left";
+
+      // ── DEPTH SCALE BAR ──
+      const dsX = W - 24, dsYtop = H * 0.15, dsYbot = H * 0.85;
+      ctx.strokeStyle = "rgba(0,168,255,0.3)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(dsX, dsYtop); ctx.lineTo(dsX, dsYbot); ctx.stroke();
+      const ticks = 5;
+      for (let ti = 0; ti <= ticks; ti++) {
+        const ty = dsYtop + (dsYbot - dsYtop) * (ti / ticks);
+        const dval = Math.round(w.depth * (ti / ticks));
+        ctx.strokeStyle = "rgba(0,168,255,0.5)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(dsX - 5, ty); ctx.lineTo(dsX + 1, ty); ctx.stroke();
+        ctx.fillStyle = "rgba(120,165,220,0.6)"; ctx.font = "5.5px 'Courier New',monospace"; ctx.textAlign = "right";
+        ctx.fillText(`${dval}m`, dsX - 7, ty + 2);
+      }
+      ctx.textAlign = "left";
+
+      // ── BOTTOM STATUS BAR ──
+      const sbY = H - 22;
+      ctx.fillStyle = "rgba(2,6,20,0.75)"; ctx.fillRect(0, sbY, W, 22);
+      ctx.strokeStyle = "rgba(0,168,255,0.15)"; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(0, sbY); ctx.lineTo(W, sbY); ctx.stroke();
+      ctx.fillStyle = "rgba(0,168,255,0.5)"; ctx.font = "6.5px 'Courier New',monospace";
+      const statusText = `SYS:ONLINE  |  CAM:YAW${(cam.current.yaw * 57.3).toFixed(0)}° PITCH${(cam.current.pitch * 57.3).toFixed(0)}°  |  ZOOM:${cam.current.zoom.toFixed(2)}×  |  POÇO:${w.name}  |  ${w.field.toUpperCase()} FIELD  |  LAT:${w.lat}° LNG:${w.lng}°`;
+      ctx.fillText(statusText, 10, sbY + 14);
 
       animRef.current = requestAnimationFrame(draw);
     };
+
     animRef.current = requestAnimationFrame(draw);
     return () => {
-      cancelAnimationFrame(animRef.current); window.removeEventListener("resize", resize); window.removeEventListener("mouseup", onUp);
-      canvas.removeEventListener("mousedown", onDown); canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("wheel", onWheel); canvas.removeEventListener("dblclick", onDblClick);
+      cancelAnimationFrame(animRef.current);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("mouseup", onUp);
+      canvas.removeEventListener("mousedown", onDown);
+      canvas.removeEventListener("mousemove", onMove);
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("dblclick", onDblClick);
     };
-  }, [well]);
+  }, []);
 
   return <canvas ref={canvasRef} className="w-full h-full block select-none touch-none" />;
 }
 
-/* ─── TOOLTIP ────────────────────────────────────────────────── */
+/* ─── CHART TOOLTIP ─────────────────────────────────────────── */
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-card/95 border border-border rounded-lg p-3 backdrop-blur-sm shadow-lg">
-      <p className="text-muted-foreground text-xs mb-1 font-mono">{label}</p>
+    <div className="bg-[#040f22]/95 border border-[#00a8ff]/20 rounded-lg p-3 shadow-xl shadow-black/40 backdrop-blur-sm">
+      <p className="text-[#6a9ec4] text-[10px] mb-1.5 font-mono tracking-wider">{label}</p>
       {payload.map((e: any, i: number) => (
-        <p key={i} className="text-xs font-mono" style={{ color: e.color }}>
-          {e.name}: <b>{typeof e.value === "number" ? e.value.toLocaleString("pt-AO") : e.value}</b>
+        <p key={i} className="text-[10px] font-mono flex justify-between gap-4" style={{ color: e.color }}>
+          <span className="opacity-70">{e.name}</span>
+          <b>{typeof e.value === "number" ? e.value.toLocaleString("pt-AO") : e.value}</b>
         </p>
       ))}
     </div>
@@ -364,39 +621,89 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 /* ─── CIRCULAR GAUGE ─────────────────────────────────────────── */
-function Gauge({ value, max = 100, label, color = "hsl(var(--primary))", size = 88 }: { value: number; max?: number; label: string; color?: string; size?: number }) {
+function Gauge({ value, max = 100, label, color = "#00a8ff", size = 90, unit = "" }: {
+  value: number; max?: number; label: string; color?: string; size?: number; unit?: string;
+}) {
   const r = 34;
   const circ = 2 * Math.PI * r;
-  const dash = (value / max) * circ;
+  const dash = Math.min(value / max, 1) * circ;
   return (
     <div className="flex flex-col items-center gap-1">
       <svg width={size} height={size} viewBox="0 0 88 88">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-        <circle cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+        <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(0,40,80,0.6)" strokeWidth="5" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke={color + "25"} strokeWidth="5" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ / 4}
-          style={{ filter: `drop-shadow(0 0 6px ${color}80)`, transition: "stroke-dasharray 1s ease" }}
+          style={{ filter: `drop-shadow(0 0 5px ${color}90)`, transition: "stroke-dasharray 1.2s ease" }}
         />
-        <text x="44" y="44" textAnchor="middle" dy="4" fill={color} fontSize="16" fontWeight="bold" fontFamily="monospace">{value}</text>
-        <text x="44" y="58" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="8" fontFamily="monospace">/ {max}</text>
+        <text x="44" y="42" textAnchor="middle" fill={color} fontSize="14" fontWeight="bold" fontFamily="'Courier New',monospace">{value}</text>
+        <text x="44" y="53" textAnchor="middle" fill={color + "70"} fontSize="7" fontFamily="'Courier New',monospace">{unit || `/${max}`}</text>
       </svg>
-      <span className="text-[9px] text-muted-foreground font-mono tracking-widest uppercase">{label}</span>
+      <span className="text-[8.5px] text-[#4a7a9a] font-mono tracking-[2px] uppercase">{label}</span>
     </div>
   );
 }
 
 /* ─── RISK BAR ───────────────────────────────────────────────── */
 function RiskBar({ label, value, threshold }: { label: string; value: number; threshold: number }) {
-  const col = value >= threshold ? "#ff4365" : value >= threshold * 0.7 ? "#ffb830" : "#00e5a0";
+  const col = value >= threshold ? "#ff4365" : value >= threshold * 0.75 ? "#ffb830" : "#00e5a0";
+  const status = value >= threshold ? "CRÍTICO" : value >= threshold * 0.75 ? "ATENÇÃO" : "OK";
   return (
-    <div className="mb-2.5">
+    <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-[10px] text-muted-foreground font-mono">{label}</span>
-        <span className="text-[10px] font-mono font-bold" style={{ color: col }}>{value}%</span>
+        <span className="text-[9.5px] text-[#5a8aaa] font-mono">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ color: col, background: col + "18", border: `1px solid ${col}35` }}>{status}</span>
+          <span className="text-[10px] font-mono font-bold" style={{ color: col }}>{value}%</span>
+        </div>
       </div>
-      <div className="relative h-1.5 bg-muted rounded-full">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1 }}
-          className="h-full rounded-full" style={{ background: col, boxShadow: `0 0 8px ${col}60` }} />
-        <div className="absolute top-[-3px] h-3 w-0.5 rounded-full" style={{ left: `${threshold}%`, background: "#ff436580" }} />
+      <div className="relative h-[3px] bg-[#0a1830] rounded-full">
+        <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1.2, ease: "easeOut" }}
+          className="h-full rounded-full" style={{ background: `linear-gradient(90deg, ${col}80, ${col})`, boxShadow: `0 0 6px ${col}50` }} />
+        <div className="absolute top-[-4px] h-[11px] w-[1.5px] rounded-full opacity-60" style={{ left: `${threshold}%`, background: "#ff4365" }} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── TELEMETRY TICKER ──────────────────────────────────────── */
+function TelemetryTicker({ well }: { well: typeof DEFAULT_WELLS[0] }) {
+  const [vals, setVals] = useState({ bhp: well.bhp, temp: well.temp, wcut: well.wcut, gor: well.gor });
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setVals(v => ({
+        bhp: +(v.bhp + (Math.random() - 0.5) * 8).toFixed(0),
+        temp: +(v.temp + (Math.random() - 0.5) * 0.4).toFixed(1),
+        wcut: +(v.wcut + (Math.random() - 0.5) * 0.15).toFixed(2),
+        gor: +(v.gor + (Math.random() - 0.5) * 3).toFixed(0),
+      }));
+    }, 1800);
+    return () => clearInterval(iv);
+  }, []);
+
+  const items = [
+    { k: "BHP", v: `${vals.bhp} bar`, col: "#00a8ff" },
+    { k: "TEMP", v: `${vals.temp}°C`, col: "#ffb830" },
+    { k: "W-CUT", v: `${vals.wcut}%`, col: vals.wcut > 30 ? "#ff4365" : "#00e5a0" },
+    { k: "GOR", v: `${vals.gor} scf/bbl`, col: "#a855f7" },
+    { k: "INCL", v: `${well.inc}°`, col: "#00e5a0" },
+    { k: "API", v: `${well.api}°`, col: "#00a8ff" },
+  ];
+
+  return (
+    <div className="flex gap-0 border border-[#0a2040] rounded-lg overflow-hidden bg-[#020a18]">
+      <div className="px-3 py-2 bg-[#001830] border-r border-[#0a2040] flex items-center">
+        <span className="text-[9px] font-mono text-[#00a8ff] tracking-widest whitespace-nowrap">TELEMETRIA LIVE</span>
+        <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+          className="w-1.5 h-1.5 rounded-full bg-[#00e5a0] ml-2" />
+      </div>
+      <div className="flex gap-0 overflow-x-auto flex-1">
+        {items.map(({ k, v, col }, i) => (
+          <div key={k} className={`flex flex-col px-4 py-2 border-r border-[#0a2040] last:border-0 min-w-fit`}>
+            <span className="text-[8.5px] font-mono" style={{ color: col + "80" }}>{k}</span>
+            <span className="text-[11px] font-bold font-mono" style={{ color: col }}>{v}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -407,95 +714,115 @@ function generateSimulationPDF(well: typeof DEFAULT_WELLS[0]) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
 
-  // Cover
-  doc.setFillColor(10, 15, 30);
+  doc.setFillColor(4, 10, 26);
   doc.rect(0, 0, w, 297, "F");
   doc.setTextColor(0, 168, 255);
-  doc.setFontSize(28);
-  doc.text("AlphaData", 20, 40);
-  doc.setFontSize(10);
-  doc.setTextColor(120, 165, 220);
-  doc.text("Simulação de Poços · Relatório Técnico", 20, 52);
+  doc.setFontSize(26);
+  doc.text("AlphaData", 20, 38);
+  doc.setFontSize(9);
+  doc.setTextColor(80, 140, 190);
+  doc.text("WELL SIMULATION & RESERVOIR ENGINEERING  ·  RELATÓRIO TÉCNICO CONFIDENCIAL", 20, 50);
   doc.setDrawColor(0, 168, 255);
-  doc.line(20, 60, w - 20, 60);
+  doc.line(20, 57, w - 20, 57);
 
-  doc.setFontSize(22);
-  doc.setTextColor(232, 244, 255);
-  doc.text(well.name, 20, 85);
-  doc.setFontSize(12);
-  doc.setTextColor(0, 229, 160);
-  doc.text(`${well.block} · ${well.op}`, 20, 98);
-
+  doc.setFontSize(20);
+  doc.setTextColor(220, 238, 255);
+  doc.text(well.name, 20, 80);
   doc.setFontSize(10);
-  doc.setTextColor(180, 210, 255);
+  doc.setTextColor(0, 229, 160);
+  doc.text(`${well.block}  ·  ${well.op}  ·  ${well.field} FIELD`, 20, 93);
+  doc.setFontSize(8);
+  doc.setTextColor(80, 120, 160);
+  doc.text(`Coordenadas: ${well.lat.toFixed(4)}°S, ${well.lng.toFixed(4)}°E  ·  Gerado: ${new Date().toLocaleString("pt-AO")}`, 20, 103);
+  doc.setDrawColor(0, 60, 100);
+  doc.line(20, 108, w - 20, 108);
+
   const info = [
-    ["Campo", well.field],
-    ["Bacia", well.basin],
-    ["Tipo", well.type],
-    ["Profundidade Total", `${well.depth.toLocaleString()} m`],
-    ["Lâmina d'Água", `${well.wd.toLocaleString()} m`],
-    ["API Gravity", `${well.api}°`],
+    ["Campo / Bacia", `${well.field} / ${well.basin}`],
+    ["Bloco / Operadora", `${well.block} / ${well.op}`],
+    ["Tipo de Poço", well.type],
+    ["Medida Total (MD)", `${well.md.toLocaleString()} m`],
+    ["Profundidade Vertical (TVD)", `${well.tvd.toLocaleString()} m`],
+    ["Lâmina d'Água (WD)", `${well.wd.toLocaleString()} m`],
+    ["Inclinação Máxima", `${well.inc}°`],
+    ["API Gravity", `${well.api}° API`],
+    ["Pressão de Fundo (BHP)", `${well.bhp.toLocaleString()} bar`],
+    ["Temperatura do Reservatório", `${well.temp}°C`],
     ["Produção Diária", `${well.prod.toLocaleString()} bbl/d`],
-    ["Prob. Sucesso", `${well.prob}%`],
+    ["GOR", `${well.gor} scf/bbl`],
+    ["Water Cut", `${well.wcut}%`],
+    ["Probabilidade de Sucesso", `${well.prob}%`],
     ["Nível de Risco", well.risk],
-    ["Status", well.status],
-    ["Coordenadas", `${well.lat.toFixed(2)}°S, ${well.lng.toFixed(2)}°E`],
+    ["Status Operacional", well.status],
   ];
+
   let y = 120;
   info.forEach(([k, v]) => {
-    doc.setTextColor(120, 165, 220);
-    doc.text(k, 20, y);
-    doc.setTextColor(232, 244, 255);
-    doc.text(String(v), 90, y);
-    y += 10;
+    doc.setFillColor(8, 16, 34);
+    doc.rect(20, y - 5, w - 40, 10, "F");
+    doc.setTextColor(80, 130, 180);
+    doc.setFontSize(8);
+    doc.text(k, 24, y + 1);
+    doc.setTextColor(210, 228, 248);
+    doc.text(String(v), 100, y + 1);
+    y += 11;
+    if (y > 270) { doc.addPage(); doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F"); y = 30; }
   });
 
-  // Page 2 - Production data
+  // Page 2
   doc.addPage();
-  doc.setFillColor(10, 15, 30); doc.rect(0, 0, w, 297, "F");
-  doc.setTextColor(0, 168, 255); doc.setFontSize(16);
-  doc.text("Dados de Produção", 20, 25);
+  doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F");
+  doc.setTextColor(0, 168, 255); doc.setFontSize(14);
+  doc.text("Dados de Produção — Histórico e Previsão IA", 20, 25);
+  doc.setFontSize(8); doc.setTextColor(80, 120, 160);
+  doc.text(`Modelo: LSTM + Random Forest  ·  Amostras: 12,847  ·  Precisão: 94.7%`, 20, 33);
+
+  autoTable(doc, {
+    startY: 40,
+    head: [["Mês", "Prod. Real (bbl/d)", "Capacidade Inst.", "Previsão IA", "Injecção de Água"]],
+    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString("pt-AO"), d.cap.toLocaleString("pt-AO"), d.ai.toLocaleString("pt-AO"), d.inj.toLocaleString("pt-AO")]),
+    theme: "grid",
+    headStyles: { fillColor: [0, 30, 60], textColor: [0, 168, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [8, 16, 34], textColor: [190, 215, 240], fontSize: 8 },
+    alternateRowStyles: { fillColor: [12, 22, 42] },
+  });
+
+  // Page 3
+  doc.addPage();
+  doc.setFillColor(4, 10, 26); doc.rect(0, 0, w, 297, "F");
+  doc.setTextColor(0, 168, 255); doc.setFontSize(14);
+  doc.text("Matriz de Riscos Operacionais", 20, 25);
 
   autoTable(doc, {
     startY: 35,
-    head: [["Mês", "Prod. Real (bbl/d)", "Capacidade", "Previsão IA"]],
-    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString(), d.cap.toLocaleString(), d.ai.toLocaleString()]),
+    head: [["Factor de Risco", "Valor (%)", "Limiar (%)", "Estado", "Prioridade"]],
+    body: RISK_DATA.map(r => {
+      const s = r.v >= r.t ? "⚠ CRÍTICO" : r.v >= r.t * 0.75 ? "⚡ ATENÇÃO" : "✓ OK";
+      const p = r.v >= r.t ? "ALTA" : r.v >= r.t * 0.75 ? "MÉDIA" : "BAIXA";
+      return [r.f, `${r.v}`, `${r.t}`, s, p];
+    }),
     theme: "grid",
-    headStyles: { fillColor: [0, 40, 80], textColor: [0, 168, 255], fontSize: 9 },
-    bodyStyles: { fillColor: [10, 18, 35], textColor: [200, 220, 240], fontSize: 9 },
-    alternateRowStyles: { fillColor: [15, 25, 45] },
-  });
-
-  // Page 3 - Risk data
-  doc.addPage();
-  doc.setFillColor(10, 15, 30); doc.rect(0, 0, w, 297, "F");
-  doc.setTextColor(0, 168, 255); doc.setFontSize(16);
-  doc.text("Matriz de Riscos", 20, 25);
-
-  autoTable(doc, {
-    startY: 35,
-    head: [["Factor", "Valor (%)", "Limiar (%)", "Estado"]],
-    body: RISK_DATA.map(r => [r.f, `${r.v}`, `${r.t}`, r.v >= r.t ? "⚠ CRÍTICO" : r.v >= r.t * 0.7 ? "⚡ ATENÇÃO" : "✓ OK"]),
-    theme: "grid",
-    headStyles: { fillColor: [0, 40, 80], textColor: [0, 168, 255], fontSize: 9 },
-    bodyStyles: { fillColor: [10, 18, 35], textColor: [200, 220, 240], fontSize: 9 },
-    alternateRowStyles: { fillColor: [15, 25, 45] },
+    headStyles: { fillColor: [0, 30, 60], textColor: [0, 168, 255], fontSize: 8, fontStyle: "bold" },
+    bodyStyles: { fillColor: [8, 16, 34], textColor: [190, 215, 240], fontSize: 8 },
+    alternateRowStyles: { fillColor: [12, 22, 42] },
   });
 
   // Footer
   const pages = doc.internal.pages.length - 1;
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    doc.setFontSize(8); doc.setTextColor(100, 130, 170);
-    doc.text(`AlphaData · Simulação de Poços · ${new Date().toLocaleDateString("pt-AO")}`, 20, 290);
-    doc.text(`Pág. ${i}/${pages}`, w - 35, 290);
+    doc.setFillColor(4, 10, 26); doc.rect(0, 284, w, 13, "F");
+    doc.setDrawColor(0, 40, 80); doc.line(20, 284, w - 20, 284);
+    doc.setFontSize(7); doc.setTextColor(60, 100, 140);
+    doc.text(`AlphaData Well Simulation Platform  ·  CONFIDENCIAL  ·  ${new Date().toLocaleDateString("pt-AO")}`, 20, 291);
+    doc.text(`Pág. ${i} / ${pages}`, w - 30, 291);
   }
 
-  doc.save(`AlphaData_Simulacao_${well.name.replace(/\s+/g, "_")}.pdf`);
+  doc.save(`AlphaData_WellSim_${well.name.replace(/\s+/g, "_")}.pdf`);
   toast.success("PDF exportado com sucesso!");
 }
 
-/* ─── MAIN COMPONENT ─────────────────────────────────────────── */
+/* ─── MAIN ───────────────────────────────────────────────────── */
 export default function WellSimulation() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -511,94 +838,64 @@ export default function WellSimulation() {
   const [saving, setSaving] = useState(false);
   const [savedSimulations, setSavedSimulations] = useState<any[]>([]);
   const [loadingDB, setLoadingDB] = useState(false);
-
-  // New simulation form
   const [newWell, setNewWell] = useState({ name: "", block: "", operator: "", field: "", basin: "Congo", type: "Exploração", depth: 3000, wd: 1000 });
 
   const riskCol = (r: string) => r === "Baixo" ? "#00e5a0" : r === "Médio" ? "#ffb830" : "#ff4365";
 
-  // Fetch saved simulations from DB
   const fetchSimulations = useCallback(async () => {
     setLoadingDB(true);
-    const { data, error } = await supabase
-      .from("well_simulations")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("well_simulations").select("*").order("created_at", { ascending: false });
     if (!error && data) setSavedSimulations(data);
     setLoadingDB(false);
   }, []);
 
   useEffect(() => { fetchSimulations(); }, [fetchSimulations]);
 
-  // Process with AI simulation
   const handleProcess = () => {
     if (uploads.length === 0) return;
     setProcessing(true); setProgress(0);
     const iv = setInterval(() => {
       setProgress(p => {
         if (p >= 100) { clearInterval(iv); setProcessing(false); toast.success("Processamento IA concluído!"); return 100; }
-        return p + 2;
+        return p + 1.5;
       });
-    }, 50);
+    }, 40);
   };
 
-  // Save simulation to DB
   const handleSave = async () => {
     if (!user) { toast.error("É necessário iniciar sessão"); return; }
     setSaving(true);
     const { error } = await supabase.from("well_simulations").insert({
-      user_id: user.id,
-      well_name: selected.name,
-      block: selected.block,
-      operator: selected.op,
-      field: selected.field,
-      basin: selected.basin,
-      well_type: selected.type,
-      depth: selected.depth,
-      water_depth: selected.wd,
-      api_gravity: selected.api,
-      daily_production: selected.prod,
-      success_probability: selected.prob,
-      risk_level: selected.risk,
-      status: selected.status,
-      latitude: selected.lat,
-      longitude: selected.lng,
+      user_id: user.id, well_name: selected.name, block: selected.block, operator: selected.op,
+      field: selected.field, basin: selected.basin, well_type: selected.type, depth: selected.depth,
+      water_depth: selected.wd, api_gravity: selected.api, daily_production: selected.prod,
+      success_probability: selected.prob, risk_level: selected.risk, status: selected.status,
+      latitude: selected.lat, longitude: selected.lng,
       simulation_data: { prodData: PROD_DATA, riskData: RISK_DATA, geoRadar: GEO_RADAR },
     });
     setSaving(false);
-    if (error) { toast.error("Erro ao salvar: " + error.message); }
-    else { toast.success("Simulação salva com sucesso!"); fetchSimulations(); }
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else { toast.success("Simulação salva!"); fetchSimulations(); }
   };
 
-  // Create new simulation
   const handleCreateNew = async () => {
     if (!user || !newWell.name) { toast.error("Preencha o nome do poço"); return; }
     setSaving(true);
     const { error } = await supabase.from("well_simulations").insert({
-      user_id: user.id,
-      well_name: newWell.name,
-      block: newWell.block || "N/A",
-      operator: newWell.operator || "N/A",
-      field: newWell.field,
-      basin: newWell.basin,
-      well_type: newWell.type,
-      depth: newWell.depth,
-      water_depth: newWell.wd,
-      status: "Pendente",
-      success_probability: 0,
-      risk_level: "Médio",
+      user_id: user.id, well_name: newWell.name, block: newWell.block || "N/A",
+      operator: newWell.operator || "N/A", field: newWell.field, basin: newWell.basin,
+      well_type: newWell.type, depth: newWell.depth, water_depth: newWell.wd,
+      status: "Pendente", success_probability: 0, risk_level: "Médio",
     });
     setSaving(false);
-    if (error) { toast.error("Erro ao criar: " + error.message); }
+    if (error) toast.error("Erro ao criar: " + error.message);
     else {
-      toast.success("Nova simulação criada!");
-      setShowNewDialog(false);
+      toast.success("Nova simulação criada!"); setShowNewDialog(false);
       setNewWell({ name: "", block: "", operator: "", field: "", basin: "Congo", type: "Exploração", depth: 3000, wd: 1000 });
       fetchSimulations();
     }
   };
 
-  // Delete simulation
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("well_simulations").delete().eq("id", id);
     if (error) toast.error("Erro ao eliminar");
@@ -606,77 +903,97 @@ export default function WellSimulation() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-[#020913]">
       <Sidebar activeItem="well-simulation" isMobileOpen={sidebarOpen} setIsMobileOpen={setSidebarOpen} />
-
       <div className="flex-1 flex flex-col min-h-screen">
         <Header />
+        <main className="flex-1 p-3 md:p-5 space-y-4 pb-20 md:pb-5 overflow-auto">
 
-        <main className="flex-1 p-3 md:p-6 space-y-4 md:space-y-6 pb-20 md:pb-6 overflow-auto">
           {/* ── PAGE HEADER ── */}
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-1 h-8 bg-gradient-to-b from-primary to-green-500 rounded-full" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground tracking-[3px] uppercase">AlphaData · Visão Computacional</p>
-                    <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-wide">SIMULAÇÃO DE POÇOS</h1>
-                  </div>
-                  <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10 text-[10px]">● LIVE</Badge>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border border-[#0a2040] rounded-xl p-4 bg-[#030d20]">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-[#001830] border border-[#00a8ff]/20 flex items-center justify-center flex-shrink-0">
+                  <Drill className="w-5 h-5 text-[#00a8ff]" />
                 </div>
-                <p className="text-xs text-muted-foreground ml-4">Bacias de Angola — Congo · Kwanza · Cabinda · {DEFAULT_WELLS.length} poços</p>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[9px] text-[#3a6a8a] tracking-[3px] uppercase font-mono">AlphaData · Well Engineering Platform</p>
+                    <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
+                      className="w-1.5 h-1.5 rounded-full bg-[#00e5a0]" />
+                    <span className="text-[9px] text-[#00e5a0] font-mono">LIVE</span>
+                  </div>
+                  <h1 className="text-xl md:text-2xl font-bold text-white tracking-wide font-mono">SIMULAÇÃO DE POÇOS</h1>
+                  <p className="text-[10px] text-[#3a6a8a] font-mono mt-0.5">
+                    Angola Offshore Basins · Congo · Kwanza · Cabinda · {DEFAULT_WELLS.length} wells registered
+                  </p>
+                </div>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => setShowNewDialog(true)}><Plus className="w-3.5 h-3.5 mr-1" /> Nova Simulação</Button>
-                <Button variant="outline" size="sm" onClick={() => generateSimulationPDF(selected)}><Download className="w-3.5 h-3.5 mr-1" /> Exportar PDF</Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}><Save className="w-3.5 h-3.5 mr-1" /> {saving ? "A salvar..." : "Salvar"}</Button>
+                <Button variant="outline" size="sm" className="border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 text-[11px] font-mono"
+                  onClick={() => setShowNewDialog(true)}><Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Poço</Button>
+                <Button variant="outline" size="sm" className="border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 text-[11px] font-mono"
+                  onClick={() => generateSimulationPDF(selected)}><Download className="w-3.5 h-3.5 mr-1.5" /> Relatório PDF</Button>
+                <Button size="sm" className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 text-[11px] font-mono"
+                  onClick={handleSave} disabled={saving}><Save className="w-3.5 h-3.5 mr-1.5" />{saving ? "A salvar..." : "Guardar"}</Button>
               </div>
             </div>
           </motion.div>
+
+          {/* ── TELEMETRY BAR ── */}
+          <TelemetryTicker well={selected} />
 
           {/* ── WELL SELECTOR ── */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
             {DEFAULT_WELLS.map((w) => {
               const active = selected.id === w.id;
               return (
-                <button key={w.id} onClick={() => setSelected(w)}
-                  className={`flex-shrink-0 p-2.5 rounded-lg text-left border transition-all font-mono ${active ? "bg-primary/10 border-primary/40 shadow-md shadow-primary/10" : "bg-card border-border hover:border-primary/20"}`}>
-                  <div className={`text-[11px] font-bold whitespace-nowrap ${active ? "text-primary" : "text-foreground"}`}>{w.name}</div>
-                  <div className="text-[9px] text-muted-foreground whitespace-nowrap mt-0.5">{w.block} · {w.basin}</div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: riskCol(w.risk), boxShadow: `0 0 4px ${riskCol(w.risk)}` }} />
-                    <span className="text-[8px]" style={{ color: riskCol(w.risk) }}>{w.risk}</span>
+                <motion.button key={w.id} onClick={() => setSelected(w)} whileHover={{ y: -1 }}
+                  className={`flex-shrink-0 p-3 rounded-lg text-left border transition-all font-mono min-w-[130px] ${active
+                    ? "bg-[#001830] border-[#00a8ff]/40 shadow-lg shadow-[#00a8ff]/10"
+                    : "bg-[#030d20] border-[#0a1e38] hover:border-[#00a8ff]/20"}`}>
+                  <div className={`text-[11px] font-bold whitespace-nowrap ${active ? "text-[#00a8ff]" : "text-[#b4d4f4]"}`}>{w.name}</div>
+                  <div className="text-[8.5px] text-[#3a6a8a] whitespace-nowrap mt-0.5">{w.block}</div>
+                  <div className="text-[8px] text-[#2a5272] whitespace-nowrap">{w.basin} · {w.type}</div>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <motion.div animate={{ opacity: active ? [1, 0.4, 1] : 1 }} transition={{ duration: 1.2, repeat: Infinity }}
+                      className="w-1.5 h-1.5 rounded-full" style={{ background: riskCol(w.risk) }} />
+                    <span className="text-[8px] font-bold" style={{ color: riskCol(w.risk) }}>{w.risk}</span>
+                    <span className="text-[8px] text-[#2a4a6a] ml-1">{w.prob}%</span>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>
 
           {/* ── MAIN GRID ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_310px] gap-4">
+
             {/* ── 3D CANVAS ── */}
-            <Card className="overflow-hidden">
-              <CardHeader className="py-3 px-4 flex-row items-center justify-between">
-                <CardTitle className="text-xs font-mono tracking-widest uppercase flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-green-500" />
-                  {viewMode === "2d" ? "Secção 2D" : viewMode === "blend" ? "Vista Híbrida" : "Visualização 3D"} — {selected.name}
+            <Card className="overflow-hidden border-[#0a2040] bg-[#020913]">
+              <CardHeader className="py-2.5 px-4 flex-row items-center justify-between border-b border-[#0a2040]">
+                <CardTitle className="text-[10px] font-mono tracking-widest uppercase flex items-center gap-2 text-[#4a8ab4]">
+                  <Boxes className="w-4 h-4 text-[#00e5a0]" />
+                  {viewMode === "2d" ? "Secção Transversal 2D" : viewMode === "blend" ? "Vista Híbrida" : "Visualização 3D Interactiva"} — {selected.name}
+                  <span className="text-[#2a5272] ml-2">· arrastar para rodar · scroll para zoom · dblclick auto-spin</span>
                 </CardTitle>
                 <div className="flex gap-1">
-                  {[{ id: "2d", label: "2D" }, { id: "blend", label: "MIX" }, { id: "3d", label: "3D" }].map(v => (
-                    <Button key={v.id} variant={viewMode === v.id ? "default" : "ghost"} size="sm" className="h-6 text-[10px] px-2 font-mono"
+                  {[{ id: "2d", label: "SECTION" }, { id: "blend", label: "HYBRID" }, { id: "3d", label: "3D VIEW" }].map(v => (
+                    <Button key={v.id} size="sm" className={`h-6 text-[9px] px-2 font-mono tracking-wider ${viewMode === v.id
+                      ? "bg-[#00a8ff]/15 border border-[#00a8ff]/40 text-[#00a8ff]"
+                      : "bg-transparent border border-[#0a2040] text-[#3a6a8a] hover:text-[#00a8ff]"}`}
                       onClick={() => setViewMode(v.id)}>{v.label}</Button>
                   ))}
                 </div>
               </CardHeader>
-              <div className="h-[320px] md:h-[480px] bg-[#010714] relative">
+              <div className="h-[360px] md:h-[520px] bg-[#020913] relative">
                 <WellCanvas well={selected} viewMode={viewMode} />
               </div>
-              <div className="flex gap-3 p-3 border-t border-border flex-wrap text-[9px]">
-                {[["#00e5a0", "Reservatório"], ["#ff4365", "Falha"], ["#ffb830", "Risco"], ["#00a8ff", "Perfurações"], ["#1e40af", "Água"]].map(([col, lab]) => (
+              <div className="flex gap-4 p-3 border-t border-[#0a2040] flex-wrap">
+                {[["#00e5a0", "Reservatório"], ["#ff4365", "Falha Geológica"], ["#ffb830", "GOC/OWC"], ["#00a8ff", "Perfurações"], ["#4a82b8", "Coluna"], ["rgba(180,210,255,0.5)", "Legenda"]].map(([col, lab]) => (
                   <div key={lab as string} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full" style={{ background: col as string }} />
-                    <span className="text-muted-foreground">{lab}</span>
+                    <span className="text-[9px] text-[#3a6a8a] font-mono">{lab}</span>
                   </div>
                 ))}
               </div>
@@ -684,225 +1001,344 @@ export default function WellSimulation() {
 
             {/* ── RIGHT PANEL ── */}
             <div className="flex flex-col gap-3">
-              {/* Well info */}
-              <Card>
-                <CardHeader className="py-3 px-4">
+
+              {/* Well tech specs */}
+              <Card className="border-[#0a2040] bg-[#020913]">
+                <CardHeader className="py-2.5 px-4 border-b border-[#0a2040]">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-mono tracking-widest uppercase">{selected.field}</CardTitle>
-                    <Badge variant={selected.status === "Concluído" ? "default" : selected.status === "Em análise" ? "secondary" : "outline"} className="text-[10px]">
+                    <CardTitle className="text-[10px] font-mono tracking-widest uppercase text-[#3a6a8a]">{selected.field} — Ficha Técnica</CardTitle>
+                    <Badge className={`text-[9px] font-mono ${selected.status === "Concluído" ? "bg-[#00e5a0]/10 text-[#00e5a0] border-[#00e5a0]/30" : selected.status === "Em análise" ? "bg-[#ffb830]/10 text-[#ffb830] border-[#ffb830]/30" : "bg-[#3a6a8a]/10 text-[#3a6a8a] border-[#3a6a8a]/30"}`}>
                       {selected.status}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="py-2 px-4 space-y-2">
-                  {[["Operador", selected.op], ["Bloco", selected.block], ["Bacia", selected.basin], ["Tipo", selected.type], ["API", `${selected.api}°`]].map(([k, v]) => (
-                    <div key={k as string} className="flex justify-between border-b border-border/50 pb-1.5">
-                      <span className="text-[10px] text-muted-foreground">{k}</span>
-                      <span className="text-[10px] text-foreground font-bold">{v}</span>
+                <CardContent className="py-2 px-4">
+                  {[
+                    ["Operadora", selected.op],
+                    ["Bloco", selected.block],
+                    ["Bacia", selected.basin],
+                    ["Tipo", selected.type],
+                    ["MD / TVD", `${selected.md}m / ${selected.tvd}m`],
+                    ["Incl. Máx.", `${selected.inc}°`],
+                    ["API Gravity", `${selected.api}° API`],
+                    ["BHP", `${selected.bhp.toLocaleString()} bar`],
+                    ["Temp. Res.", `${selected.temp}°C`],
+                  ].map(([k, v]) => (
+                    <div key={k as string} className="flex justify-between border-b border-[#0a1830] py-1.5 last:border-0">
+                      <span className="text-[9.5px] text-[#3a6a8a] font-mono">{k}</span>
+                      <span className="text-[9.5px] text-[#b4d4f4] font-bold font-mono">{v}</span>
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
               {/* Gauges */}
-              <Card className="p-4">
-                <div className="grid grid-cols-3 gap-2 justify-items-center">
-                  <Gauge value={selected.prob} label="SUCESSO %" color={selected.prob > 85 ? "#00e5a0" : "#ffb830"} />
-                  <Gauge value={Math.round(selected.api)} max={50} label="API °" color="#00a8ff" />
-                  <Gauge value={Math.round(selected.prod / 1000)} max={30} label="KBBL/D" color="#00e5a0" />
+              <Card className="border-[#0a2040] bg-[#020913] p-4">
+                <p className="text-[9px] text-[#2a5272] tracking-widest mb-3 uppercase font-mono">Indicadores Chave</p>
+                <div className="grid grid-cols-3 gap-1 justify-items-center">
+                  <Gauge value={selected.prob} label="SUCESSO" color={selected.prob > 85 ? "#00e5a0" : "#ffb830"} unit="%" />
+                  <Gauge value={Math.round(selected.api)} max={50} label="API °GRAV" color="#00a8ff" unit="°API" />
+                  <Gauge value={Math.round(selected.prod / 1000)} max={30} label="PROD/DIA" color="#00e5a0" unit="kbbl/d" />
                 </div>
               </Card>
 
-              {/* Depth */}
-              <Card className="p-4">
-                <p className="text-[10px] text-primary tracking-widest mb-3 uppercase font-mono">Profundidade</p>
-                <RiskBar label="Prof. Água (m)" value={Math.round(selected.wd / 20)} threshold={85} />
-                <RiskBar label="Prof. Total (m)" value={Math.round(selected.depth / 50)} threshold={80} />
-                <div className="flex justify-between mt-2">
-                  <span className="text-[9px] text-muted-foreground">Água: {selected.wd.toLocaleString()}m</span>
-                  <span className="text-[9px] text-muted-foreground">Total: {selected.depth.toLocaleString()}m</span>
+              {/* Pressure & GOR */}
+              <Card className="border-[#0a2040] bg-[#020913] p-4">
+                <p className="text-[9px] text-[#2a5272] tracking-widest mb-3 uppercase font-mono">Parâmetros de Fluido</p>
+                <div className="space-y-2.5">
+                  {[
+                    { label: "GOR (Gas-Oil Ratio)", value: selected.gor, max: 1200, col: "#a855f7" },
+                    { label: "Water Cut", value: selected.wcut, max: 100, col: selected.wcut > 30 ? "#ff4365" : "#00e5a0" },
+                    { label: "Prod. Diária (kbbl/d)", value: Math.round(selected.prod / 1000), max: 30, col: "#00a8ff" },
+                  ].map(({ label, value, max, col }) => (
+                    <div key={label}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[9px] text-[#3a6a8a] font-mono">{label}</span>
+                        <span className="text-[10px] font-bold font-mono" style={{ color: col }}>{value}</span>
+                      </div>
+                      <div className="h-[3px] bg-[#0a1830] rounded-full">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (value / max) * 100)}%` }}
+                          transition={{ duration: 1.2 }} className="h-full rounded-full"
+                          style={{ background: `linear-gradient(90deg, ${col}60, ${col})` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </Card>
 
               {/* AI Model */}
-              <Card className="p-4">
+              <Card className="border-[#0a2040] bg-[#020913] p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] text-primary tracking-widest uppercase font-mono">Modelo IA</p>
-                  <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10 text-[9px]">● ACTIVO</Badge>
+                  <p className="text-[9px] text-[#2a5272] tracking-widest uppercase font-mono flex items-center gap-2">
+                    <Cpu className="w-3.5 h-3.5 text-[#00a8ff]" /> Motor de IA
+                  </p>
+                  <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }}
+                    className="text-[8px] font-mono text-[#00e5a0] border border-[#00e5a0]/30 px-1.5 py-0.5 rounded">
+                    ● ACTIVO
+                  </motion.span>
                 </div>
-                {[["Precisão", "94.7%"], ["Amostras", "12,847"], ["Arquitectura", "LSTM+RF"], ["Última sync", "agora"]].map(([k, v]) => (
-                  <div key={k} className="flex justify-between mb-1.5">
-                    <span className="text-[9px] text-muted-foreground">{k}</span>
-                    <span className="text-[9px] text-foreground font-bold">{v}</span>
+                {[["Arquitectura", "LSTM + Random Forest"], ["Precisão do Modelo", "94.7%"], ["Amostras Treino", "12,847"], ["Horizon. Previsão", "24 meses"], ["Última Calibração", "Hoje 06:12"]].map(([k, v]) => (
+                  <div key={k} className="flex justify-between mb-1.5 border-b border-[#0a1830] pb-1.5 last:border-0">
+                    <span className="text-[9px] text-[#2a5272] font-mono">{k}</span>
+                    <span className="text-[9px] text-[#6a9ec4] font-bold font-mono">{v}</span>
                   </div>
                 ))}
-                <div className="h-1 bg-muted rounded-full mt-2 overflow-hidden">
-                  <motion.div animate={{ width: ["60%", "100%", "60%"] }} transition={{ duration: 3, repeat: Infinity }}
-                    className="h-full rounded-full bg-gradient-to-r from-primary to-green-500" />
+                <div className="h-[3px] bg-[#0a1830] rounded-full mt-2 overflow-hidden">
+                  <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-[#00a8ff] to-transparent" />
                 </div>
               </Card>
             </div>
           </div>
 
-          {/* ── UPLOAD ROW ── */}
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-xs font-mono tracking-widest uppercase flex items-center gap-2">
-                <Upload className="w-4 h-4" /> Ingestão de Dados — {selected.field}
+          {/* ── DATA INGESTION ROW ── */}
+          <Card className="border-[#0a2040] bg-[#020913]">
+            <CardHeader className="py-2.5 px-4 border-b border-[#0a2040]">
+              <CardTitle className="text-[10px] font-mono tracking-widest uppercase text-[#3a6a8a] flex items-center gap-2">
+                <Upload className="w-4 h-4 text-[#00a8ff]" /> Ingestão de Dados Técnicos — {selected.field}
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex gap-2.5 flex-wrap items-center p-4 pt-0">
-              {[["Sísmico 2D/3D", Crosshair], ["Perfis LAS", BarChart3], ["Imagens Geo", Eye], ["Modelos Reserv.", Layers]].map(([label, Icon], i) => {
+            <CardContent className="flex gap-2.5 flex-wrap items-center p-4">
+              {[
+                ["Sísmico 2D/3D", Crosshair, "SEG-Y, SEGY"],
+                ["Perfis LAS/DLIS", BarChart3, "LAS 2.0, DLIS"],
+                ["Imagens de Poço", Eye, "FMI, UBI, OBMI"],
+                ["Modelo Res. Estático", Layers, "ECLIPSE, CMG"],
+                ["Dados de Teste (DST)", Waves, "MDT, FTP, DST"],
+                ["Análise PVT", Droplets, "EOS, Correlações"],
+              ].map(([label, Icon, fmt], i) => {
                 const up = uploads.includes(i);
                 const IconComp = Icon as any;
                 return (
-                  <button key={i} onClick={() => setUploads(u => up ? u.filter(x => x !== i) : [...u, i])}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-dashed border transition-all min-w-[90px] ${up ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"}`}>
+                  <motion.button key={i} whileHover={{ y: -2 }} onClick={() => setUploads(u => up ? u.filter(x => x !== i) : [...u, i])}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all min-w-[100px] ${up
+                      ? "border-[#00a8ff]/40 bg-[#001830] text-[#00a8ff]"
+                      : "border-[#0a1e38] bg-[#030d20] text-[#3a6a8a] hover:border-[#00a8ff]/25 hover:text-[#6a9ec4]"}`}>
                     <IconComp className="w-5 h-5" />
-                    <span className="text-[9px] tracking-wider">{label as string}</span>
-                  </button>
+                    <span className="text-[9px] tracking-wider font-mono text-center">{label as string}</span>
+                    <span className="text-[7.5px] opacity-50 font-mono">{fmt as string}</span>
+                  </motion.button>
                 );
               })}
-              <Button className="ml-auto" disabled={processing || uploads.length === 0} onClick={handleProcess}>
-                <Zap className="w-4 h-4 mr-1" />
-                {processing ? `${Math.round(progress)}%` : "Processar IA"}
-              </Button>
-              {processing && (
-                <div className="flex-1 min-w-[120px]">
-                  <Progress value={progress} className="h-1.5" />
-                  <p className="text-[9px] text-muted-foreground mt-1 tracking-wider">A PROCESSAR DADOS...</p>
-                </div>
-              )}
+              <div className="ml-auto flex flex-col gap-2 items-end">
+                <Button disabled={processing || uploads.length === 0} onClick={handleProcess}
+                  className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-[11px]">
+                  <Zap className="w-4 h-4 mr-1.5" />
+                  {processing ? `Processando ${Math.round(progress)}%` : `Processar com IA (${uploads.length} ficheiros)`}
+                </Button>
+                {processing && (
+                  <div className="w-52">
+                    <Progress value={progress} className="h-1.5 bg-[#0a1830]" />
+                    <p className="text-[8.5px] text-[#3a6a8a] mt-1 tracking-wider font-mono text-right">
+                      {progress < 30 ? "Lendo dados sísmicos..." : progress < 60 ? "Calibrando modelo IA..." : progress < 85 ? "Computando previsões..." : "A finalizar relatório..."}
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
           {/* ── CHARTS ── */}
-          <Card>
+          <Card className="border-[#0a2040] bg-[#020913]">
             <Tabs value={tab} onValueChange={setTab}>
-              <div className="border-b border-border px-4">
+              <div className="border-b border-[#0a2040] px-4">
                 <TabsList className="bg-transparent h-auto p-0 gap-0">
-                  {[{ id: "prod", label: "Produção", icon: Activity }, { id: "geo", label: "Geologia", icon: Layers }, { id: "risk", label: "Riscos", icon: Shield }, { id: "decline", label: "Declínio", icon: TrendingDown }].map(t => (
-                    <TabsTrigger key={t.id} value={t.id} className="text-[10px] tracking-widest uppercase font-mono rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5">
+                  {[
+                    { id: "prod", label: "Produção", icon: Activity },
+                    { id: "pressure", label: "Pressão", icon: GaugeIcon },
+                    { id: "geo", label: "Petrofísica", icon: Layers },
+                    { id: "risk", label: "Riscos", icon: Shield },
+                    { id: "decline", label: "Declínio", icon: TrendingDown },
+                  ].map(t => (
+                    <TabsTrigger key={t.id} value={t.id}
+                      className="text-[9.5px] tracking-widest uppercase font-mono rounded-none border-b-2 border-transparent data-[state=active]:border-[#00a8ff] data-[state=active]:bg-transparent data-[state=active]:text-[#00a8ff] text-[#3a6a8a] px-4 py-2.5">
                       <t.icon className="w-3.5 h-3.5 mr-1.5" />{t.label}
                     </TabsTrigger>
                   ))}
                 </TabsList>
               </div>
               <div className="p-4">
+
+                {/* PRODUCTION */}
                 <TabsContent value="prod" className="mt-0">
-                  <p className="text-[10px] text-muted-foreground tracking-widest mb-4 uppercase">Projeção de Produção — {selected.block} · {selected.op}</p>
-                  <ResponsiveContainer width="100%" height={260}>
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Produção vs Capacidade vs Previsão IA — {selected.block}</p>
+                    <div className="flex gap-3 text-[9px] font-mono">
+                      {[["#00a8ff", "Real"], ["#3a6a8a", "Capacidade"], ["#00e5a0", "IA"], ["#6a4ab8", "Injecção"]].map(([c, l]) => (
+                        <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={270}>
                     <AreaChart data={PROD_DATA}>
                       <defs>
                         <linearGradient id="gReal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#00a8ff" stopOpacity={0.3} />
+                          <stop offset="0%" stopColor="#00a8ff" stopOpacity={0.25} />
                           <stop offset="100%" stopColor="#00a8ff" stopOpacity={0} />
                         </linearGradient>
+                        <linearGradient id="gInj" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6a4ab8" stopOpacity={0.15} />
+                          <stop offset="100%" stopColor="#6a4ab8" stopOpacity={0} />
+                        </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="m" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
+                      <XAxis dataKey="m" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Area type="monotone" dataKey="cap" stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} fill="none" name="Capacidade" />
+                      <Area type="monotone" dataKey="cap" stroke="#2a4a6a" strokeDasharray="5 5" strokeWidth={1.2} fill="none" name="Capacidade Inst." />
                       <Area type="monotone" dataKey="real" stroke="#00a8ff" strokeWidth={2.5} fill="url(#gReal)" name="Produção Real" />
                       <Area type="monotone" dataKey="ai" stroke="#00e5a0" strokeDasharray="6 3" strokeWidth={2} fill="none" name="Previsão IA" />
+                      <Area type="monotone" dataKey="inj" stroke="#6a4ab8" strokeWidth={1.5} fill="url(#gInj)" name="Injecção Água" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </TabsContent>
-                <TabsContent value="geo" className="mt-0">
-                  <p className="text-[10px] text-muted-foreground tracking-widest mb-4 uppercase">Análise Petrofísica — {selected.field}</p>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <RadarChart data={GEO_RADAR} cx="50%" cy="50%" outerRadius="70%">
-                      <PolarGrid stroke="hsl(var(--border))" />
-                      <PolarAngleAxis dataKey="s" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <PolarRadiusAxis angle={30} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} />
-                      <Radar name="Poço Actual" dataKey="A" stroke="#00a8ff" fill="#00a8ff" fillOpacity={0.15} strokeWidth={2} dot />
-                      <Radar name="Média da Bacia" dataKey="B" stroke="#ffb830" fill="#ffb830" fillOpacity={0.08} strokeWidth={1.5} />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </TabsContent>
-                <TabsContent value="risk" className="mt-0">
-                  <p className="text-[10px] text-muted-foreground tracking-widest mb-4 uppercase">Matriz de Riscos Operacionais</p>
-                  {RISK_DATA.map(r => <RiskBar key={r.f} label={r.f} value={r.v} threshold={r.t} />)}
-                </TabsContent>
-                <TabsContent value="decline" className="mt-0">
-                  <p className="text-[10px] text-muted-foreground tracking-widest mb-4 uppercase">Curva de Declínio</p>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <LineChart data={DECLINE}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="y" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+
+                {/* PRESSURE */}
+                <TabsContent value="pressure" className="mt-0">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Curva de Pressão vs Profundidade — {selected.name}</p>
+                    <div className="flex gap-3 text-[9px] font-mono">
+                      {[["#ff4365", "Fract."], ["#00a8ff", "Poro"], ["#00e5a0", "Lama"], ["#3a6a8a", "Hidrost."]].map(([c, l]) => (
+                        <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={270}>
+                    <LineChart data={PRESSURE_DEPTH} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
+                      <XAxis type="number" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} label={{ value: "Pressão (MPa)", position: "insideBottom", offset: -2, fill: "#2a5272", fontSize: 9 }} />
+                      <YAxis type="number" dataKey="depth" reversed tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}m`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Line type="monotone" dataKey="r" stroke="#00a8ff" strokeWidth={2.5} dot={{ fill: "#00a8ff", r: 4 }} name="Real (bbl/d)" connectNulls={false} />
-                      <Line type="monotone" dataKey="p" stroke="#ffb830" strokeWidth={2} strokeDasharray="6 3" dot={{ fill: "#ffb830", r: 3 }} name="Projeção IA" />
+                      <Line type="monotone" dataKey="frac" stroke="#ff4365" strokeWidth={1.8} dot={false} name="Pressão Fractura" />
+                      <Line type="monotone" dataKey="pore" stroke="#00a8ff" strokeWidth={2} dot={false} name="Pressão de Poros" />
+                      <Line type="monotone" dataKey="mud" stroke="#00e5a0" strokeWidth={1.8} strokeDasharray="6 3" dot={false} name="Janela de Lama" />
+                      <Line type="monotone" dataKey="hydro" stroke="#2a4a6a" strokeWidth={1.2} strokeDasharray="3 4" dot={false} name="Gradiente Hidrost." />
                     </LineChart>
                   </ResponsiveContainer>
                 </TabsContent>
+
+                {/* GEO */}
+                <TabsContent value="geo" className="mt-0">
+                  <p className="text-[10px] text-[#3a6a8a] tracking-widest mb-4 uppercase font-mono">Análise Petrofísica — {selected.field} vs Média da Bacia</p>
+                  <ResponsiveContainer width="100%" height={270}>
+                    <RadarChart data={GEO_RADAR} cx="50%" cy="50%" outerRadius="68%">
+                      <PolarGrid stroke="rgba(0,60,100,0.6)" />
+                      <PolarAngleAxis dataKey="s" tick={{ fontSize: 9.5, fill: "#2a5272", fontFamily: "Courier New" }} />
+                      <PolarRadiusAxis angle={30} tick={{ fontSize: 7, fill: "#1a3a5a" }} />
+                      <Radar name="Poço Actual" dataKey="A" stroke="#00a8ff" fill="#00a8ff" fillOpacity={0.12} strokeWidth={2} dot={{ fill: "#00a8ff", r: 3 }} />
+                      <Radar name="Média da Bacia" dataKey="B" stroke="#ffb830" fill="#ffb830" fillOpacity={0.06} strokeWidth={1.5} dot={{ fill: "#ffb830", r: 2 }} />
+                      <Legend wrapperStyle={{ fontSize: 9, fontFamily: "Courier New", color: "#3a6a8a" }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </TabsContent>
+
+                {/* RISK */}
+                <TabsContent value="risk" className="mt-0">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Matriz de Riscos Operacionais — {selected.name}</p>
+                    <div className="flex gap-2 text-[9px] font-mono">
+                      <span className="text-[#ff4365] border border-[#ff4365]/30 px-1.5 py-0.5 rounded bg-[#ff4365]/8">CRÍTICO ≥ limiar</span>
+                      <span className="text-[#ffb830] border border-[#ffb830]/30 px-1.5 py-0.5 rounded bg-[#ffb830]/8">ATENÇÃO ≥75%</span>
+                      <span className="text-[#00e5a0] border border-[#00e5a0]/30 px-1.5 py-0.5 rounded bg-[#00e5a0]/8">OK</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                    {RISK_DATA.map(r => <RiskBar key={r.f} label={r.f} value={r.v} threshold={r.t} />)}
+                  </div>
+                </TabsContent>
+
+                {/* DECLINE */}
+                <TabsContent value="decline" className="mt-0">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] text-[#3a6a8a] tracking-widest uppercase font-mono">Curva de Declínio de Produção — Modelo Exponencial</p>
+                    <div className="flex gap-3 text-[9px] font-mono">
+                      {[["#00a8ff", "Real"], ["#ffb830", "Previsão IA"]].map(([c, l]) => (
+                        <span key={l} className="flex items-center gap-1"><span className="w-2 h-0.5 inline-block rounded" style={{ background: c as string }} />{l}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={270}>
+                    <LineChart data={DECLINE}>
+                      <CartesianGrid strokeDasharray="3 4" stroke="rgba(0,40,80,0.5)" />
+                      <XAxis dataKey="y" tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: "#2a5272", fontFamily: "Courier New" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <ReferenceLine x="2025" stroke="rgba(0,168,255,0.2)" strokeDasharray="4 4" label={{ value: "HOJE", fill: "#2a5272", fontSize: 8, fontFamily: "Courier New" }} />
+                      <Line type="monotone" dataKey="r" stroke="#00a8ff" strokeWidth={2.5} dot={{ fill: "#00a8ff", r: 4, strokeWidth: 0 }} name="Real (bbl/d)" connectNulls={false} />
+                      <Line type="monotone" dataKey="p" stroke="#ffb830" strokeWidth={2} strokeDasharray="7 3" dot={{ fill: "#ffb830", r: 3, strokeWidth: 0 }} name="Previsão IA (bbl/d)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </TabsContent>
+
               </div>
             </Tabs>
           </Card>
 
           {/* ── HISTORY TABLE ── */}
-          <Card>
-            <CardHeader className="py-3 px-4 flex-row items-center justify-between">
-              <CardTitle className="text-xs font-mono tracking-widest uppercase flex items-center gap-2">
-                <FileText className="w-4 h-4" /> Histórico de Simulações
+          <Card className="border-[#0a2040] bg-[#020913]">
+            <CardHeader className="py-2.5 px-4 border-b border-[#0a2040] flex-row items-center justify-between">
+              <CardTitle className="text-[10px] font-mono tracking-widest uppercase text-[#3a6a8a] flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#00a8ff]" /> Registo de Simulações
               </CardTitle>
-              <Badge variant="outline" className="text-[10px]">{DEFAULT_WELLS.length + savedSimulations.length} registos</Badge>
+              <Badge variant="outline" className="text-[9px] font-mono border-[#0a2040] text-[#3a6a8a]">
+                {DEFAULT_WELLS.length + savedSimulations.length} poços
+              </Badge>
             </CardHeader>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-[10px] font-mono">Poço</TableHead>
-                    <TableHead className="text-[10px] font-mono hidden md:table-cell">Bloco</TableHead>
-                    <TableHead className="text-[10px] font-mono hidden md:table-cell">Operador</TableHead>
-                    <TableHead className="text-[10px] font-mono">Bacia</TableHead>
-                    <TableHead className="text-[10px] font-mono hidden md:table-cell">Sucesso</TableHead>
-                    <TableHead className="text-[10px] font-mono">Status</TableHead>
-                    <TableHead className="text-[10px] font-mono">Acções</TableHead>
+                  <TableRow className="border-[#0a1830] hover:bg-transparent">
+                    {["Poço", "Bloco", "Operadora", "Bacia / Tipo", "MD (m)", "API°", "Sucesso", "Status", "Acção"].map(h => (
+                      <TableHead key={h} className="text-[9px] font-mono text-[#2a5272] tracking-wider">{h}</TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {DEFAULT_WELLS.map(w => (
-                    <TableRow key={w.id} className={`cursor-pointer ${selected.id === w.id ? "bg-primary/5" : ""}`} onClick={() => setSelected(w)}>
-                      <TableCell className="text-xs font-bold">{w.name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{w.block}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{w.op}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[9px]">{w.basin}</Badge></TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center gap-2">
-                          <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+                    <TableRow key={w.id} className={`border-[#0a1830] cursor-pointer transition-colors ${selected.id === w.id ? "bg-[#001830]" : "hover:bg-[#030d20]"}`}
+                      onClick={() => setSelected(w)}>
+                      <TableCell className="text-[10px] font-bold font-mono text-[#b4d4f4]">{w.name}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#3a6a8a]">{w.block}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#3a6a8a]">{w.op}</TableCell>
+                      <TableCell><span className="text-[9px] font-mono text-[#2a5272]">{w.basin} · {w.type}</span></TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#4a7a9a]">{w.md.toLocaleString()}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#4a7a9a]">{w.api}°</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-10 h-1 bg-[#0a1830] rounded-full overflow-hidden">
                             <div className="h-full rounded-full" style={{ width: `${w.prob}%`, background: w.prob > 85 ? "#00e5a0" : "#ffb830" }} />
                           </div>
-                          <span className="text-[10px] text-muted-foreground">{w.prob}%</span>
+                          <span className="text-[9px] font-mono" style={{ color: w.prob > 85 ? "#00e5a0" : "#ffb830" }}>{w.prob}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={w.status === "Concluído" ? "default" : "secondary"} className="text-[9px]">{w.status}</Badge>
+                        <span className={`text-[8.5px] font-mono px-1.5 py-0.5 rounded border ${w.status === "Concluído" ? "bg-[#00e5a0]/8 text-[#00e5a0] border-[#00e5a0]/25" : w.status === "Em análise" ? "bg-[#ffb830]/8 text-[#ffb830] border-[#ffb830]/25" : "bg-[#3a6a8a]/8 text-[#3a6a8a] border-[#3a6a8a]/25"}`}>
+                          {w.status}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-2"><Eye className="w-3 h-3 mr-1" /> Ver</Button>
+                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#00a8ff]">
+                          <Eye className="w-3 h-3 mr-1" /> Ver
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* Saved from DB */}
                   {savedSimulations.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="text-xs font-bold">{s.well_name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{s.block}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{s.operator}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[9px]">{s.basin}</Badge></TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="text-[10px] text-muted-foreground">{s.success_probability || 0}%</span>
+                    <TableRow key={s.id} className="border-[#0a1830] hover:bg-[#030d20]">
+                      <TableCell className="text-[10px] font-bold font-mono text-[#6a9ec4]">{s.well_name}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.block}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.operator}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.basin}</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">—</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">—</TableCell>
+                      <TableCell className="text-[9px] font-mono text-[#2a5272]">{s.success_probability || 0}%</TableCell>
+                      <TableCell>
+                        <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded border bg-[#3a6a8a]/8 text-[#3a6a8a] border-[#3a6a8a]/25">{s.status}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-[9px]">{s.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-1" onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>
-                          <Trash2 className="w-3 h-3 text-destructive" />
+                        <Button variant="ghost" size="sm" className="h-6 text-[9px] px-2 font-mono text-[#3a6a8a] hover:text-[#ff4365]"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -911,47 +1347,52 @@ export default function WellSimulation() {
               </Table>
             </div>
           </Card>
-        </main>
 
+        </main>
         {isMobile && <MobileBottomNav />}
       </div>
 
       {/* ── NEW SIMULATION DIALOG ── */}
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-[#030d20] border-[#0a2040]">
           <DialogHeader>
-            <DialogTitle>Nova Simulação de Poço</DialogTitle>
-            <DialogDescription>Preencha os dados básicos para iniciar uma nova simulação.</DialogDescription>
+            <DialogTitle className="font-mono text-[#b4d4f4]">Registar Novo Poço</DialogTitle>
+            <DialogDescription className="text-[#3a6a8a] text-[11px] font-mono">Introduza os parâmetros iniciais para criar uma nova simulação.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Nome do Poço</Label><Input value={newWell.name} onChange={e => setNewWell(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Girassol-5" /></div>
+            <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Nome do Poço *</Label>
+              <Input value={newWell.name} onChange={e => setNewWell(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Girassol-5" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Bloco</Label><Input value={newWell.block} onChange={e => setNewWell(p => ({ ...p, block: e.target.value }))} placeholder="Bloco 17" /></div>
-              <div><Label className="text-xs">Operador</Label><Input value={newWell.operator} onChange={e => setNewWell(p => ({ ...p, operator: e.target.value }))} placeholder="TotalEnergies" /></div>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Bloco</Label>
+                <Input value={newWell.block} onChange={e => setNewWell(p => ({ ...p, block: e.target.value }))} placeholder="Bloco 17" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Operadora</Label>
+                <Input value={newWell.operator} onChange={e => setNewWell(p => ({ ...p, operator: e.target.value }))} placeholder="TotalEnergies" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Campo</Label><Input value={newWell.field} onChange={e => setNewWell(p => ({ ...p, field: e.target.value }))} placeholder="Girassol" /></div>
-              <div>
-                <Label className="text-xs">Bacia</Label>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Campo</Label>
+                <Input value={newWell.field} onChange={e => setNewWell(p => ({ ...p, field: e.target.value }))} placeholder="Girassol" className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Bacia Sedimentar</Label>
                 <Select value={newWell.basin} onValueChange={v => setNewWell(p => ({ ...p, basin: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Congo">Congo</SelectItem>
-                    <SelectItem value="Kwanza">Kwanza</SelectItem>
-                    <SelectItem value="Cabinda">Cabinda</SelectItem>
-                    <SelectItem value="Namibe">Namibe</SelectItem>
+                  <SelectTrigger className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#030d20] border-[#0a2040]">
+                    {["Congo", "Kwanza", "Cabinda", "Namibe"].map(b => <SelectItem key={b} value={b} className="font-mono text-[#b4d4f4]">{b}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Profundidade (m)</Label><Input type="number" value={newWell.depth} onChange={e => setNewWell(p => ({ ...p, depth: Number(e.target.value) }))} /></div>
-              <div><Label className="text-xs">Lâmina d'Água (m)</Label><Input type="number" value={newWell.wd} onChange={e => setNewWell(p => ({ ...p, wd: Number(e.target.value) }))} /></div>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Prof. Total MD (m)</Label>
+                <Input type="number" value={newWell.depth} onChange={e => setNewWell(p => ({ ...p, depth: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
+              <div><Label className="text-[10px] font-mono text-[#3a6a8a]">Lâmina d'Água (m)</Label>
+                <Input type="number" value={newWell.wd} onChange={e => setNewWell(p => ({ ...p, wd: Number(e.target.value) }))} className="bg-[#020913] border-[#0a2040] text-[#b4d4f4] font-mono text-sm" /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancelar</Button>
-            <Button onClick={handleCreateNew} disabled={saving || !newWell.name}>{saving ? "A criar..." : "Criar Simulação"}</Button>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)} className="border-[#0a2040] text-[#3a6a8a] font-mono text-sm">Cancelar</Button>
+            <Button onClick={handleCreateNew} disabled={saving || !newWell.name}
+              className="bg-[#00a8ff]/10 border border-[#00a8ff]/30 text-[#00a8ff] hover:bg-[#00a8ff]/20 font-mono text-sm">
+              {saving ? "A criar..." : "Criar Simulação"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
