@@ -1088,6 +1088,10 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      create_workspace: {
+        Args: { _description?: string; _name: string }
+        Returns: string
+      }
       demote_from_admin: { Args: { _target_user_id: string }; Returns: boolean }
       demote_from_super_admin: {
         Args: { _target_user_id: string }

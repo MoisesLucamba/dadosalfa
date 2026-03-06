@@ -74,18 +74,23 @@ export function useWorkspaces() {
     mutationFn: async ({ name, description }: { name: string; description?: string }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
-        .from('workspaces')
-        .insert({
-          name,
-          description: description || null,
-          owner_id: user.id,
-        })
-        .select()
-        .single();
+      const { data: workspaceId, error } = await supabase
+        .rpc('create_workspace', {
+          _name: name,
+          _description: description || null,
+        });
 
       if (error) throw error;
-      return data as Workspace;
+
+      // Fetch the created workspace
+      const { data: workspace, error: fetchError } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('id', workspaceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      return workspace as Workspace;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
