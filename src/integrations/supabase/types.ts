@@ -1084,6 +1084,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_workspace: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
       demote_from_admin: { Args: { _target_user_id: string }; Returns: boolean }
       demote_from_super_admin: {
         Args: { _target_user_id: string }
@@ -1097,6 +1101,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_workspace_member: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
       promote_to_admin: { Args: { _target_user_id: string }; Returns: boolean }
       promote_to_super_admin: {
         Args: { _target_user_id: string }
