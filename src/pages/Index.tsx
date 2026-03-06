@@ -1,25 +1,24 @@
 import { useMemo, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
-import { 
-  BarChart3, 
-  DollarSign, 
-  Ship, 
-  RefreshCw, 
-  AlertTriangle, 
+import {
+  BarChart3,
+  DollarSign,
+  Ship,
+  RefreshCw,
+  AlertTriangle,
   Zap,
   TrendingUp,
   TrendingDown,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Layout Components
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
-
-// Dashboard Components
 import { KPICard } from "@/components/dashboard/KPICard";
 import { PriceCard } from "@/components/dashboard/PriceCard";
 import { ProductionChart } from "@/components/dashboard/ProductionChart";
@@ -27,22 +26,94 @@ import { ExportsMap } from "@/components/dashboard/ExportsMap";
 import { AIInsights } from "@/components/dashboard/AIInsights";
 import { OperatorsTable } from "@/components/dashboard/OperatorsTable";
 import { DataSourceIndicator, DATA_SOURCES } from "@/components/dashboard/DataSourceIndicator";
-
-// UI Components
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
-// Hooks & Integrations
 import { useProductionData, usePriceData, useExportData } from "@/hooks/useData";
 import { useLatestDataUpdates, formatLastUpdate, getSourceShortName } from "@/hooks/useDataUpdates";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * UTILITIES: Number Formatting
- */
+/* ─────────────────────────────────────────
+   GLOBAL THEME TOKENS
+───────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
+
+    :root {
+      --bg-primary:       #0A0E1A;
+      --bg-secondary:     #0D1117;
+      --bg-surface:       #141B2D;
+      --bg-surface-hover: #1A2235;
+      --border-subtle:    #1E2A45;
+      --accent-blue:      #00A3FF;
+      --accent-amber:     #F5A623;
+      --accent-green:     #00D4AA;
+      --accent-red:       #FF6B35;
+      --text-primary:     #E8EDF5;
+      --text-secondary:   #6B7A99;
+      --text-muted:       #3D4F6E;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* card hover */
+    .surface-card {
+      transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
+    }
+    .surface-card:hover {
+      border-color: rgba(0,163,255,0.30) !important;
+      background: var(--bg-surface-hover) !important;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
+    }
+
+    /* mount animations */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0);   }
+    }
+    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity:0; }
+    .d1{animation-delay: 50ms;} .d2{animation-delay:100ms;}
+    .d3{animation-delay:150ms;} .d4{animation-delay:200ms;}
+    .d5{animation-delay:250ms;} .d6{animation-delay:300ms;}
+
+    /* live pulse */
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+
+    /* skeleton shimmer */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+    .skeleton-dark {
+      background: linear-gradient(90deg, #141B2D 25%, #1E2A45 50%, #141B2D 75%);
+      background-size: 1200px 100%;
+      animation: shimmer 1.6s infinite linear;
+      border-radius: 8px;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+  `}</style>
+);
+
+/* ─────────────────────────────────────────
+   UTILITIES  (unchanged logic)
+───────────────────────────────────────── */
 const formatVolume = (value: number) => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M bpd`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K bpd`;
@@ -54,108 +125,171 @@ const formatCurrency = (value: number, compact = false) => {
     if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
     if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: value >= 1000 ? 0 : 2
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD",
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
   }).format(value);
 };
 
-/**
- * CUSTOM HOOK: Dashboard KPI Logic
- * Encapsulates complex calculations for better readability
- */
-const useDashboardKPIs = (productionData: any[], priceData: any[], exportData: any[]) => {
-  return useMemo(() => {
-    // 1. Production KPIs
+/* ─────────────────────────────────────────
+   KPI HOOK  (unchanged logic)
+───────────────────────────────────────── */
+const useDashboardKPIs = (productionData: any[], priceData: any[], exportData: any[]) =>
+  useMemo(() => {
     const latestDate = productionData?.[0]?.data_date;
     const latestProd = productionData?.filter(p => p.data_date === latestDate) || [];
-    const totalDailyProd = latestProd.reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
-    
+    const totalDailyProd = latestProd.reduce((s, p) => s + Number(p.daily_production || 0), 0);
     const prevProdData = productionData?.filter(p => p.data_date !== latestDate) || [];
     const prevDate = [...new Set(prevProdData.map(p => p.data_date))].sort().reverse()[0];
-    const prevTotalProd = prevProdData
-      .filter(p => p.data_date === prevDate)
-      .reduce((sum, p) => sum + Number(p.daily_production || 0), 0);
-
+    const prevTotalProd = prevProdData.filter(p => p.data_date === prevDate).reduce((s, p) => s + Number(p.daily_production || 0), 0);
     const prodChange = prevTotalProd > 0 ? ((totalDailyProd - prevTotalProd) / prevTotalProd) * 100 : 0;
 
-    // 2. Price KPIs (Brent)
     const brent = priceData?.find(p => p.crude_type.toLowerCase().includes("brent"));
     const brentPrice = brent?.price || 0;
     const brentChange = brent?.change_percent || 0;
 
-    // 3. Export KPIs
     const currentMonth = new Date().toISOString().slice(0, 7);
     const currentExports = exportData?.filter(e => e.data_date.startsWith(currentMonth)) || [];
-    const totalExportVol = currentExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
-    
-    const prevMonthDate = new Date();
-    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const totalExportVol = currentExports.reduce((s, e) => s + Number(e.volume || 0), 0);
+    const prevMonthDate = new Date(); prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
     const prevMonth = prevMonthDate.toISOString().slice(0, 7);
     const prevExports = exportData?.filter(e => e.data_date.startsWith(prevMonth)) || [];
-    const prevExportVol = prevExports.reduce((sum, e) => sum + Number(e.volume || 0), 0);
-    
+    const prevExportVol = prevExports.reduce((s, e) => s + Number(e.volume || 0), 0);
     const exportChange = prevExportVol > 0 ? ((totalExportVol - prevExportVol) / prevExportVol) * 100 : 0;
 
-    // 4. Revenue KPIs
-    const totalExportVal = currentExports.reduce((sum, e) => sum + Number(e.value_usd || 0), 0);
+    const totalExportVal = currentExports.reduce((s, e) => s + Number(e.value_usd || 0), 0);
     const estRevenue = totalExportVal > 0 ? totalExportVal : totalExportVol * brentPrice;
     const prevRevenue = prevExportVol * (brentPrice * (1 - brentChange / 100));
     const revChange = prevRevenue > 0 ? ((estRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
     return {
       production: { value: totalDailyProd, change: prodChange, formatted: formatVolume(totalDailyProd) },
-      brent: { value: brentPrice, change: brentChange, formatted: formatCurrency(brentPrice) },
-      exports: { value: totalExportVol, change: exportChange, formatted: `${(totalExportVol/1000000).toFixed(1)}M bbl` },
-      revenue: { value: estRevenue, change: revChange, formatted: formatCurrency(estRevenue, true) }
+      brent:      { value: brentPrice,     change: brentChange, formatted: formatCurrency(brentPrice) },
+      exports:    { value: totalExportVol, change: exportChange, formatted: `${(totalExportVol / 1000000).toFixed(1)}M bbl` },
+      revenue:    { value: estRevenue,     change: revChange,   formatted: formatCurrency(estRevenue, true) },
     };
   }, [productionData, priceData, exportData]);
+
+/* ─────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────── */
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+    {children}
+  </span>
+);
+
+/* ─────────────────────────────────────────
+   KPI MINI CARD  (inline, theme-native)
+───────────────────────────────────────── */
+const KPIBlock = ({
+  label, value, change, unit, icon: Icon, accentColor = "var(--accent-blue)",
+}: {
+  label: string; value: string; change: number; unit: string;
+  icon: React.ComponentType<any>; accentColor?: string;
+}) => {
+  const up = change >= 0;
+  return (
+    <div className="surface-card" style={{
+      padding: 20, background: "var(--bg-surface)",
+      border: "1px solid var(--border-subtle)", borderRadius: 8,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.4)", cursor: "default",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ padding: 8, borderRadius: 6, background: `${accentColor}14`, color: accentColor, display: "flex" }}>
+          <Icon size={16} />
+        </div>
+        {change !== 0 && (
+          <span className="mono" style={{
+            fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 3,
+            color: up ? "var(--accent-green)" : "var(--accent-red)",
+          }}>
+            {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {up ? "+" : ""}{change.toFixed(1)}%
+          </span>
+        )}
+      </div>
+      <div className="mono" style={{ fontSize: 28, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+          {label}
+        </span>
+        <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{unit}</span>
+      </div>
+      {/* hairline gradient */}
+      <div style={{ marginTop: 12, height: 1, background: `linear-gradient(90deg, ${accentColor} 0%, transparent 100%)`, opacity: 0.28 }} />
+    </div>
+  );
 };
 
-/**
- * MAIN COMPONENT: Index
- */
+/* ─────────────────────────────────────────
+   PRICE TICKER  (replaces PriceCard slots)
+───────────────────────────────────────── */
+const PriceTicker = ({ name, price, change }: { name: string; price: number; change: number }) => {
+  const up = change >= 0;
+  return (
+    <div className="surface-card" style={{
+      padding: "14px 20px", background: "var(--bg-surface)",
+      border: "1px solid var(--border-subtle)", borderRadius: 8,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+    }}>
+      <div>
+        <SectionLabel>{name}</SectionLabel>
+        <div className="mono" style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", marginTop: 4 }}>
+          ${price.toFixed(2)}
+        </div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <span className="mono" style={{
+          fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4,
+          color: up ? "var(--accent-green)" : "var(--accent-red)",
+          justifyContent: "flex-end",
+        }}>
+          {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          {up ? "+" : ""}{change.toFixed(2)}%
+        </span>
+        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
+          USD/bbl
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────── */
 const Index = () => {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Data Fetching
-  const { data: prodData, isLoading: loadProd, refetch: refetchProd } = useProductionData();
-  const { data: priceData, isLoading: loadPrice, refetch: refetchPrice } = usePriceData();
+  const { data: prodData,   isLoading: loadProd,   refetch: refetchProd  } = useProductionData();
+  const { data: priceData,  isLoading: loadPrice,  refetch: refetchPrice } = usePriceData();
   const { data: exportData, isLoading: loadExport, refetch: refetchExport } = useExportData();
   const { data: updates } = useLatestDataUpdates();
-  const { data: isAdmin } = useIsAdmin();
+  const { data: isAdmin }  = useIsAdmin();
 
   const isLoading = loadProd || loadPrice || loadExport;
   const kpis = useDashboardKPIs(prodData || [], priceData || [], exportData || []);
 
-  // Handlers
   const handleSyncPrices = useCallback(async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-oil-prices", {
-        body: { action: "sync" }
-      });
-
+      const { data, error } = await supabase.functions.invoke("fetch-oil-prices", { body: { action: "sync" } });
       if (error) throw error;
-
       if (data?.success) {
-        toast.success("Mercado Sincronizado", {
-          description: data.data?.source || "Preços atualizados em tempo real"
-        });
+        toast.success("Mercado Sincronizado", { description: data.data?.source || "Preços atualizados em tempo real" });
         refetchPrice();
-      } else {
-        throw new Error(data?.error || "Falha na sincronização");
-      }
+      } else throw new Error(data?.error || "Falha na sincronização");
     } catch (err: any) {
       const isRateLimit = err.message?.includes("429") || err.message?.includes("Rate limit");
       toast.error(isRateLimit ? "Limite atingido" : "Erro de conexão", {
-        description: isRateLimit ? "Aguarde um momento" : "Não foi possível atualizar os preços"
+        description: isRateLimit ? "Aguarde um momento" : "Não foi possível atualizar os preços",
       });
-    } finally {
-      setIsSyncing(false);
-    }
+    } finally { setIsSyncing(false); }
   }, [refetchPrice]);
 
   const handleRefreshAll = () => {
@@ -163,10 +297,8 @@ const Index = () => {
     toast.info("Atualizando dashboard...");
   };
 
-  // Derived Data
   const topPriceCards = useMemo(() => {
-    const types = ["Brent", "Cabinda", "Girassol"];
-    return types.map(t => {
+    return ["Brent", "Cabinda", "Girassol"].map(t => {
       const entry = priceData?.find(p => p.crude_type.toLowerCase().includes(t.toLowerCase()));
       return { name: t, price: entry?.price || 0, change: entry?.change_percent || 0 };
     }).filter(p => p.price > 0);
@@ -174,160 +306,200 @@ const Index = () => {
 
   const hasNoData = !isLoading && (!prodData?.length && !priceData?.length && !exportData?.length);
 
+  const kpiDefs = [
+    { key: "production", label: "Produção Diária", unit: "bpd",      icon: TrendingUp,  accent: "var(--accent-blue)"  },
+    { key: "brent",      label: "Brent Crude",     unit: "USD/bbl",  icon: DollarSign,  accent: "var(--accent-amber)" },
+    { key: "exports",    label: "Exportações",      unit: "mensal",   icon: Ship,        accent: "var(--accent-green)" },
+    { key: "revenue",    label: "Receita Est.",     unit: "USD",      icon: BarChart3,   accent: "var(--accent-blue)"  },
+  ];
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden font-sans">
-      <Helmet>
-        <title>AlphaData | Intelligence Hub</title>
-      </Helmet>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", overflow: "hidden" }}>
+      <Helmet><title>AlphaData | Intelligence Hub</title></Helmet>
+      <GlobalStyles />
 
       <Sidebar activeItem="/" />
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        {/* mesh glow */}
+        <div style={{ position: "absolute", top: 0, right: 0, width: 500, height: 500, background: "radial-gradient(circle, rgba(0,163,255,0.03) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+
         <Header activeItem="/" />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 scroll-smooth bg-background text-foreground">
-          <div className="max-w-7xl mx-auto space-y-8">
-            
-            {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Visão Geral</span>
+        <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 88, position: "relative", zIndex: 1 }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+            {/* ── PAGE HEADER ── */}
+            <div className="fade-up d1" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border-subtle)" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <LayoutDashboard size={12} style={{ color: "var(--accent-blue)" }} />
+                  <SectionLabel>Visão Geral</SectionLabel>
                 </div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+                <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                   Dashboard Principal
                 </h1>
-                <p className="text-muted-foreground max-w-md">
+                <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                   Monitoramento em tempo real do ecossistema petrolífero de Angola.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Live Prices button */}
+                <button
                   onClick={handleSyncPrices}
                   disabled={isSyncing}
-                  className="bg-card shadow-sm border-border hover:border-primary/50 transition-all"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 16px", borderRadius: 6,
+                    background: "transparent", border: "1px solid var(--border-subtle)",
+                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    fontSize: 13, fontWeight: 600, cursor: isSyncing ? "not-allowed" : "pointer",
+                    opacity: isSyncing ? 0.6 : 1,
+                    transition: "border-color 180ms ease-out",
+                  }}
+                  onMouseOver={e => !isSyncing && ((e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent-blue)")}
+                  onMouseOut={e => ((e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-subtle)")}
                 >
-                  <Zap className={`w-4 h-4 mr-2 text-accent ${isSyncing ? 'animate-pulse' : ''}`} />
+                  <Zap size={14} style={{ color: "var(--accent-amber)", animation: isSyncing ? "pulse 1s ease-in-out infinite" : "none" }} />
                   {isSyncing ? "Sincronizando..." : "Live Prices"}
-                </Button>
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                </button>
+
+                {/* Refresh button */}
+                <button
                   onClick={handleRefreshAll}
                   disabled={isLoading}
-                  className="shadow-md shadow-primary/20"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 16px", borderRadius: 6,
+                    background: "var(--accent-blue)", border: "none",
+                    color: "#0A0E1A", fontFamily: "'Epilogue',sans-serif",
+                    fontSize: 13, fontWeight: 600, cursor: isLoading ? "not-allowed" : "pointer",
+                    opacity: isLoading ? 0.6 : 1,
+                    transition: "filter 180ms ease-out",
+                  }}
+                  onMouseOver={e => !isLoading && ((e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.15)")}
+                  onMouseOut={e => ((e.currentTarget as HTMLButtonElement).style.filter = "none")}
                 >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw size={14} style={{ animation: isLoading ? "spin 1s linear infinite" : "none" }} />
                   Atualizar
-                </Button>
+                </button>
               </div>
-            </header>
+            </div>
 
-            {/* Alerts */}
+            {/* ── ALERT ── */}
             {hasNoData && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertDescription className="flex items-center justify-between w-full">
-                  <span>Nenhum dado encontrado para o período atual.</span>
-                  {isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={() => navigate("/admin")}>
-                      Configurar Dados
-                    </Button>
-                  )}
-                </AlertDescription>
-              </Alert>
+              <div className="fade-up d1" style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "14px 20px", borderRadius: 8, marginBottom: 24,
+                background: "rgba(255,107,53,0.08)", border: "1px solid rgba(255,107,53,0.25)",
+                borderLeft: "3px solid var(--accent-red)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <AlertTriangle size={16} style={{ color: "var(--accent-red)", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
+                    Nenhum dado encontrado para o período atual.
+                  </span>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate("/admin")}
+                    style={{
+                      fontFamily: "'Epilogue',sans-serif", fontSize: 11, fontWeight: 700,
+                      textTransform: "uppercase", letterSpacing: "0.08em",
+                      color: "var(--accent-red)", background: "transparent",
+                      border: "1px solid rgba(255,107,53,0.30)", borderRadius: 4,
+                      padding: "4px 12px", cursor: "pointer",
+                    }}
+                  >
+                    Configurar
+                  </button>
+                )}
+              </div>
             )}
 
-            {/* KPI Grid */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {isLoading ? (
-                Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl shadow-sm" />)
-              ) : (
-                <>
-                  <KPICard
-                    title="Produção Diária"
-                    value={kpis.production.formatted}
-                    change={kpis.production.change}
-                    icon={<TrendingUp className="w-5 h-5" />}
-                    source={updates?.production ? getSourceShortName(updates.production.source) : "ANPG"}
-                    lastUpdate={updates?.production ? formatLastUpdate(updates.production.created_at) : ""}
-                  />
-                  <KPICard
-                    title="Brent Crude"
-                    value={kpis.brent.formatted}
-                    change={kpis.brent.change}
-                    variant="accent"
-                    icon={<DollarSign className="w-5 h-5" />}
-                    source={updates?.price ? getSourceShortName(updates.price.source) : "Market"}
-                    lastUpdate={updates?.price ? formatLastUpdate(updates.price.created_at) : ""}
-                  />
-                  <KPICard
-                    title="Exportações"
-                    value={kpis.exports.formatted}
-                    change={kpis.exports.change}
-                    icon={<Ship className="w-5 h-5" />}
-                    source={updates?.export ? getSourceShortName(updates.export.source) : "Customs"}
-                    lastUpdate={updates?.export ? formatLastUpdate(updates.export.created_at) : ""}
-                  />
-                  <KPICard
-                    title="Receita Est."
-                    value={kpis.revenue.formatted}
-                    change={kpis.revenue.change}
-                    variant="primary"
-                    icon={<BarChart3 className="w-5 h-5" />}
-                    source="Calculado"
-                    lastUpdate={updates?.price ? formatLastUpdate(updates.price.created_at) : ""}
-                  />
-                </>
-              )}
-            </section>
+            {/* ── KPI GRID ── */}
+            <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+              {isLoading
+                ? [...Array(4)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 128 }} />)
+                : kpiDefs.map((def, i) => {
+                    const data = kpis[def.key as keyof typeof kpis];
+                    return (
+                      <KPIBlock
+                        key={def.key}
+                        label={def.label}
+                        value={data.formatted}
+                        change={data.change}
+                        unit={def.unit}
+                        icon={def.icon}
+                        accentColor={def.accent}
+                      />
+                    );
+                  })
+              }
+            </div>
 
-            {/* Secondary Prices */}
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {isLoading ? (
-                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
-              ) : (
-                topPriceCards.map((card, i) => (
-                  <PriceCard key={card.name} {...card} delay={0.1 * i} />
-                ))
-              )}
-            </section>
+            {/* ── PRICE TICKERS ── */}
+            <div className="fade-up d3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 32 }}>
+              {isLoading
+                ? [...Array(3)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 72 }} />)
+                : topPriceCards.map((card, i) => (
+                    <PriceTicker key={card.name} {...card} />
+                  ))
+              }
+            </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-8">
-                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
+            {/* ── MAIN CONTENT GRID ── */}
+            <div className="fade-up d4" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 32 }}>
+
+              {/* left column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
                   <ProductionChart />
                 </div>
-                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
                   <OperatorsTable />
                 </div>
               </div>
-              
-              <div className="space-y-8">
-                <div className="bg-card p-1 rounded-3xl shadow-sm border border-border">
+
+              {/* right column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
                   <ExportsMap />
                 </div>
-                <div className="bg-gradient-to-br from-primary/5 to-transparent p-1 rounded-3xl border border-primary/10">
+
+                {/* AI Insights panel — amber accent */}
+                <div style={{
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-subtle)",
+                  borderTop: "2px solid var(--accent-amber)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
                   <AIInsights />
                 </div>
               </div>
             </div>
 
-            {/* Footer Info */}
-            <footer className="pt-8 border-t border-border">
-              <DataSourceIndicator 
-                sources={[...DATA_SOURCES.prices, ...DATA_SOURCES.production, ...DATA_SOURCES.exports]} 
+            {/* ── FOOTER ── */}
+            <div className="fade-up d6" style={{ paddingTop: 24, borderTop: "1px solid var(--border-subtle)" }}>
+              <DataSourceIndicator
+                sources={[...DATA_SOURCES.prices, ...DATA_SOURCES.production, ...DATA_SOURCES.exports]}
               />
-            </footer>
+            </div>
+
           </div>
         </main>
       </div>
-      
+
       <MobileBottomNav />
     </div>
   );

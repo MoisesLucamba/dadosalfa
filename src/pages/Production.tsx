@@ -5,15 +5,17 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { DataExportButton } from "@/components/dashboard/DataExportButton";
-import { 
-  BarChart3, 
-  TrendingDown, 
-  Factory, 
+import {
+  BarChart3,
+  TrendingDown,
+  Factory,
   Gauge,
   Droplets,
   MapPin,
   ChevronRight,
-  Info
+  Info,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import {
   AreaChart,
@@ -30,14 +32,96 @@ import {
   Cell,
 } from "recharts";
 
-/**
- * Modernização do Design:
- * 1. Deep Dark Mode: Uso de tons de cinza mais profundos (#0a0a0a, #111111) para reduzir o cansaço visual.
- * 2. Glassmorphism: Efeitos de desfoque e bordas sutis para maior profundidade.
- * 3. Micro-interações: Framer Motion para transições suaves.
- * 4. Hierarquia Visual: Tipografia e espaçamento otimizados para leitura intuitiva.
- */
+/* ─────────────────────────────────────────
+   GLOBAL THEME TOKENS
+───────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
 
+    :root {
+      --bg-primary:       #0A0E1A;
+      --bg-secondary:     #0D1117;
+      --bg-surface:       #141B2D;
+      --bg-surface-hover: #1A2235;
+      --border-subtle:    #1E2A45;
+      --accent-blue:      #00A3FF;
+      --accent-amber:     #F5A623;
+      --accent-green:     #00D4AA;
+      --accent-red:       #FF6B35;
+      --text-primary:     #E8EDF5;
+      --text-secondary:   #6B7A99;
+      --text-muted:       #3D4F6E;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    .surface-card {
+      transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
+    }
+    .surface-card:hover {
+      border-color: rgba(0,163,255,0.30) !important;
+      background: var(--bg-surface-hover) !important;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
+    }
+
+    /* table rows */
+    .data-row {
+      border-left: 2px solid transparent;
+      transition: background 180ms ease-out, border-left-color 180ms ease-out;
+    }
+    .data-row:hover {
+      background: var(--bg-surface-hover) !important;
+      border-left-color: var(--accent-amber) !important;
+    }
+    .data-row:hover .row-name { color: var(--accent-blue) !important; }
+    .data-row:hover .row-icon {
+      background: rgba(0,163,255,0.15) !important;
+      color: var(--accent-blue) !important;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity: 0; }
+    .d1 { animation-delay:  50ms; }
+    .d2 { animation-delay: 100ms; }
+    .d3 { animation-delay: 150ms; }
+    .d4 { animation-delay: 200ms; }
+    .d5 { animation-delay: 250ms; }
+    .d6 { animation-delay: 300ms; }
+
+    /* live pulse */
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+
+    .badge-pill {
+      font-family: 'Epilogue', sans-serif;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 2px 8px; border-radius: 4px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+  `}</style>
+);
+
+/* ─────────────────────────────────────────
+   DATA  (unchanged)
+───────────────────────────────────────── */
 const productionTrendData = [
   { month: "Jan", production: 1120, capacity: 1350 },
   { month: "Fev", production: 1098, capacity: 1350 },
@@ -54,369 +138,417 @@ const productionTrendData = [
 ];
 
 const operatorProductionData = [
-  { name: "TotalEnergies", production: 285, color: "hsl(var(--primary))" },
-  { name: "Chevron", production: 198, color: "hsl(var(--accent))" },
-  { name: "Sonangol EP", production: 175, color: "hsl(var(--success))" },
-  { name: "ENI Angola", production: 168, color: "#8b5cf6" },
-  { name: "BP Angola", production: 145, color: "#f59e0b" },
-  { name: "Outros", production: 109, color: "hsl(var(--muted-foreground))" },
+  { name: "TotalEnergies", production: 285, color: "#00A3FF" },
+  { name: "Chevron",       production: 198, color: "#00D4AA" },
+  { name: "Sonangol EP",   production: 175, color: "#F5A623" },
+  { name: "ENI Angola",    production: 168, color: "#00A3FF" },
+  { name: "BP Angola",     production: 145, color: "#00D4AA" },
+  { name: "Outros",        production: 109, color: "#3D4F6E" },
 ];
 
 const blockProductionData = [
-  { block: "Bloco 17", production: 320, operator: "TotalEnergies", trend: -1.2 },
-  { block: "Bloco 0", production: 210, operator: "Chevron", trend: 0.8 },
-  { block: "Bloco 15", production: 185, operator: "ENI Angola", trend: -2.5 },
-  { block: "Bloco 18", production: 165, operator: "BP Angola", trend: 1.1 },
-  { block: "Bloco 31", production: 142, operator: "BP Angola", trend: -0.5 },
-  { block: "Bloco 32", production: 128, operator: "TotalEnergies", trend: 2.3 },
+  { block: "Bloco 17", production: 320, operator: "TotalEnergies", trend:  1.2 },
+  { block: "Bloco 0",  production: 210, operator: "Chevron",       trend:  0.8 },
+  { block: "Bloco 15", production: 185, operator: "ENI Angola",    trend: -2.5 },
+  { block: "Bloco 18", production: 165, operator: "BP Angola",     trend:  1.1 },
+  { block: "Bloco 31", production: 142, operator: "BP Angola",     trend: -0.5 },
+  { block: "Bloco 32", production: 128, operator: "TotalEnergies", trend:  2.3 },
 ];
 
 const fieldStatusData = [
-  { name: "Produzindo", value: 45, color: "hsl(var(--success))" },
-  { name: "Desenvolvimento", value: 12, color: "hsl(var(--primary))" },
-  { name: "Exploração", value: 8, color: "hsl(var(--accent))" },
-  { name: "Manutenção", value: 5, color: "hsl(var(--muted-foreground))" },
+  { name: "Produzindo",     value: 45, color: "#00D4AA" },
+  { name: "Desenvolvimento",value: 12, color: "#00A3FF" },
+  { name: "Exploração",     value:  8, color: "#F5A623" },
+  { name: "Manutenção",     value:  5, color: "#3D4F6E" },
 ];
 
-// Componente customizado para o Tooltip dos gráficos para garantir o Deep Dark Mode
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#0f0f0f]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
-        <p className="text-xs font-medium text-white/50 mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
-            <p className="text-sm font-semibold text-white">
-              {entry.name}: {entry.value}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
+/* ─────────────────────────────────────────
+   CUSTOM TOOLTIP
+───────────────────────────────────────── */
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "#1E2A45", border: "1px solid var(--border-subtle)",
+      borderRadius: 6, padding: "10px 14px", fontSize: 11,
+    }}>
+      <p style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
+        {label}
+      </p>
+      {payload.map((e: any, i: number) => (
+        <p key={i} style={{ fontFamily: "'IBM Plex Mono',monospace", color: e.color || e.fill || "var(--accent-blue)", margin: "2px 0" }}>
+          {e.name}: {e.value != null ? (typeof e.value === "number" ? e.value.toLocaleString() : e.value) : "—"}
+        </p>
+      ))}
+    </div>
+  );
 };
 
+/* ─────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────── */
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+    {children}
+  </span>
+);
+
+const CardHeader = ({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) => (
+  <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div>
+      <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
+      {sub && <div style={{ marginTop: 3 }}><SectionLabel>{sub}</SectionLabel></div>}
+    </div>
+    {right}
+  </div>
+);
+
+/* ─────────────────────────────────────────
+   MAIN
+───────────────────────────────────────── */
 const Production = () => {
+  const kpis = [
+    { label: "Produção Diária", value: "1.08M", unit: "bpd",  change: -2.1, icon: Gauge       },
+    { label: "Capacidade",      value: "1.35M", unit: "bpd",  change:  0,   icon: Factory     },
+    { label: "Utilização",      value: "80%",   unit: "util", change: -1.5, icon: Droplets    },
+    { label: "Taxa Declínio",   value: "−3.2%", unit: "YoY",  change: -0.4, icon: TrendingDown},
+  ];
+
   return (
     <>
       <Helmet>
         <title>Produção Petrolífera | AlphaData</title>
-        <meta
-          name="description"
-          content="Dados de produção petrolífera de Angola por bloco, operadora e campo. Análise de tendências e taxas de declínio."
-        />
+        <meta name="description" content="Dados de produção petrolífera de Angola por bloco, operadora e campo." />
       </Helmet>
+      <GlobalStyles />
 
-      {/* Background base com tom Deep Dark */}
-      <div className="flex h-screen bg-[#050505] text-white/90 overflow-hidden font-sans">
+      <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", color: "var(--text-primary)", overflow: "hidden" }}>
         <Sidebar activeItem="/production" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <Header activeItem="/production" />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 lg:pb-8 scrollbar-hide">
-            <div className="max-w-7xl mx-auto space-y-8">
-              
-              {/* Page Header Modernizado */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-end justify-between flex-wrap gap-6 border-b border-white/5 pb-8"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    Live Analytics
+          <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 80 }}>
+            <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+              {/* ── PAGE HEADER ── */}
+              <div className="fade-up d1" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border-subtle)" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <div className="pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-green)" }} />
+                    <SectionLabel>Live Analytics</SectionLabel>
                   </div>
-                  <h1 className="text-4xl font-black tracking-tight text-white">
+                  <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                     Produção Petrolífera
                   </h1>
-                  <p className="text-white/40 font-medium max-w-md">
+                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                     Monitorização em tempo real da extração por bloco e operadora em Angola.
                   </p>
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all text-sm font-medium">
-                    <Info className="w-4 h-4" />
-                    Ajuda
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 16px", borderRadius: 6,
+                    background: "transparent", border: "1px solid var(--border-subtle)",
+                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    transition: "border-color 180ms ease-out",
+                  }}
+                  onMouseOver={e => (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent-blue)"}
+                  onMouseOut={e => (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-subtle)"}
+                  >
+                    <Info size={14} />Ajuda
                   </button>
                   <DataExportButton
-                    data={blockProductionData.map(d => ({
-                      ...d,
-                      date: new Date().toISOString().split('T')[0]
-                    }))}
+                    data={blockProductionData.map(d => ({ ...d, date: new Date().toISOString().split("T")[0] }))}
                     columns={[
-                      { key: 'block', header: 'Bloco' },
-                      { key: 'operator', header: 'Operadora' },
-                      { key: 'production', header: 'Produção (kbpd)' },
-                      { key: 'trend', header: 'Tendência (%)' },
+                      { key: "block",      header: "Bloco" },
+                      { key: "operator",   header: "Operadora" },
+                      { key: "production", header: "Produção (kbpd)" },
+                      { key: "trend",      header: "Tendência (%)" },
                     ]}
                     filename="producao_petrolifera"
                     dateField="date"
                   />
                 </div>
-              </motion.div>
-
-              {/* KPI Cards com Hover Effects */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { title: "Produção Diária", value: "1.08M bpd", change: -2.1, icon: <Gauge />, variant: "default" },
-                  { title: "Capacidade", value: "1.35M bpd", change: 0, icon: <Factory />, variant: "primary" },
-                  { title: "Utilização", value: "80%", change: -1.5, icon: <Droplets />, variant: "accent" },
-                  { title: "Declínio", value: "-3.2%", change: -0.4, icon: <TrendingDown />, variant: "default" }
-                ].map((kpi, i) => (
-                  <KPICard
-                    key={i}
-                    title={kpi.title}
-                    value={kpi.value}
-                    change={kpi.change}
-                    changeLabel={kpi.change === 0 ? "estável" : "vs. mês ant."}
-                    icon={kpi.icon}
-                    variant={kpi.variant as any}
-                    delay={i * 0.1}
-                    className="bg-[#111111] border-white/5 hover:border-white/10 transition-all hover:translate-y-[-2px]"
-                  />
-                ))}
               </div>
 
-              {/* Main Chart Section - Deep Dark Glassmorphism */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="rounded-2xl border border-white/5 bg-[#0a0a0a] p-8 relative overflow-hidden group shadow-2xl"
-              >
-                {/* Background Glow Effect */}
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 blur-[100px] rounded-full group-hover:bg-primary/10 transition-colors" />
-                
-                <div className="flex items-center justify-between mb-10 relative z-10">
+              {/* ── KPI CARDS ── */}
+              <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
+                {kpis.map((kpi, i) => {
+                  const up = kpi.change >= 0;
+                  const Icon = kpi.icon;
+                  return (
+                    <div key={i} className="surface-card" style={{
+                      padding: 20, background: "var(--bg-surface)",
+                      border: "1px solid var(--border-subtle)", borderRadius: 8,
+                      boxShadow: "0 4px 24px rgba(0,0,0,0.4)", cursor: "default",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                        <div style={{ padding: 8, borderRadius: 6, background: "rgba(0,163,255,0.08)", color: "var(--accent-blue)", display: "flex" }}>
+                          <Icon size={16} />
+                        </div>
+                        {kpi.change !== 0 && (
+                          <span className="mono" style={{
+                            fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 3,
+                            color: up ? "var(--accent-green)" : "var(--accent-red)",
+                          }}>
+                            {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                            {up ? "+" : ""}{kpi.change}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="mono" style={{ fontSize: 30, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>
+                        {kpi.value}
+                      </div>
+                      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+                          {kpi.label}
+                        </span>
+                        <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{kpi.unit}</span>
+                      </div>
+                      <div style={{ marginTop: 12, height: 1, background: `linear-gradient(90deg, ${up || kpi.change === 0 ? "var(--accent-blue)" : "var(--accent-red)"} 0%, transparent 100%)`, opacity: 0.30 }} />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── PRODUCTION TREND CHART ── */}
+              <div className="fade-up d3 surface-card" style={{
+                background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                overflow: "hidden", marginBottom: 32, position: "relative",
+              }}>
+                {/* subtle mesh glow */}
+                <div style={{ position: "absolute", top: -60, right: -60, width: 240, height: 240, background: "radial-gradient(circle, rgba(0,163,255,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+                <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Tendência de Produção</h3>
-                    <p className="text-sm text-white/40">Comparativo entre extração real e limite operacional</p>
+                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                      Tendência de Produção
+                    </h3>
+                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                      Comparativo entre extração real e limite operacional
+                    </p>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
-                      <span className="text-xs font-bold text-white/60 uppercase tracking-tighter">Produção</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full border border-white/20" />
-                      <span className="text-xs font-bold text-white/60 uppercase tracking-tighter">Capacidade</span>
-                    </div>
+                  {/* legend */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "6px 14px", border: "1px solid var(--border-subtle)", borderRadius: 6, background: "var(--bg-primary)" }}>
+                    {[
+                      { color: "var(--accent-blue)", label: "Produção",   dash: false },
+                      { color: "var(--text-muted)",  label: "Capacidade", dash: true  },
+                    ].map((l, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 20, height: 2, background: l.color, opacity: l.dash ? 0.5 : 1, borderTop: l.dash ? "2px dashed" : "2px solid", borderColor: l.color }} />
+                        <SectionLabel>{l.label}</SectionLabel>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="h-80 relative z-10">
+                <div style={{ padding: "24px 16px 16px", height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={productionTrendData}>
                       <defs>
-                        <linearGradient id="prodGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        <linearGradient id="gProd" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#00A3FF" stopOpacity={0.22} />
+                          <stop offset="95%" stopColor="#00A3FF" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} stroke="white" strokeOpacity={0.03} strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 600 }} 
-                        dy={10}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 600 }} 
-                        domain={[900, 1400]} 
-                      />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
-                      <Area
-                        type="monotone"
-                        dataKey="production"
-                        name="Produção"
-                        stroke="hsl(var(--primary))"
-                        fill="url(#prodGradient)"
-                        strokeWidth={3}
-                        animationDuration={2000}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="capacity"
-                        name="Capacidade"
-                        stroke="rgba(255,255,255,0.15)"
-                        fill="transparent"
-                        strokeWidth={2}
-                        strokeDasharray="8 8"
-                      />
+                      <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} dy={8} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[900, 1400]} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1 }} />
+                      <Area type="monotone" dataKey="production" name="Produção"  stroke="var(--accent-blue)" fill="url(#gProd)" strokeWidth={2} animationDuration={800} />
+                      <Area type="monotone" dataKey="capacity"   name="Capacidade" stroke="var(--text-muted)"  fill="transparent" strokeWidth={1.5} strokeDasharray="6 6" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Grid Secundário */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Operadoras - Design Limpo */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="lg:col-span-2 rounded-2xl border border-white/5 bg-[#0a0a0a] p-8 shadow-xl"
-                >
-                  <div className="flex items-center justify-between mb-8">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Produção por Operadora</h3>
-                      <p className="text-xs text-white/40 uppercase tracking-widest mt-1">Market Share por Volume</p>
-                    </div>
-                    <BarChart3 className="w-5 h-5 text-white/20" />
-                  </div>
-                  <div className="h-64">
+              {/* ── OPERATORS + FIELD STATUS ── */}
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 32 }}>
+
+                {/* Operator bar chart */}
+                <div className="fade-up d4 surface-card" style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
+                  <CardHeader title="Produção por Operadora" sub="Market Share por Volume" right={<BarChart3 size={18} style={{ color: "var(--text-muted)" }} />} />
+                  <div style={{ padding: "24px 16px 16px", height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={operatorProductionData} layout="vertical" margin={{ left: 0, right: 30 }}>
+                      <BarChart data={operatorProductionData} layout="vertical" margin={{ left: 0, right: 40 }}>
                         <XAxis type="number" hide />
-                        <YAxis 
-                          dataKey="name" 
-                          type="category" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 500 }} 
-                          width={110} 
+                        <YAxis
+                          dataKey="name" type="category" axisLine={false} tickLine={false}
+                          tick={{ fill: "var(--text-secondary)", fontSize: 12, fontFamily: "DM Sans", fontWeight: 500 }}
+                          width={110}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
-                        <Bar dataKey="production" name="Produção" radius={[0, 10, 10, 0]} barSize={24}>
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,163,255,0.04)" }} />
+                        <Bar dataKey="production" name="kbpd" radius={[0, 4, 4, 0]} barSize={18}>
                           {operatorProductionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
+                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.75} />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </motion.div>
+                </div>
 
-                {/* Status - Donut Moderno */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="rounded-2xl border border-white/5 bg-[#0a0a0a] p-8 shadow-xl"
-                >
-                  <h3 className="text-lg font-bold text-white mb-1">Status dos Campos</h3>
-                  <p className="text-xs text-white/40 uppercase tracking-widest mb-6">Distribuição Operacional</p>
-                  
-                  <div className="h-48 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={fieldStatusData}
-                          innerRadius={65}
-                          outerRadius={85}
-                          paddingAngle={8}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {fieldStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.9} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-2xl font-black text-white">70</span>
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-tighter">Total Campos</span>
+                {/* Field status donut */}
+                <div className="fade-up d5 surface-card" style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+                }}>
+                  <CardHeader title="Status dos Campos" sub="Distribuição Operacional" />
+                  <div style={{ padding: "20px 24px" }}>
+                    <div style={{ height: 180, position: "relative" }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={fieldStatusData} innerRadius={60} outerRadius={78} paddingAngle={6} dataKey="value" stroke="none">
+                            {fieldStatusData.map((entry, i) => (
+                              <Cell key={i} fill={entry.color} fillOpacity={0.85} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ChartTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {/* center label */}
+                      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                        <span className="mono" style={{ fontSize: 24, fontWeight: 600, color: "var(--text-primary)" }}>70</span>
+                        <SectionLabel>Campos</SectionLabel>
+                      </div>
+                    </div>
+
+                    {/* legend grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 16 }}>
+                      {fieldStatusData.map((item) => (
+                        <div key={item.name} style={{
+                          padding: "10px 12px", background: "var(--bg-primary)",
+                          borderRadius: 6, border: "1px solid var(--border-subtle)",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
+                            <SectionLabel>{item.name}</SectionLabel>
+                          </div>
+                          <span className="mono" style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)" }}>{item.value}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-8">
-                    {fieldStatusData.map((item) => (
-                      <div key={item.name} className="bg-white/5 rounded-xl p-3 border border-white/5">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter truncate">{item.name}</span>
-                        </div>
-                        <span className="text-lg font-bold text-white leading-none">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
+                </div>
               </div>
 
-              {/* Tabela de Blocos - Minimalista e Funcional */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="rounded-2xl border border-white/5 bg-[#0a0a0a] overflow-hidden shadow-2xl"
-              >
-                <div className="p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-white/[0.02] to-transparent">
+              {/* ── BLOCKS TABLE ── */}
+              <div className="fade-up d6" style={{
+                background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
+                borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
+              }}>
+                {/* table header */}
+                <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Produção por Bloco</h3>
-                    <p className="text-sm text-white/40 mt-1">Detalhamento técnico por unidade de exploração</p>
+                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                      Produção por Bloco
+                    </h3>
+                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                      Detalhamento técnico por unidade de exploração
+                    </p>
                   </div>
-                  <div className="px-4 py-2 bg-primary/10 rounded-full flex items-center gap-2 border border-primary/20">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-bold text-primary uppercase">6 Blocos Activos</span>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "6px 14px", borderRadius: 6,
+                    background: "rgba(0,163,255,0.08)", border: "1px solid rgba(0,163,255,0.20)",
+                  }}>
+                    <MapPin size={14} style={{ color: "var(--accent-blue)" }} />
+                    <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent-blue)" }}>
+                      6 Blocos Activos
+                    </span>
                   </div>
                 </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="bg-white/[0.01]">
-                        <th className="py-5 px-8 text-xs font-bold text-white/30 uppercase tracking-widest">Bloco</th>
-                        <th className="py-5 px-8 text-xs font-bold text-white/30 uppercase tracking-widest">Operadora</th>
-                        <th className="py-5 px-8 text-xs font-bold text-white/30 uppercase tracking-widest text-right">Produção (kbpd)</th>
-                        <th className="py-5 px-8 text-xs font-bold text-white/30 uppercase tracking-widest text-right">Tendência</th>
-                        <th className="py-5 px-8 text-xs font-bold text-white/30 uppercase tracking-widest text-center">Acções</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {blockProductionData.map((block, index) => (
-                        <motion.tr
-                          key={block.block}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.6 + index * 0.05 }}
-                          className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+
+                {/* col headers */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px", padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-primary)" }}>
+                  {["Bloco", "Operadora", "Produção (kbpd)", "Tendência", ""].map((h, i) => (
+                    <span key={i} style={{
+                      fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700,
+                      textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)",
+                      textAlign: i >= 2 && i < 4 ? "right" : i === 4 ? "center" : "left",
+                    }}>{h}</span>
+                  ))}
+                </div>
+
+                {/* rows */}
+                {blockProductionData.map((block, index) => {
+                  const up = block.trend >= 0;
+                  const blockNum = block.block.split(" ")[1];
+                  return (
+                    <div key={block.block} className="data-row" style={{
+                      display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px",
+                      padding: "14px 24px", alignItems: "center",
+                      background: index % 2 === 0 ? "transparent" : "rgba(255,255,255,0.008)",
+                      borderBottom: index < blockProductionData.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                      cursor: "pointer",
+                    }}>
+                      {/* block name */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div className="row-icon" style={{
+                          width: 32, height: 32, borderRadius: 6,
+                          background: "var(--bg-primary)", border: "1px solid var(--border-subtle)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
+                          color: "var(--text-muted)", transition: "background 180ms, color 180ms",
+                          flexShrink: 0,
+                        }}>
+                          {blockNum}
+                        </div>
+                        <span className="row-name" style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
+                          {block.block}
+                        </span>
+                      </div>
+
+                      {/* operator */}
+                      <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
+                        {block.operator}
+                      </span>
+
+                      {/* production */}
+                      <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
+                        {block.production.toLocaleString()}
+                      </span>
+
+                      {/* trend badge */}
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <span className="badge-pill" style={{
+                          color: up ? "var(--accent-green)" : "var(--accent-red)",
+                          background: up ? "rgba(0,212,170,0.10)" : "rgba(255,107,53,0.10)",
+                        }}>
+                          {up ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                          {up ? "+" : ""}{block.trend}%
+                        </span>
+                      </div>
+
+                      {/* chevron action */}
+                      <div style={{ display: "flex", justifyContent: "center" }}>
+                        <button style={{
+                          padding: 6, borderRadius: 6, border: "none",
+                          background: "transparent", cursor: "pointer",
+                          color: "var(--text-muted)", transition: "background 180ms, color 180ms",
+                          display: "flex",
+                        }}
+                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
                         >
-                          <td className="py-5 px-8">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                                {block.block.split(' ')[1]}
-                              </div>
-                              <span className="font-bold text-white group-hover:text-primary transition-colors">{block.block}</span>
-                            </div>
-                          </td>
-                          <td className="py-5 px-8">
-                            <span className="text-sm font-medium text-white/60">{block.operator}</span>
-                          </td>
-                          <td className="py-5 px-8 text-right">
-                            <span className="font-mono font-bold text-white">{block.production.toLocaleString()}</span>
-                          </td>
-                          <td className="py-5 px-8 text-right">
-                            <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black ${
-                              block.trend >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                            }`}>
-                              {block.trend >= 0 ? '+' : ''}{block.trend}%
-                            </div>
-                          </td>
-                          <td className="py-5 px-8 text-center">
-                            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/20 hover:text-white">
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
             </div>
           </main>
         </div>
-        
+
         <MobileBottomNav />
       </div>
     </>
