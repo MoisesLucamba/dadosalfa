@@ -176,7 +176,21 @@ export function useWorkspaceMembers(workspaceId: string | null) {
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
-      return data as WorkspaceMember[];
+
+      // Fetch profiles for each member
+      const memberIds = data.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, contact_name, company_name')
+        .in('id', memberIds);
+
+      return data.map(m => ({
+        ...m,
+        profile: profiles?.find(p => p.id === m.user_id) ? {
+          contact_name: profiles.find(p => p.id === m.user_id)!.contact_name,
+          company_name: profiles.find(p => p.id === m.user_id)!.company_name,
+        } : undefined,
+      })) as WorkspaceMember[];
     },
     enabled: !!workspaceId,
   });
