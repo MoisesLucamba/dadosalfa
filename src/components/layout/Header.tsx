@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Search, ChevronDown, LogOut, Sun, Moon,
   Settings, UserCircle, X, Check, AlertTriangle,
-  Info, CreditCard, ChevronRight, Radio
+  Info, CreditCard, ChevronRight, Radio, HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
