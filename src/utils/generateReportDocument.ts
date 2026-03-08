@@ -1080,6 +1080,10 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generateExcelReport = (data: ReportData): void => {
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
+
   const esc = (s: string) =>
     String(s || '')
       .replace(/&/g, '&amp;')
@@ -1088,16 +1092,17 @@ export const generateExcelReport = (data: ReportData): void => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
 
-  const defaultCover = getDefaultCoverPageData();
+  const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || 'Relatório AlphaData',
-    reportType: getTypeName(data.type),
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: getTypeName(data.type, lang),
     reportPeriod: data.period || 'Actual',
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
+    language: lang,
   };
 
   const coverRows = getCoverPageExcelRows(coverData);
@@ -1105,9 +1110,10 @@ export const generateExcelReport = (data: ReportData): void => {
   // Build data worksheet rows
   const dataRows: string[] = [];
   const cd = data.content?.data;
+  const sheetName = lang === 'en' ? 'Data' : lang === 'fr' ? 'Donnees' : 'Dados';
 
   if (cd?.production && Array.isArray(cd.production)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Operador</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Bloco</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Campo</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Producao (bpd)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.operator)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.block)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.field)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.productionBpd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.production.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.operator||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.block||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.field||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.daily_production||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
@@ -1115,15 +1121,15 @@ export const generateExcelReport = (data: ReportData): void => {
   }
 
   if (cd?.prices && Array.isArray(cd.prices)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tipo Crude</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Preco USD</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Variacao %</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Data</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.crudeType)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.priceUsd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.variation)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.date)}</Data></Cell></Row>`);
     cd.prices.forEach((r: any) => {
-      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-'}</Data></Cell></Row>`);
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString(locale) : '-'}</Data></Cell></Row>`);
     });
     dataRows.push(`<Row></Row>`);
   }
 
   if (cd?.exports && Array.isArray(cd.exports)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Destino</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Volume (bbl)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tanque</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.destination)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.volume)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.tanker)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.exports.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.destination||r.country||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.volume||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.tanker_name||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
@@ -1142,7 +1148,7 @@ export const generateExcelReport = (data: ReportData): void => {
   <Worksheet ss:Name="Info">
     <Table>${coverRows.join('\n')}</Table>
   </Worksheet>
-  <Worksheet ss:Name="Dados">
+  <Worksheet ss:Name="${sheetName}">
     <Table>${dataRows.join('\n')}</Table>
   </Worksheet>
 </Workbook>`;
@@ -1151,7 +1157,7 @@ export const generateExcelReport = (data: ReportData): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.xls`;
+  a.download = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || 'report').replace(/\s+/g, '_')}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
