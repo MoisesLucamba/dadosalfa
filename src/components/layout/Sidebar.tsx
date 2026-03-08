@@ -165,7 +165,7 @@ const NavItemComponent = ({
             "text-[13px] font-semibold tracking-tight truncate transition-colors",
             isActive ? "text-white" : "text-[#5a7090] group-hover:text-[#9bb5d6]"
           )}
-          style={{ fontFamily: "'DM Sans', sans-serif" }}
+          style={{ fontFamily: "'Outfit', sans-serif" }}
         >
           {item.label}
         </span>
