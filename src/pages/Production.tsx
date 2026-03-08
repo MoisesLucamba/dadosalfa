@@ -308,7 +308,7 @@ const Production = () => {
                         <XAxis type="number" hide />
                         <YAxis
                           dataKey="name" type="category" axisLine={false} tickLine={false}
-                          tick={{ fill: "var(--text-secondary)", fontSize: 12, fontFamily: "DM Sans", fontWeight: 500 }}
+                          tick={{ fill: "var(--text-secondary)", fontSize: 12, fontFamily: "Outfit", fontWeight: 500 }}
                           width={110}
                         />
                         <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,163,255,0.04)" }} />
