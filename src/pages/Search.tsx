@@ -673,20 +673,29 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
         background: "#0D1117",
         border: "1px solid rgba(0,163,255,0.20)",
         borderRadius: 8,
-        padding: "12px 16px",
-        fontFamily: "'IBM Plex Mono', 'DM Sans', sans-serif",
-        fontSize: 12,
+        padding: "10px 14px",
+        fontFamily: "'IBM Plex Mono', monospace",
       }}>
-        <p style={{ color: "#5a8ab5", marginBottom: 4, fontWeight: 600 }}>{label}</p>
-        {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color, fontWeight: 700 }}>
-            {p.name}: <span style={{ color: "#e2e8f0", fontFamily: "'IBM Plex Mono', monospace" }}>{p.value}{chart.unit ? ` ${chart.unit}` : ""}</span>
-          </p>
-        ))}
+        <p style={{ color: "#6B7A99", marginBottom: 6, fontSize: 10, fontWeight: 500 }}>{label}</p>
+        {payload.map((p: any, i: number) => {
+          const prevValue = i > 0 ? payload[i-1]?.value : null;
+          const change = prevValue && typeof p.value === "number" && typeof prevValue === "number" 
+            ? ((p.value - prevValue) / prevValue * 100) : null;
+          return (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 2 }}>
+              <span style={{ color: p.color, fontSize: 11, fontWeight: 500 }}>{p.name}</span>
+              <span style={{ color: "#E8EDF5", fontSize: 13, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {typeof p.value === "number" ? p.value.toLocaleString() : p.value}
+                {chart.unit ? ` ${chart.unit}` : ""}
+              </span>
+            </div>
+          );
+        })}
         {onDrillDown && (
           <button
             onClick={() => onDrillDown(String(label))}
-            className="mt-2 text-[10px] px-2 py-1 rounded bg-[#1e3a5f]/30 text-[#60a5fa] hover:bg-[#1e3a5f]/50 transition-colors"
+            className="mt-2 text-[10px] px-2 py-1 rounded bg-[#00A3FF]/10 text-[#00A3FF] hover:bg-[#00A3FF]/20 transition-colors"
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
           >
             Ver detalhe →
           </button>
@@ -701,8 +710,8 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       <div style={{ display: "flex", justifyContent: "center", gap: 16, paddingBottom: 8 }}>
         {payload.map((entry: any, i: number) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: entry.color }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{entry.value}</span>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: entry.color }} />
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>{entry.value}</span>
           </div>
         ))}
       </div>
