@@ -865,7 +865,7 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       <div className="px-4 pt-1 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 rounded-full" style={{ background: "linear-gradient(180deg, #dc2626, #991b1b)" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#5a8ab5", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#5a8ab5", textTransform: "uppercase" }}>
             {chart.title}
           </span>
           {chart.unit && (
