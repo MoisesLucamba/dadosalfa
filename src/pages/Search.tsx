@@ -1238,7 +1238,7 @@ const ChatBubble = ({
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: isUser ? "#dc2626" : "#3b82f6", textTransform: "uppercase" }}>
             {isUser ? "Utilizador" : "AlphaData AI"}
           </span>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>{message.time}</span>
+          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>{message.time}</span>
         </div>
 
         {/* Bubble */}
