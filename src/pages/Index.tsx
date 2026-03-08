@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { OnboardingTour, useOnboardingTour } from "@/components/OnboardingTour";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import {
@@ -265,6 +266,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
 const Index = () => {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
+  const { showTour, trigger: triggerTour, reset: resetTour } = useOnboardingTour();
 
   const { data: prodData,   isLoading: loadProd,   refetch: refetchProd  } = useProductionData();
   const { data: priceData,  isLoading: loadPrice,  refetch: refetchPrice } = usePriceData();
@@ -324,7 +326,7 @@ const Index = () => {
         {/* mesh glow */}
         <div style={{ position: "absolute", top: 0, right: 0, width: 500, height: 500, background: "radial-gradient(circle, rgba(0,163,255,0.03) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
-        <Header activeItem="/" />
+        <Header activeItem="/" onHelpClick={triggerTour} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 88, position: "relative", zIndex: 1 }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -419,7 +421,7 @@ const Index = () => {
             )}
 
             {/* ── KPI GRID ── */}
-            <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+            <div className="fade-up d2" data-tour="kpi-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
               {isLoading
                 ? [...Array(4)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 128 }} />)
                 : kpiDefs.map((def, i) => {
@@ -454,7 +456,7 @@ const Index = () => {
 
               {/* left column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
+                <div data-tour="production-chart" style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
@@ -470,7 +472,7 @@ const Index = () => {
 
               {/* right column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
+                <div data-tour="export-btn" style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
@@ -501,6 +503,9 @@ const Index = () => {
       </div>
 
       <MobileBottomNav />
+
+      {/* Onboarding Tour */}
+      <OnboardingTour forceShow={showTour} onComplete={resetTour} />
     </div>
   );
 };
