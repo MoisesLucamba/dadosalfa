@@ -39,6 +39,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
+import { EnergyTransitionRisk } from "@/components/dashboard/EnergyTransitionRisk";
+import { DataDepthBadge } from "@/components/dashboard/DataDepthBadge";
+import { DataSourcesPanel } from "@/components/dashboard/DataSourcesPanel";
 import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
 // --- Interfaces ---
