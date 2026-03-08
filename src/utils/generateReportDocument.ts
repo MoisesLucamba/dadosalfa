@@ -743,7 +743,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const margin = L.MARGIN;
 
   // ── Cover page ──────────────────────────────────────────────────────────
-  const defaultCover = getDefaultCoverPageData();
+  const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
     reportTitle: data.title || `${t.report} AlphaData`,
@@ -754,6 +754,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
     logoBase64,
+    language: lang,
   };
   addCoverPageToPDF(doc, coverData);
   doc.addPage();
