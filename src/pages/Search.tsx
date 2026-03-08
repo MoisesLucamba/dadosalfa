@@ -1716,7 +1716,7 @@ const Search = () => {
                   <motion.div key="exp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                     <button onClick={startNewChat}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-200 hover:opacity-90"
-                      style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", fontFamily: "'Space Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "white", border: "none" }}>
+                      style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "white", border: "none" }}>
                       <Plus className="w-4 h-4" /> NOVA CONSULTA
                     </button>
 
