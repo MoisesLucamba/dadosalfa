@@ -326,7 +326,7 @@ const Index = () => {
         {/* mesh glow */}
         <div style={{ position: "absolute", top: 0, right: 0, width: 500, height: 500, background: "radial-gradient(circle, rgba(0,163,255,0.03) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
-        <Header activeItem="/" />
+        <Header activeItem="/" onHelpClick={triggerTour} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 88, position: "relative", zIndex: 1 }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
