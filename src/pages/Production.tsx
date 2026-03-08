@@ -230,7 +230,7 @@ const Production = () => {
                         {kpi.value}
                       </div>
                       <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
                           {kpi.label}
                         </span>
                         <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{kpi.unit}</span>
