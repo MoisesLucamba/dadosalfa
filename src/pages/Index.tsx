@@ -503,6 +503,9 @@ const Index = () => {
       </div>
 
       <MobileBottomNav />
+
+      {/* Onboarding Tour */}
+      <OnboardingTour forceShow={showTour} onComplete={resetTour} />
     </div>
   );
 };
