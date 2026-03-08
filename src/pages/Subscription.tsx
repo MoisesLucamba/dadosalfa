@@ -21,29 +21,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS (semantic)
+   DESIGN TOKENS — mapped to Tailwind semantic vars
 ═══════════════════════════════════════════════════════ */
-const TV = {
-  bgDeep:   "hsl(var(--background))",
-  bgCard:   "hsl(var(--card))",
-  bgHover:  "hsl(var(--muted))",
-  border:   "hsl(var(--border))",
-  text:     "hsl(var(--foreground))",
-  textMuted: "hsl(var(--muted-foreground))",
-  textDim:  "hsl(var(--muted-foreground) / 0.6)",
-  primary:  "hsl(var(--primary))",
-  primaryDim: "hsl(var(--primary) / 0.15)",
-  primaryBdr: "hsl(var(--primary) / 0.30)",
-  accent:   "hsl(var(--accent))",
-  accentDim: "hsl(var(--accent) / 0.12)",
-  accentBdr: "hsl(var(--accent) / 0.30)",
-  success:  "hsl(var(--success))",
-  successDim: "hsl(var(--success) / 0.10)",
-  successBdr: "hsl(var(--success) / 0.25)",
-  destructive: "hsl(var(--destructive))",
-  destructiveDim: "hsl(var(--destructive) / 0.12)",
-  destructiveBdr: "hsl(var(--destructive) / 0.30)",
-};
+const BG_DEEP  = "hsl(var(--background))";
+const BG_NAVY  = "hsl(var(--card))";
+const BG_CARD  = "hsl(var(--card))";
+const BG_HOVER = "hsl(var(--muted))";
+const RED      = "hsl(var(--destructive))";
+const RED_DIM  = "hsl(var(--destructive) / 0.12)";
+const RED_BDR  = "hsl(var(--destructive) / 0.30)";
+const BLUE     = "hsl(var(--primary))";
+const BLUE_MID = "hsl(var(--primary))";
+const BLUE_DIM = "hsl(var(--primary) / 0.15)";
+const BLUE_BDR = "hsl(var(--primary) / 0.30)";
+const WHITE    = "hsl(var(--foreground))";
+const W60      = "hsl(var(--muted-foreground))";
+const W30      = "hsl(var(--muted-foreground) / 0.5)";
+const W10      = "hsl(var(--border))";
+const BORDER   = "hsl(var(--border))";
+const GOLD     = "hsl(var(--accent))";
+const GOLD_DIM = "hsl(var(--accent) / 0.12)";
+const GOLD_BDR = "hsl(var(--accent) / 0.30)";
+const GREEN    = "hsl(var(--success))";
+const GREEN_DIM= "hsl(var(--success) / 0.10)";
+const GREEN_BDR= "hsl(var(--success) / 0.25)";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
