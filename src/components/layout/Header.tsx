@@ -53,7 +53,7 @@ const QUICK_SUGGESTIONS = [
 
 interface HeaderProps { activeItem?: string; onHelpClick?: () => void; }
 
-export function Header({ activeItem = "/" }: HeaderProps) {
+export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
