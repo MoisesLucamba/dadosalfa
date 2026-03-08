@@ -202,6 +202,20 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
             <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: RED }}>Live</span>
           </div>
 
+          {/* Help / Tour button */}
+          {onHelpClick && (
+            <button
+              onClick={onHelpClick}
+              title="Tour Guiado"
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+              style={{ color: W30 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = WHITE; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W30; }}
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
