@@ -952,7 +952,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
           className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full"
           style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)" }}>
           <Flame className="w-4 h-4" style={{ color: "#ef4444" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "#9bb5d6", textTransform: "uppercase" }}>Oil & Gas Intelligence Platform</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "#9bb5d6", textTransform: "uppercase" }}>Oil & Gas Intelligence Platform</span>
           <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
         </motion.div>
 
