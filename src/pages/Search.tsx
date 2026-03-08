@@ -1269,7 +1269,7 @@ const ChatBubble = ({
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     className="w-full bg-transparent border border-[#1e3a5f] rounded-lg p-3 text-[14px] text-[#e2e8f0] focus:outline-none focus:border-[#dc2626] resize-none"
-                    style={{ fontFamily: "'DM Sans', sans-serif", minHeight: 60 }}
+                    style={{ fontFamily: "'Outfit', sans-serif", minHeight: 60 }}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditSubmit(); } }}
                   />
                   <div className="flex gap-2 justify-end">
