@@ -101,7 +101,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       background: "#1E2A45", border: "1px solid var(--border-subtle)",
       borderRadius: 6, padding: "10px 14px", fontSize: 11,
     }}>
-      <p style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
+      <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
         {label}
       </p>
       {payload.map((e: any, i: number) => (
