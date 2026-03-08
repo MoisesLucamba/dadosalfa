@@ -64,6 +64,14 @@ import {
   Pie,
   Cell,
   Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ComposedChart,
+  ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -74,12 +82,14 @@ import { supabase } from "@/integrations/supabase/client";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface ChartData {
-  type: "area" | "bar" | "line" | "pie";
+  type: "area" | "bar" | "line" | "pie" | "radar" | "composed";
   title: string;
   unit?: string;
   data: Record<string, string | number>[];
-  dataKeys: { key: string; color: string }[];
+  dataKeys: { key: string; color: string; type?: "bar" | "line" | "area" }[];
   xKey: string;
+  referenceLines?: { y: number; label: string; color?: string }[];
+  referenceAreas?: { y1: number; y2: number; fill?: string }[];
 }
 
 interface Message {
@@ -170,7 +180,11 @@ const STORAGE_KEY = "alphadata_chat_sessions";
 const CONTEXT_KEY = "alphadata_ai_context";
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-chat`;
 
-const CHART_COLORS = ["#dc2626", "#1e3a5f", "#ef4444", "#3b82f6", "#991b1b", "#1d4ed8"];
+const CHART_COLORS = ["#00A3FF", "#00D4AA", "#F5A623", "#FF6B35", "#A78BFA", "#E8EDF5"];
+const BLOCK_COLORS: Record<string, string> = {
+  "Bloco 17": "#00A3FF", "Bloco 32": "#00D4AA", "Bloco 15": "#F5A623",
+  "Bloco 0": "#FF6B35", "Bloco 18": "#A78BFA", "Bloco 31": "#E8EDF5",
+};
 
 const UNCERTAINTY_PHRASES = [
   "não tenho dados", "informação limitada", "não disponível", "fora do escopo",
@@ -331,14 +345,15 @@ function generateChartsForQuery(query: string): ChartData[] {
   if (q.includes("brent") || q.includes("preço") && (q.includes("petróleo") || q.includes("crude") || q.includes("oil") || q.includes("wti"))) {
     return [
       {
-        type: "area",
+        type: "composed" as const,
         title: "Brent Crude — Evolução do Preço (USD/bbl)",
-        unit: "USD",
+        unit: "USD/bbl",
         xKey: "mes",
         dataKeys: [
-          { key: "brent", color: "#dc2626" },
-          { key: "wti", color: "#3b82f6" },
+          { key: "brent", color: "#F5A623", type: "area" as const },
+          { key: "wti", color: "#00A3FF", type: "line" as const },
         ],
+        referenceLines: [{ y: 80, label: "Equilíbrio fiscal Angola", color: "rgba(255,255,255,0.20)" }],
         data: [
           { mes: "Ago", brent: 84.2, wti: 81.1 },
           { mes: "Set", brent: 88.6, wti: 85.4 },
@@ -347,21 +362,6 @@ function generateChartsForQuery(query: string): ChartData[] {
           { mes: "Dez", brent: 79.4, wti: 76.2 },
           { mes: "Jan", brent: 82.1, wti: 78.9 },
           { mes: "Fev", brent: 85.5, wti: 82.3 },
-        ],
-      },
-      {
-        type: "bar",
-        title: "Variação Mensal do Brent (%)",
-        unit: "%",
-        xKey: "mes",
-        dataKeys: [{ key: "variacao", color: "#dc2626" }],
-        data: [
-          { mes: "Set", variacao: 5.2 },
-          { mes: "Out", variacao: 3.1 },
-          { mes: "Nov", variacao: -5.1 },
-          { mes: "Dez", variacao: -8.4 },
-          { mes: "Jan", variacao: 3.4 },
-          { mes: "Fev", variacao: 4.1 },
         ],
       },
     ];
@@ -374,36 +374,36 @@ function generateChartsForQuery(query: string): ChartData[] {
     return [
       {
         type: "area",
-        title: "Produção de Petróleo — Angola (Milhares bbl/dia)",
-        unit: "Mbbl/d",
+        title: "Produção de Petróleo — Angola (bbl/dia)",
+        unit: "bbl/d",
         xKey: "mes",
         dataKeys: [
-          { key: "producao", color: "#dc2626" },
-          { key: "meta", color: "#3b82f6" },
+          { key: "producao", color: "#00A3FF" },
+          { key: "meta", color: "#00D4AA" },
         ],
         data: [
-          { mes: "Jan", producao: 1142, meta: 1180 },
-          { mes: "Fev", producao: 1155, meta: 1180 },
-          { mes: "Mar", producao: 1163, meta: 1190 },
-          { mes: "Abr", producao: 1178, meta: 1200 },
-          { mes: "Mai", producao: 1195, meta: 1200 },
-          { mes: "Jun", producao: 1210, meta: 1220 },
-          { mes: "Jul", producao: 1198, meta: 1220 },
+          { mes: "Jan", producao: 1142000, meta: 1180000 },
+          { mes: "Fev", producao: 1155000, meta: 1180000 },
+          { mes: "Mar", producao: 1163000, meta: 1190000 },
+          { mes: "Abr", producao: 1178000, meta: 1200000 },
+          { mes: "Mai", producao: 1195000, meta: 1200000 },
+          { mes: "Jun", producao: 1210000, meta: 1220000 },
+          { mes: "Jul", producao: 1198000, meta: 1220000 },
         ],
       },
       {
         type: "bar",
-        title: "Produção por Operador (Mbbl/dia — 2024)",
-        unit: "Mbbl/d",
+        title: "Produção por Operador (bbl/dia — 2024)",
+        unit: "bbl/d",
         xKey: "operador",
-        dataKeys: [{ key: "producao", color: "#dc2626" }],
+        dataKeys: [{ key: "producao", color: "#00A3FF" }],
         data: [
-          { operador: "TotalEnergies", producao: 312 },
-          { operador: "Chevron", producao: 285 },
-          { operador: "BP", producao: 214 },
-          { operador: "ExxonMobil", producao: 196 },
-          { operador: "Eni", producao: 143 },
-          { operador: "Outros", producao: 68 },
+          { operador: "TotalEnergies", producao: 312450 },
+          { operador: "Chevron", producao: 285200 },
+          { operador: "BP", producao: 214100 },
+          { operador: "ExxonMobil", producao: 196800 },
+          { operador: "Eni", producao: 143500 },
+          { operador: "Outros", producao: 68300 },
         ],
       },
     ];
@@ -487,11 +487,26 @@ function generateChartsForQuery(query: string): ChartData[] {
   if (q.includes("risco") || q.includes("alerta") || q.includes("operacional") || q.includes("segurança")) {
     return [
       {
-        type: "bar",
+        type: "radar" as const,
+        title: "Perfil de Risco Multidimensional — Angola",
+        unit: "score",
+        xKey: "dimension",
+        dataKeys: [{ key: "score", color: "#FF6B35" }],
+        data: [
+          { dimension: "Político", score: 62 },
+          { dimension: "Regulatório", score: 45 },
+          { dimension: "Operacional", score: 58 },
+          { dimension: "Mercado", score: 71 },
+          { dimension: "Geopolítico", score: 67 },
+          { dimension: "Ambiental", score: 39 },
+        ],
+      },
+      {
+        type: "bar" as const,
         title: "Alertas de Risco por Categoria (Últimos 30 dias)",
         unit: "ocorrências",
         xKey: "categoria",
-        dataKeys: [{ key: "alertas", color: "#dc2626" }],
+        dataKeys: [{ key: "alertas", color: "#FF6B35" }],
         data: [
           { categoria: "Geopolítico", alertas: 8 },
           { categoria: "Equipamento", alertas: 14 },
@@ -499,25 +514,6 @@ function generateChartsForQuery(query: string): ChartData[] {
           { categoria: "Regulatório", alertas: 6 },
           { categoria: "Logística", alertas: 9 },
           { categoria: "Cibersegurança", alertas: 3 },
-        ],
-      },
-      {
-        type: "line",
-        title: "Tendência de Incidentes Operacionais (2024)",
-        unit: "incidentes",
-        xKey: "mes",
-        dataKeys: [
-          { key: "criticos", color: "#dc2626" },
-          { key: "moderados", color: "#f59e0b" },
-        ],
-        data: [
-          { mes: "Jan", criticos: 2, moderados: 8 },
-          { mes: "Fev", criticos: 3, moderados: 11 },
-          { mes: "Mar", criticos: 1, moderados: 7 },
-          { mes: "Abr", criticos: 4, moderados: 13 },
-          { mes: "Mai", criticos: 2, moderados: 9 },
-          { mes: "Jun", criticos: 1, moderados: 6 },
-          { mes: "Jul", criticos: 3, moderados: 10 },
         ],
       },
     ];
@@ -677,20 +673,29 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
         background: "#0D1117",
         border: "1px solid rgba(0,163,255,0.20)",
         borderRadius: 8,
-        padding: "12px 16px",
-        fontFamily: "'IBM Plex Mono', 'DM Sans', sans-serif",
-        fontSize: 12,
+        padding: "10px 14px",
+        fontFamily: "'IBM Plex Mono', monospace",
       }}>
-        <p style={{ color: "#5a8ab5", marginBottom: 4, fontWeight: 600 }}>{label}</p>
-        {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color, fontWeight: 700 }}>
-            {p.name}: <span style={{ color: "#e2e8f0", fontFamily: "'IBM Plex Mono', monospace" }}>{p.value}{chart.unit ? ` ${chart.unit}` : ""}</span>
-          </p>
-        ))}
+        <p style={{ color: "#6B7A99", marginBottom: 6, fontSize: 10, fontWeight: 500 }}>{label}</p>
+        {payload.map((p: any, i: number) => {
+          const prevValue = i > 0 ? payload[i-1]?.value : null;
+          const change = prevValue && typeof p.value === "number" && typeof prevValue === "number" 
+            ? ((p.value - prevValue) / prevValue * 100) : null;
+          return (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 2 }}>
+              <span style={{ color: p.color, fontSize: 11, fontWeight: 500 }}>{p.name}</span>
+              <span style={{ color: "#E8EDF5", fontSize: 13, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {typeof p.value === "number" ? p.value.toLocaleString() : p.value}
+                {chart.unit ? ` ${chart.unit}` : ""}
+              </span>
+            </div>
+          );
+        })}
         {onDrillDown && (
           <button
             onClick={() => onDrillDown(String(label))}
-            className="mt-2 text-[10px] px-2 py-1 rounded bg-[#1e3a5f]/30 text-[#60a5fa] hover:bg-[#1e3a5f]/50 transition-colors"
+            className="mt-2 text-[10px] px-2 py-1 rounded bg-[#00A3FF]/10 text-[#00A3FF] hover:bg-[#00A3FF]/20 transition-colors"
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
           >
             Ver detalhe →
           </button>
@@ -705,8 +710,8 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       <div style={{ display: "flex", justifyContent: "center", gap: 16, paddingBottom: 8 }}>
         {payload.map((entry: any, i: number) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: entry.color }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{entry.value}</span>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: entry.color }} />
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>{entry.value}</span>
           </div>
         ))}
       </div>
@@ -726,13 +731,14 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-          <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52}
+            tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
           <Tooltip content={<CustomTooltip />} />
           <Legend content={<CustomLegend />} />
           {chart.dataKeys.map((dk, i) => (
-            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${chart.title}-${i})`} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color }} />
+            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${chart.title}-${i})`} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color, stroke: dk.color, strokeWidth: 2 }} />
           ))}
         </AreaChart>
       );
@@ -740,13 +746,14 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
     if (type === "bar") {
       return (
         <BarChart data={chart.data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-          <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52}
+            tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
           <Tooltip content={<CustomTooltip />} />
           <Legend content={<CustomLegend />} />
           {chart.dataKeys.map((dk) => (
-            <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} radius={[3, 3, 0, 0]} maxBarSize={48} />
+            <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} radius={[4, 4, 0, 0]} maxBarSize={32} />
           ))}
         </BarChart>
       );
@@ -754,21 +761,55 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
     if (type === "pie") {
       return (
         <PieChart>
-          <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={82} innerRadius={44} strokeWidth={0} paddingAngle={2}>
+          <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={82} innerRadius={55} strokeWidth={0} paddingAngle={3}>
             {chart.data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend formatter={(value) => <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{value}</span>} />
+          <Legend formatter={(value) => <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>{value}</span>} />
         </PieChart>
+      );
+    }
+    if (type === "radar") {
+      return (
+        <RadarChart cx="50%" cy="50%" outerRadius={75} data={chart.data}>
+          <PolarGrid stroke="rgba(255,255,255,0.06)" />
+          <PolarAngleAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} />
+          <PolarRadiusAxis tick={{ fill: "#6B7A99", fontSize: 8 }} axisLine={false} />
+          {chart.dataKeys.map((dk) => (
+            <Radar key={dk.key} name={dk.key} dataKey={dk.key} stroke={dk.color} fill={dk.color} fillOpacity={0.2} strokeWidth={2} dot={{ r: 4, fill: dk.color }} />
+          ))}
+          <Tooltip content={<CustomTooltip />} />
+          <Legend content={<CustomLegend />} />
+        </RadarChart>
+      );
+    }
+    if (type === "composed") {
+      return (
+        <ComposedChart data={chart.data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend content={<CustomLegend />} />
+          {chart.referenceLines?.map((rl, i) => (
+            <ReferenceLine key={i} y={rl.y} stroke={rl.color || "rgba(255,255,255,0.20)"} strokeDasharray="4 4"
+              label={{ value: rl.label, fill: "#6B7A99", fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: "insideTopRight" }} />
+          ))}
+          {chart.dataKeys.map((dk) => {
+            if (dk.type === "bar") return <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} fillOpacity={0.7} radius={[4, 4, 0, 0]} maxBarSize={32} />;
+            if (dk.type === "area") return <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={dk.color} fillOpacity={0.08} dot={{ fill: dk.color, r: 3 }} />;
+            return <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} dot={{ fill: dk.color, r: 3 }} strokeDasharray={dk.type === "line" ? undefined : undefined} />;
+          })}
+        </ComposedChart>
       );
     }
     return (
       <LineChart data={chart.data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-        <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+        <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52} />
         <Tooltip content={<CustomTooltip />} />
         <Legend content={<CustomLegend />} />
         {chart.dataKeys.map((dk) => (
@@ -849,34 +890,40 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       {/* Data table toggle */}
       {showData && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4">
-          <div className="overflow-x-auto rounded-lg" style={{ border: "1px solid rgba(30,58,95,0.3)" }}>
+          <div className="overflow-x-auto rounded-lg" style={{ background: "#0A0E1A", border: "1px solid #1E2A3A" }}>
             <table className="w-full text-[11px]">
               <thead>
                 <tr>
                   {Object.keys(chart.data[0] || {}).map((k) => (
-                    <th key={k} className="px-3 py-2 text-left font-bold uppercase tracking-wider" style={{ background: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontSize: 9 }}>{k}</th>
+                    <th key={k} className="px-3 py-2 text-left font-bold uppercase tracking-wider" style={{ background: "#141B2D", color: "#6B7A99", fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}>{k}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {chart.data.map((row, i) => (
-                  <tr key={i} className="hover:bg-[#1e3a5f]/10">
+                {chart.data.slice(0, 10).map((row, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? "#0A0E1A" : "#0D1117" }}>
                     {Object.values(row).map((v, j) => (
-                      <td key={j} className="px-3 py-1.5" style={{ color: "#7aa3cc", borderBottom: "1px solid rgba(30,58,95,0.15)" }}>{String(v)}</td>
+                      <td key={j} className="px-3 py-1.5" style={{ color: "#E8EDF5", borderBottom: "1px solid rgba(30,58,95,0.15)", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
+                        {typeof v === "number" ? v.toLocaleString() : String(v)}
+                      </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
+            {chart.data.length > 10 && (
+              <div className="px-3 py-2 text-center" style={{ color: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+                ... e mais {chart.data.length - 10} registos
+              </div>
+            )}
           </div>
         </motion.div>
       )}
 
       {/* Footer */}
-      <div className="px-4 pb-3 flex items-center gap-2">
-        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
-        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "#1e3a5f", letterSpacing: "0.1em", textTransform: "uppercase" }}>AlphaData Market Intelligence</span>
-        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
+      <div className="px-4 pb-3 flex items-center justify-between">
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>Fonte: ANPG · AlphaData Analytics</span>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>Actualizado: {new Date().toLocaleDateString("pt-PT")}</span>
       </div>
     </motion.div>
   );
