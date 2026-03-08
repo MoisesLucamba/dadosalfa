@@ -1283,23 +1283,23 @@ const ChatBubble = ({
             ) : (
               <div className="ai-response">
                 <style>{`
-                  .ai-response h1 { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(30,58,95,0.4); }
-                  .ai-response h2 { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; color: #9bb5d6; letter-spacing: 0.08em; margin: 16px 0 8px; text-transform: uppercase; }
-                  .ai-response h3 { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #7aa3cc; margin: 12px 0 6px; }
-                  .ai-response p { font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: #7aa3cc; line-height: 1.75; margin-bottom: 10px; }
+                  .ai-response h1 { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(30,58,95,0.4); }
+                  .ai-response h2 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; color: #9bb5d6; letter-spacing: 0.08em; margin: 16px 0 8px; text-transform: uppercase; }
+                  .ai-response h3 { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #7aa3cc; margin: 12px 0 6px; }
+                  .ai-response p { font-family: 'Outfit', sans-serif; font-size: 13.5px; color: #7aa3cc; line-height: 1.75; margin-bottom: 10px; }
                   .ai-response ul { list-style: none; padding: 0; margin-bottom: 12px; }
-                  .ai-response ul li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 4px 0 4px 18px; position: relative; }
+                  .ai-response ul li { font-family: 'Outfit', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 4px 0 4px 18px; position: relative; }
                   .ai-response ul li::before { content: ''; position: absolute; left: 0; top: 13px; width: 6px; height: 1px; background: #dc2626; }
                   .ai-response ol { padding-left: 20px; margin-bottom: 12px; }
-                  .ai-response ol li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 3px 0; }
+                  .ai-response ol li { font-family: 'Outfit', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 3px 0; }
                   .ai-response strong { font-weight: 700; color: #ef4444; }
                   .ai-response em { color: #60a5fa; font-style: normal; font-weight: 600; }
-                  .ai-response code { background: rgba(30,58,95,0.3); color: #93c5fd; font-family: 'Space Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(30,58,95,0.4); }
+                  .ai-response code { background: rgba(30,58,95,0.3); color: #93c5fd; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(30,58,95,0.4); }
                   .ai-response blockquote { border-left: 2px solid #dc2626; padding-left: 14px; margin: 12px 0; background: rgba(220,38,38,0.04); border-radius: 0 6px 6px 0; padding: 10px 14px; }
                   .ai-response blockquote p { color: #9bb5d6; margin: 0; font-style: italic; }
                   .ai-response table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-                  .ai-response th { background: rgba(30,58,95,0.4); color: #9bb5d6; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; text-align: left; border: 1px solid rgba(30,58,95,0.3); }
-                  .ai-response td { color: #5a8ab5; font-family: 'DM Sans', sans-serif; padding: 8px 12px; border: 1px solid rgba(30,58,95,0.2); }
+                  .ai-response th { background: rgba(30,58,95,0.4); color: #9bb5d6; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; text-align: left; border: 1px solid rgba(30,58,95,0.3); }
+                  .ai-response td { color: #5a8ab5; font-family: 'Outfit', sans-serif; padding: 8px 12px; border: 1px solid rgba(30,58,95,0.2); }
                   .ai-response tr:nth-child(even) td { background: rgba(30,58,95,0.08); }
                 `}</style>
                 <ReactMarkdown
