@@ -1235,7 +1235,7 @@ const ChatBubble = ({
       <div className={`flex flex-col space-y-1.5 max-w-[88%] ${isUser ? "items-end" : "items-start"}`}>
         {/* Role label */}
         <div className="flex items-center gap-2 px-1" style={{ flexDirection: isUser ? "row-reverse" : "row" }}>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: isUser ? "#dc2626" : "#3b82f6", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: isUser ? "#dc2626" : "#3b82f6", textTransform: "uppercase" }}>
             {isUser ? "Utilizador" : "AlphaData AI"}
           </span>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>{message.time}</span>
