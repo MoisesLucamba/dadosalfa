@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Trash2, Edit, MessageSquare, MoreVertical } from "lucide-react";
+import { Send, Trash2, Edit, MessageSquare, MoreVertical, Paperclip, FileText, Image, X } from "lucide-react";
 import { useWorkspaceMessages } from "@/hooks/useWorkspaceChat";
 import { useWorkspaceMembers } from "@/hooks/useWorkspaces";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +30,10 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
   const [newMessage, setNewMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ name: string; url: string; type: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getMemberName = (userId: string) => {
     if (userId === user?.id) return "Você";
@@ -45,10 +50,59 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ficheiro demasiado grande (máx. 10MB)");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${workspaceId}/${Date.now()}_${file.name}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('workspace-files')
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('workspace-files')
+        .getPublicUrl(path);
+
+      setPendingFile({
+        name: file.name,
+        url: urlData.publicUrl,
+        type: file.type.startsWith('image/') ? 'image' : 'file',
+      });
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error("Erro ao fazer upload do ficheiro");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
-    await sendMessage.mutateAsync({ content: newMessage });
+    let content = newMessage.trim();
+    
+    if (pendingFile) {
+      const fileMsg = pendingFile.type === 'image'
+        ? `📷 [${pendingFile.name}](${pendingFile.url})`
+        : `📎 [${pendingFile.name}](${pendingFile.url})`;
+      content = content ? `${content}\n${fileMsg}` : fileMsg;
+    }
+
+    if (!content) return;
+
+    await sendMessage.mutateAsync({ content });
     setNewMessage("");
+    setPendingFile(null);
   };
 
   const handleEdit = async (messageId: string) => {
@@ -63,6 +117,48 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const isFileMessage = (content: string) => {
+    return content.includes('📎 [') || content.includes('📷 [');
+  };
+
+  const renderMessageContent = (content: string) => {
+    // Parse file/image links
+    const parts = content.split('\n');
+    return parts.map((part, i) => {
+      const fileMatch = part.match(/^(📎|📷)\s+\[(.+?)\]\((.+?)\)$/);
+      if (fileMatch) {
+        const [, icon, name, url] = fileMatch;
+        if (icon === '📷') {
+          return (
+            <div key={i} className="mt-1">
+              <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                <img 
+                  src={url} 
+                  alt={name} 
+                  className="max-w-[200px] max-h-[150px] rounded-lg object-cover border border-border"
+                />
+              </a>
+              <span className="text-[10px] text-muted-foreground mt-0.5 block">{name}</span>
+            </div>
+          );
+        }
+        return (
+          <a 
+            key={i} 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 mt-1 px-2 py-1.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-xs"
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{name}</span>
+          </a>
+        );
+      }
+      return part ? <span key={i}>{part}</span> : null;
+    });
   };
 
   return (
@@ -115,7 +211,10 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
                       </div>
                     ) : (
                       <div className={`inline-block px-3 py-2 rounded-2xl text-sm ${isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}>
-                        {msg.content}
+                        {isFileMessage(msg.content) 
+                          ? renderMessageContent(msg.content)
+                          : msg.content
+                        }
                       </div>
                     )}
                     {isOwn && editingId !== msg.id && (
@@ -143,9 +242,47 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
           <div ref={bottomRef} />
         </div>
 
+        {/* Pending file preview */}
+        {pendingFile && (
+          <div className="px-4 py-2 border-t border-border bg-muted/30">
+            <div className="flex items-center gap-2 text-sm">
+              {pendingFile.type === 'image' ? (
+                <Image className="h-4 w-4 text-primary shrink-0" />
+              ) : (
+                <FileText className="h-4 w-4 text-primary shrink-0" />
+              )}
+              <span className="truncate text-foreground">{pendingFile.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0"
+                onClick={() => setPendingFile(null)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Input */}
         <div className="p-4 border-t border-border">
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileSelect}
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-xl shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              <Paperclip className={`h-4 w-4 ${isUploading ? 'animate-spin' : ''}`} />
+            </Button>
             <Input
               placeholder="Escreva uma mensagem..."
               value={newMessage}
@@ -156,7 +293,7 @@ export const WorkspaceGroupChat = ({ workspaceId }: WorkspaceGroupChatProps) => 
             />
             <Button
               onClick={handleSend}
-              disabled={!newMessage.trim() || sendMessage.isPending}
+              disabled={(!newMessage.trim() && !pendingFile) || sendMessage.isPending}
               size="icon"
               className="rounded-xl shrink-0"
             >
