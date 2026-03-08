@@ -62,8 +62,33 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
   const { workspaces } = useWorkspaces();
   const { members } = useWorkspaceMembers(workspaceId);
   const { activities } = useWorkspaceActivity(workspaceId);
-  const { sharedReports } = useWorkspaceReports(workspaceId);
+  const { sharedReports, shareReport, unshareReport } = useWorkspaceReports(workspaceId);
   const [showSettings, setShowSettings] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [reportSearch, setReportSearch] = useState("");
+
+  // Fetch available reports to share
+  const { data: availableReports } = useQuery({
+    queryKey: ['available-reports-for-share'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('id, title, type, period, status, created_at')
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: showShareDialog,
+  });
+
+  const alreadySharedIds = sharedReports?.map((sr: any) => sr.report_id) || [];
+  const filteredReports = availableReports?.filter(r => 
+    !alreadySharedIds.includes(r.id) &&
+    (r.title.toLowerCase().includes(reportSearch.toLowerCase()) ||
+     r.type.toLowerCase().includes(reportSearch.toLowerCase()))
+  ) || [];
 
   const workspace = workspaces?.find(w => w.id === workspaceId);
   const currentMember = members?.find(m => m.user_id === user?.id);
