@@ -51,7 +51,7 @@ const QUICK_SUGGESTIONS = [
   { label: "Relatório mensal",           path: "/reports",    tag: "Relatórios" },
 ];
 
-interface HeaderProps { activeItem?: string; }
+interface HeaderProps { activeItem?: string; onHelpClick?: () => void; }
 
 export function Header({ activeItem = "/" }: HeaderProps) {
   const { user, signOut } = useAuth();
