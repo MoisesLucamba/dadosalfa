@@ -750,21 +750,55 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
     if (type === "pie") {
       return (
         <PieChart>
-          <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={82} innerRadius={44} strokeWidth={0} paddingAngle={2}>
+          <Pie data={chart.data} dataKey={chart.dataKeys[0].key} nameKey={chart.xKey} cx="50%" cy="50%" outerRadius={82} innerRadius={55} strokeWidth={0} paddingAngle={3}>
             {chart.data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend formatter={(value) => <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "#3d5a7a" }}>{value}</span>} />
+          <Legend formatter={(value) => <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>{value}</span>} />
         </PieChart>
+      );
+    }
+    if (type === "radar") {
+      return (
+        <RadarChart cx="50%" cy="50%" outerRadius={75} data={chart.data}>
+          <PolarGrid stroke="rgba(255,255,255,0.06)" />
+          <PolarAngleAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} />
+          <PolarRadiusAxis tick={{ fill: "#6B7A99", fontSize: 8 }} axisLine={false} />
+          {chart.dataKeys.map((dk) => (
+            <Radar key={dk.key} name={dk.key} dataKey={dk.key} stroke={dk.color} fill={dk.color} fillOpacity={0.2} strokeWidth={2} dot={{ r: 4, fill: dk.color }} />
+          ))}
+          <Tooltip content={<CustomTooltip />} />
+          <Legend content={<CustomLegend />} />
+        </RadarChart>
+      );
+    }
+    if (type === "composed") {
+      return (
+        <ComposedChart data={chart.data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend content={<CustomLegend />} />
+          {chart.referenceLines?.map((rl, i) => (
+            <ReferenceLine key={i} y={rl.y} stroke={rl.color || "rgba(255,255,255,0.20)"} strokeDasharray="4 4"
+              label={{ value: rl.label, fill: "#6B7A99", fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: "insideTopRight" }} />
+          ))}
+          {chart.dataKeys.map((dk) => {
+            if (dk.type === "bar") return <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} fillOpacity={0.7} radius={[4, 4, 0, 0]} maxBarSize={32} />;
+            if (dk.type === "area") return <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={dk.color} fillOpacity={0.08} dot={{ fill: dk.color, r: 3 }} />;
+            return <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} dot={{ fill: dk.color, r: 3 }} strokeDasharray={dk.type === "line" ? undefined : undefined} />;
+          })}
+        </ComposedChart>
       );
     }
     return (
       <LineChart data={chart.data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-        <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+        <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52} />
         <Tooltip content={<CustomTooltip />} />
         <Legend content={<CustomLegend />} />
         {chart.dataKeys.map((dk) => (
