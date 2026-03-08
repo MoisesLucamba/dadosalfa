@@ -733,6 +733,10 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   let logoBase64: string | undefined;
   try { logoBase64 = await loadLogoAsBase64(); } catch { /* logo optional */ }
 
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
+
   const doc = new jsPDF('p', 'mm', 'a4');
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -742,8 +746,8 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const defaultCover = getDefaultCoverPageData();
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || 'Relatório AlphaData',
-    reportType: getTypeName(data.type),
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: getTypeName(data.type, lang),
     reportPeriod: data.period || 'Actual',
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
@@ -771,7 +775,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
   // ── Executive Summary ────────────────────────────────────────────────────
   if (data.summary) {
-    sectionTitle(ctx, 'Sumário Executivo');
+    sectionTitle(ctx, t.executiveSummary);
     const blocks = parseMarkdown(data.summary);
     renderBlocks(ctx, blocks);
     ctx.y += L.SECTION_SP;
@@ -779,7 +783,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
   // ── Highlights ───────────────────────────────────────────────────────────
   if (data.highlights && data.highlights.length > 0) {
-    sectionTitle(ctx, 'Destaques Principais');
+    sectionTitle(ctx, t.mainHighlights);
     const boxH = 22;
     data.highlights.forEach(h => {
       needsPage(ctx, boxH + 6);
@@ -818,27 +822,27 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
 
   if (hasCharts) {
-    sectionTitle(ctx, 'Análise Visual');
+    sectionTitle(ctx, t.visualAnalysis);
 
     if (prodData.length > 0) {
-      drawHBarChart(ctx, 'Produção por Operador', prodData, 'bpd', 8);
+      drawHBarChart(ctx, t.productionByOperator, prodData, 'bpd', 8);
       ctx.y += 4;
       if (prodData.length >= 3) {
-        drawDonutChart(ctx, 'Quota de Mercado (Produção)', prodData, 'bpd');
+        drawDonutChart(ctx, t.marketShareProduction, prodData, 'bpd');
         ctx.y += 4;
       }
     }
 
     if (priceSeries.length > 1) {
-      drawLineChart(ctx, 'Evolução de Preços (USD/bbl)', [
-        { name: 'Preço', points: priceSeries, color: C.brand },
+      drawLineChart(ctx, t.priceEvolution, [
+        { name: t.price, points: priceSeries, color: C.brand },
       ]);
     } else if (priceData.length > 0) {
-      drawHBarChart(ctx, 'Preços por Tipo de Crude (USD/bbl)', priceData, 'USD', 8);
+      drawHBarChart(ctx, t.pricesByType, priceData, 'USD', 8);
     }
 
     if (exportData.length > 0) {
-      drawHBarChart(ctx, 'Exportações por Destino', exportData, 'bbl', 8);
+      drawHBarChart(ctx, t.exportsByDestination, exportData, 'bbl', 8);
     }
 
     ctx.y += L.SECTION_SP;
@@ -850,7 +854,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
     // Production table
     if (Array.isArray(cd.production) && cd.production.length > 0) {
-      sectionTitle(ctx, `Dados de ${getTypeName(data.type)}`);
+      sectionTitle(ctx, t.productionData);
       const rows = cd.production.slice(0, 20).map((r: any) => [
         r.operator || r.company || '-',
         r.block || '-',
@@ -862,7 +866,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Operador', 'Bloco', 'Campo', 'Produção', 'Status']],
+        head: [[t.operator, t.block, t.field, t.productionBpd, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -877,18 +881,18 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     // Prices table
     if (Array.isArray(cd.prices) && cd.prices.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, 'Tabela de Preços');
+      sectionTitle(ctx, t.priceTable);
       const rows = cd.prices.slice(0, 12).map((r: any) => [
         r.crude_type || r.type || '-',
         r.price != null ? `$${Number(r.price).toFixed(2)}` : '-',
         r.change_percent != null
           ? `${r.change_percent >= 0 ? '+' : ''}${Number(r.change_percent).toFixed(2)}%`
           : '-',
-        r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-',
+        r.data_date ? new Date(r.data_date).toLocaleDateString(locale) : '-',
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Tipo de Crude', 'Preço (USD)', 'Variação', 'Data']],
+        head: [[t.crudeType, t.priceUsd, t.variation, t.date]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -903,7 +907,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     // Exports table
     if (Array.isArray(cd.exports) && cd.exports.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, 'Tabela de Exportações');
+      sectionTitle(ctx, t.exportTable);
       const rows = cd.exports.slice(0, 12).map((r: any) => [
         r.destination || r.country || '-',
         r.volume != null ? `${(Number(r.volume) / 1_000_000).toFixed(2)}M bbl` : '-',
@@ -912,7 +916,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Destino', 'Volume', 'Tanque', 'Status']],
+        head: [[t.destination, t.volume, t.tanker, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -930,15 +934,13 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   ctx.doc.setFillColor(...C.ultraLight);
   ctx.doc.roundedRect(margin, ctx.y, contentW, 32, L.BOX_R, L.BOX_R, 'F');
   setFont(ctx.doc, 6.5, 'italic', C.muted);
-  const disclaimer =
-    'AVISO LEGAL: Este relatório foi gerado pela AlphaData - Inteligência de Mercado Petrolífero Angolano. As informações aqui contidas são para fins informativos e não constituem aconselhamento financeiro ou de investimento. A AlphaData não se responsabiliza por decisões tomadas com base neste documento. Todos os dados são provenientes de fontes oficiais e APIs de mercado em tempo real.';
-  const dLines = ctx.doc.splitTextToSize(disclaimer, contentW - 10);
+  const dLines = ctx.doc.splitTextToSize(t.disclaimer, contentW - 10);
   ctx.doc.text(dLines, margin + 5, ctx.y + 8);
 
   // ── Footers (all pages) ──────────────────────────────────────────────────
-  addFooters(doc, W, H);
+  addFooters(doc, W, H, lang);
 
-  const fileName = `AlphaData_${getTypeName(data.type)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
+  const fileName = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 };
 
