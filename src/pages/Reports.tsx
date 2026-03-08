@@ -875,6 +875,20 @@ const Reports = () => {
                 className="bg-secondary border-border h-12 rounded-xl focus:ring-red-600/30"
               />
             </div>
+            {/* Language selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-[0.15em]">Idioma do Relatório</label>
+              <Select value={generateLanguage} onValueChange={(v) => setGenerateLanguage(v as DocumentLanguageCode)}>
+                <SelectTrigger className="bg-secondary border-border h-12 rounded-xl focus:ring-red-600/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border text-foreground">
+                  <SelectItem value="pt">🇵🇹 Português</SelectItem>
+                  <SelectItem value="en">🇬🇧 English</SelectItem>
+                  <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {/* AI Toggle */}
             <div 
               onClick={() => setIsAiGenerated(!isAiGenerated)}
