@@ -634,6 +634,8 @@ function makeHeaderFn(
   logoBase64: string | undefined,
   pageWidth: number,
 ): () => void {
+  const t = getDocumentTranslation(data.language || 'pt');
+  const locale = data.language === 'en' ? 'en-US' : data.language === 'fr' ? 'fr-FR' : 'pt-AO';
   return function drawHeader() {
     doc.setFillColor(...C.dark);
     doc.rect(0, 0, pageWidth, L.HEADER_H, 'F');
@@ -657,14 +659,14 @@ function makeHeaderFn(
     }
 
     setFont(doc, 9, 'normal', C.mediumGray);
-    const titleStr = (data.title || 'Relatório').substring(0, 60);
+    const titleStr = (data.title || t.report).substring(0, 60);
     doc.text(titleStr, L.MARGIN, 32);
 
     // Date right-aligned
     const d = safeDate(data.generatedAt);
     setFont(doc, 7.5, 'normal', C.mediumGray);
     doc.text(
-      `Gerado em: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+      `${t.generatedAt}: ${d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       pageWidth - L.MARGIN - 85,
       20
     );
@@ -673,12 +675,13 @@ function makeHeaderFn(
       doc.setFillColor(...C.primary);
       doc.roundedRect(pageWidth - L.MARGIN - 40, 26, 36, 9, 2, 2, 'F');
       setFont(doc, 6.5, 'bold', C.white);
-      doc.text('Gerado com IA', pageWidth - L.MARGIN - 36, 32);
+      doc.text(t.aiGenerated, pageWidth - L.MARGIN - 36, 32);
     }
   };
 }
 
-function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
+function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number, lang: DocumentLanguageCode = 'pt') {
+  const t = getDocumentTranslation(lang);
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
@@ -689,9 +692,9 @@ function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
     doc.line(0, pageHeight - L.FOOTER_H, pageWidth, pageHeight - L.FOOTER_H);
 
     setFont(doc, 7, 'normal', C.muted);
-    doc.text('AlphaData - Inteligência de Mercado Petrolífero Angolano', L.MARGIN, pageHeight - 8);
-    doc.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-    doc.text('CONFIDENCIAL', pageWidth - L.MARGIN - 25, pageHeight - 8);
+    doc.text(t.footerText, L.MARGIN, pageHeight - 8);
+    doc.text(`${t.page} ${i} ${t.of} ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text(t.confidential, pageWidth - L.MARGIN - 30, pageHeight - 8);
   }
 }
 
@@ -710,15 +713,16 @@ function safeDate(d: any): Date {
 }
 
 function getTypeName(type: string, lang: DocumentLanguageCode = 'pt'): string {
+  const t = getDocumentTranslation(lang);
   const map: Record<string, string> = {
-    production: 'Produção',
-    market: 'Mercado',
-    exports: 'Exportações',
-    risk: 'Risco',
-    predictions: 'Previsões',
-    general: 'Geral',
+    production: t.typeProduction,
+    market: t.typeMarket,
+    exports: t.typeExports,
+    risk: t.typeRisk,
+    predictions: t.typePredictions,
+    general: t.typeGeneral,
   };
-  return map[type] || type || 'Relatório';
+  return map[type] || type || t.typeReport;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -729,6 +733,10 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   let logoBase64: string | undefined;
   try { logoBase64 = await loadLogoAsBase64(); } catch { /* logo optional */ }
 
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
+
   const doc = new jsPDF('p', 'mm', 'a4');
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -738,8 +746,8 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const defaultCover = getDefaultCoverPageData();
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || 'Relatório AlphaData',
-    reportType: getTypeName(data.type),
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: getTypeName(data.type, lang),
     reportPeriod: data.period || 'Actual',
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
@@ -767,7 +775,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
   // ── Executive Summary ────────────────────────────────────────────────────
   if (data.summary) {
-    sectionTitle(ctx, 'Sumário Executivo');
+    sectionTitle(ctx, t.executiveSummary);
     const blocks = parseMarkdown(data.summary);
     renderBlocks(ctx, blocks);
     ctx.y += L.SECTION_SP;
@@ -775,7 +783,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
   // ── Highlights ───────────────────────────────────────────────────────────
   if (data.highlights && data.highlights.length > 0) {
-    sectionTitle(ctx, 'Destaques Principais');
+    sectionTitle(ctx, t.mainHighlights);
     const boxH = 22;
     data.highlights.forEach(h => {
       needsPage(ctx, boxH + 6);
@@ -814,27 +822,27 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
 
   if (hasCharts) {
-    sectionTitle(ctx, 'Análise Visual');
+    sectionTitle(ctx, t.visualAnalysis);
 
     if (prodData.length > 0) {
-      drawHBarChart(ctx, 'Produção por Operador', prodData, 'bpd', 8);
+      drawHBarChart(ctx, t.productionByOperator, prodData, 'bpd', 8);
       ctx.y += 4;
       if (prodData.length >= 3) {
-        drawDonutChart(ctx, 'Quota de Mercado (Produção)', prodData, 'bpd');
+        drawDonutChart(ctx, t.marketShareProduction, prodData, 'bpd');
         ctx.y += 4;
       }
     }
 
     if (priceSeries.length > 1) {
-      drawLineChart(ctx, 'Evolução de Preços (USD/bbl)', [
-        { name: 'Preço', points: priceSeries, color: C.brand },
+      drawLineChart(ctx, t.priceEvolution, [
+        { name: t.price, points: priceSeries, color: C.brand },
       ]);
     } else if (priceData.length > 0) {
-      drawHBarChart(ctx, 'Preços por Tipo de Crude (USD/bbl)', priceData, 'USD', 8);
+      drawHBarChart(ctx, t.pricesByType, priceData, 'USD', 8);
     }
 
     if (exportData.length > 0) {
-      drawHBarChart(ctx, 'Exportações por Destino', exportData, 'bbl', 8);
+      drawHBarChart(ctx, t.exportsByDestination, exportData, 'bbl', 8);
     }
 
     ctx.y += L.SECTION_SP;
@@ -846,7 +854,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
     // Production table
     if (Array.isArray(cd.production) && cd.production.length > 0) {
-      sectionTitle(ctx, `Dados de ${getTypeName(data.type)}`);
+      sectionTitle(ctx, t.productionData);
       const rows = cd.production.slice(0, 20).map((r: any) => [
         r.operator || r.company || '-',
         r.block || '-',
@@ -858,7 +866,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Operador', 'Bloco', 'Campo', 'Produção', 'Status']],
+        head: [[t.operator, t.block, t.field, t.productionBpd, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -873,18 +881,18 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     // Prices table
     if (Array.isArray(cd.prices) && cd.prices.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, 'Tabela de Preços');
+      sectionTitle(ctx, t.priceTable);
       const rows = cd.prices.slice(0, 12).map((r: any) => [
         r.crude_type || r.type || '-',
         r.price != null ? `$${Number(r.price).toFixed(2)}` : '-',
         r.change_percent != null
           ? `${r.change_percent >= 0 ? '+' : ''}${Number(r.change_percent).toFixed(2)}%`
           : '-',
-        r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-',
+        r.data_date ? new Date(r.data_date).toLocaleDateString(locale) : '-',
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Tipo de Crude', 'Preço (USD)', 'Variação', 'Data']],
+        head: [[t.crudeType, t.priceUsd, t.variation, t.date]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -899,7 +907,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     // Exports table
     if (Array.isArray(cd.exports) && cd.exports.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, 'Tabela de Exportações');
+      sectionTitle(ctx, t.exportTable);
       const rows = cd.exports.slice(0, 12).map((r: any) => [
         r.destination || r.country || '-',
         r.volume != null ? `${(Number(r.volume) / 1_000_000).toFixed(2)}M bbl` : '-',
@@ -908,7 +916,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [['Destino', 'Volume', 'Tanque', 'Status']],
+        head: [[t.destination, t.volume, t.tanker, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
@@ -926,15 +934,13 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   ctx.doc.setFillColor(...C.ultraLight);
   ctx.doc.roundedRect(margin, ctx.y, contentW, 32, L.BOX_R, L.BOX_R, 'F');
   setFont(ctx.doc, 6.5, 'italic', C.muted);
-  const disclaimer =
-    'AVISO LEGAL: Este relatório foi gerado pela AlphaData - Inteligência de Mercado Petrolífero Angolano. As informações aqui contidas são para fins informativos e não constituem aconselhamento financeiro ou de investimento. A AlphaData não se responsabiliza por decisões tomadas com base neste documento. Todos os dados são provenientes de fontes oficiais e APIs de mercado em tempo real.';
-  const dLines = ctx.doc.splitTextToSize(disclaimer, contentW - 10);
+  const dLines = ctx.doc.splitTextToSize(t.disclaimer, contentW - 10);
   ctx.doc.text(dLines, margin + 5, ctx.y + 8);
 
   // ── Footers (all pages) ──────────────────────────────────────────────────
-  addFooters(doc, W, H);
+  addFooters(doc, W, H, lang);
 
-  const fileName = `AlphaData_${getTypeName(data.type)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
+  const fileName = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 };
 
@@ -944,11 +950,14 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
 export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const children: any[] = [];
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
 
   // Title
   children.push(
     new Paragraph({
-      text: data.title || 'Relatório AlphaData',
+      text: data.title || `${t.report} AlphaData`,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
     })
@@ -957,8 +966,8 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   children.push(
     new Paragraph({
       children: [
-        new TextRun({ text: `Período: ${data.period || 'N/D'}   |   `, color: '64748B', size: 20 }),
-        new TextRun({ text: `Gerado em: ${safeDate(data.generatedAt).toLocaleDateString('pt-AO')}`, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.docxPeriod}: ${data.period || t.notAvailable}   |   `, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.docxGeneratedAt}: ${safeDate(data.generatedAt).toLocaleDateString(locale)}`, color: '64748B', size: 20 }),
       ],
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 },
@@ -967,7 +976,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
 
   // Render markdown blocks for summary
   if (data.summary) {
-    children.push(new Paragraph({ text: 'Sumário Executivo', heading: HeadingLevel.HEADING_1 }));
+    children.push(new Paragraph({ text: t.executiveSummary, heading: HeadingLevel.HEADING_1 }));
 
     const blocks = parseMarkdown(data.summary);
     for (const block of blocks) {
@@ -1007,9 +1016,9 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   // Tables from content
   const cd = data.content?.data;
   if (cd?.production && Array.isArray(cd.production) && cd.production.length > 0) {
-    children.push(new Paragraph({ text: 'Dados de Produção', heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
+    children.push(new Paragraph({ text: t.productionData, heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
     const headerRow = new TableRow({
-      children: ['Operador', 'Bloco', 'Campo', 'Produção (bpd)', 'Status'].map(h =>
+      children: [t.operator, t.block, t.field, t.productionBpd, t.status].map(h =>
         new TableCell({
           children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: 'FFFFFF', size: 18 })] })],
           shading: { fill: '0A0A0A' },
@@ -1042,7 +1051,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
+  a.download = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
