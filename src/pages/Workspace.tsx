@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
