@@ -468,10 +468,23 @@ const Risk = () => {
               </div>
             </div>
 
-            {/* History Chart */}
-            <div className="grid grid-cols-1 gap-8">
-              <RiskHistoryChart />
+            {/* History Chart + Data Sources */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-9">
+                <div className="relative">
+                  <div className="absolute top-4 right-4 z-10">
+                    <DataDepthBadge startYear={2019} endYear={2025} source="ANPG Annual Reports, Sonangol Production Data, OPEC Statistical Bulletin" />
+                  </div>
+                  <RiskHistoryChart />
+                </div>
+              </div>
+              <div className="lg:col-span-3">
+                <DataSourcesPanel />
+              </div>
             </div>
+
+            </>
+            )}
 
           </div>
         </main>
