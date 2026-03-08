@@ -49,11 +49,14 @@ export function OrganizationSignupForm({ onSubmit, isLoading, error }: Organizat
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<OrganizationSignupForm>({
     resolver: zodResolver(organizationSignupSchema),
     defaultValues: {
       country: 'Angola',
+      acceptTerms: false,
+      acceptNda: false,
     },
   });
 
