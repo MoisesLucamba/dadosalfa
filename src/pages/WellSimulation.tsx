@@ -1142,8 +1142,8 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   ];
   autoTable(doc, {
     startY: 44,
-    head: [techData[0]],
-    body: techData.slice(1),
+    head: [[...t.techHeaders]],
+    body: techData.slice(1).map(r => [...r]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
     bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7.5 },
