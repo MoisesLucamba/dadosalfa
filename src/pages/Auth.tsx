@@ -81,7 +81,6 @@ export default function Auth() {
   const [signupError, setSignupError] = useState<string | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [signupError, setSignupError] = useState<string | null>(null);
   
   // Form States
   const [email, setEmail] = useState("");
