@@ -259,7 +259,7 @@ const Prices = () => {
                     {[{ color: "var(--accent-blue)", label: "Preço" }, { color: "var(--text-muted)", label: "Volume" }].map((l, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: l.color }} />
-                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>{l.label}</span>
+                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>{l.label}</span>
                       </div>
                     ))}
                   </div>
