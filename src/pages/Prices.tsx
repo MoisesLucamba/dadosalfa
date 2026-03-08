@@ -352,7 +352,7 @@ const Prices = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={spreadData}>
                         <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="3 3" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "DM Sans" }} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "Outfit" }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "IBM Plex Mono" }} domain={[-3, 6]} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="stepAfter" dataKey="brentWti"     name="Brent-WTI"     stroke="var(--accent-blue)"  strokeWidth={2} dot={false} />
