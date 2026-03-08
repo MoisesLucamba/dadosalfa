@@ -38,6 +38,7 @@ import {
   Legend,
 } from "recharts";
 import { toast } from "sonner";
+import { AngolaVariables } from "./AngolaVariables";
 
 /**
  * Simulador What-If Modernizado (Fixed Deep Dark):
