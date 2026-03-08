@@ -513,6 +513,8 @@ const Settings = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <MobileBottomNav />
     </>
   );
 };

@@ -592,11 +592,7 @@ const Workspace = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
-      `}</style>
+      <MobileBottomNav />
     </div>
   );
 };

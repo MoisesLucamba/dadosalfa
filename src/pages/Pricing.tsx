@@ -267,6 +267,8 @@ const Pricing = () => {
             </CardContent>
           </Card>
         </main>
+
+        <MobileBottomNav />
       </div>
     </div>
   );

@@ -489,6 +489,8 @@ const Risk = () => {
 
           </div>
         </main>
+
+        <MobileBottomNav />
       </div>
 
       {/* --- MODAL DO SIMULADOR --- */}

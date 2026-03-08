@@ -672,6 +672,8 @@ const Operators = () => {
               </div>
             </div>
           </main>
+
+          <MobileBottomNav />
         </div>
       </div>
     </div>
