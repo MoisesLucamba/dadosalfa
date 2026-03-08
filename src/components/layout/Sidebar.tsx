@@ -528,7 +528,7 @@ export function Sidebar({
                   </div>
                   <span
                     style={{
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "'Outfit', sans-serif",
                       fontSize: "12px",
                       fontWeight: 700,
                       color: "#e2e8f0",
