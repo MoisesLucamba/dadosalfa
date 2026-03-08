@@ -1001,6 +1001,8 @@ const Reports = () => {
         reportTitle={selectedReportForDownload?.title || 'Relatório'}
         isDownloading={isDownloading}
       />
+
+      <MobileBottomNav />
     </div>
   );
 };

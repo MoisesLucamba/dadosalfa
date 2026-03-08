@@ -237,7 +237,7 @@ const Settings = () => {
     <>
       <Helmet><title>Configurações | AlphaData</title></Helmet>
 
-      <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground relative">
         <Sidebar activeItem="/settings" />
 
         <div className="flex-1 flex flex-col overflow-hidden">

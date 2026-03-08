@@ -266,7 +266,7 @@ const Operators = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-zinc-100 selection:bg-primary/30">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       <Helmet>
         <title>Operadoras | AlphaData</title>
       </Helmet>

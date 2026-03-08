@@ -501,6 +501,8 @@ const Alerts = () => {
             </div>
           </div>
         </main>
+
+        <MobileBottomNav />
       </div>
     </div>
   );

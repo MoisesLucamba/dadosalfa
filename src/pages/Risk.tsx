@@ -170,7 +170,7 @@ const Risk = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#fafafa] dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
       <Helmet>
         <title>Risk Intelligence | AlphaData</title>
       </Helmet>

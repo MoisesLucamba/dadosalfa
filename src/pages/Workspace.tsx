@@ -147,7 +147,7 @@ const Workspace = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#fafafa] dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
       <Sidebar activeItem="/workspace" />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Header activeItem="/workspace" />
