@@ -389,7 +389,7 @@ const Prices = () => {
                 {/* OPEC news */}
                 <div className="fade-up d5">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Impacto OPEP+</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Impacto OPEP+</h3>
                     <SectionLabel>Latest Updates</SectionLabel>
                   </div>
 
