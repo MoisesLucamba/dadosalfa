@@ -1345,7 +1345,7 @@ const ChatBubble = ({
                     <Database className="w-3 h-3" style={{ color: "#1e3a5f" }} />{s}
                   </span>
                 ))}
-                <span className="flex items-center gap-1 ml-auto" style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#dc2626", opacity: 0.7 }}>
+                <span className="flex items-center gap-1 ml-auto" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#dc2626", opacity: 0.7 }}>
                   <CheckCircle className="w-3 h-3" /> Verificado
                 </span>
               </div>
