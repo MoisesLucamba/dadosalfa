@@ -964,7 +964,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         </motion.div>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-          style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", color: "#3d5a7a", lineHeight: 1.7, maxWidth: "480px", margin: "0 auto" }}>
+          style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", color: "#3d5a7a", lineHeight: 1.7, maxWidth: "480px", margin: "0 auto" }}>
           Análise de mercado em tempo real, inteligência preditiva e insights estratégicos para o setor energético.
         </motion.p>
 
