@@ -1733,7 +1733,7 @@ const Search = () => {
                     </div>
 
                     <div className="flex items-center justify-between px-1">
-                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.2em", color: "#1e3a5f", textTransform: "uppercase" }}>Histórico</span>
+                      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.2em", color: "#1e3a5f", textTransform: "uppercase" }}>Histórico</span>
                       <button onClick={deleteHistory} className="p-1 rounded transition-colors hover:text-red-500" style={{ color: "#1e3a5f" }} title="Eliminar histórico">
                         <Trash2 className="w-3 h-3" />
                       </button>
