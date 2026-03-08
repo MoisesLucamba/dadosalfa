@@ -875,7 +875,7 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "#dc2626", opacity: 0.6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: "#dc2626", opacity: 0.6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live</span>
           <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
         </div>
       </div>
