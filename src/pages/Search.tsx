@@ -1891,7 +1891,7 @@ const Search = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                   disabled={loading}
-                  style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#e2e8f0", caretColor: "#dc2626" }}
+                  style={{ fontFamily: "'Outfit', sans-serif", fontSize: "14px", color: "#e2e8f0", caretColor: "#dc2626" }}
                 />
                 <div className="pr-2 flex-shrink-0">
                   <button
