@@ -731,13 +731,14 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-          <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52}
+            tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
           <Tooltip content={<CustomTooltip />} />
           <Legend content={<CustomLegend />} />
           {chart.dataKeys.map((dk, i) => (
-            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${chart.title}-${i})`} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color }} />
+            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.key} stroke={dk.color} strokeWidth={2} fill={`url(#grad-${chart.title}-${i})`} dot={{ fill: dk.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: dk.color, stroke: dk.color, strokeWidth: 2 }} />
           ))}
         </AreaChart>
       );
@@ -745,13 +746,14 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
     if (type === "bar") {
       return (
         <BarChart data={chart.data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,58,95,0.18)" />
-          <XAxis dataKey={chart.xKey} tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#2d4a6a", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey={chart.xKey} tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} axisLine={false} tickLine={false} width={52}
+            tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
           <Tooltip content={<CustomTooltip />} />
           <Legend content={<CustomLegend />} />
           {chart.dataKeys.map((dk) => (
-            <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} radius={[3, 3, 0, 0]} maxBarSize={48} />
+            <Bar key={dk.key} dataKey={dk.key} name={dk.key} fill={dk.color} radius={[4, 4, 0, 0]} maxBarSize={32} />
           ))}
         </BarChart>
       );
