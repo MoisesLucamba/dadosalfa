@@ -283,7 +283,7 @@ const Production = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} dy={8} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[900, 1400]} />
                       <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1 }} />
                       <Area type="monotone" dataKey="production" name="Produção"  stroke="var(--accent-blue)" fill="url(#gProd)" strokeWidth={2} animationDuration={800} />
