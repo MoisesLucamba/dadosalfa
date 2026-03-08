@@ -613,13 +613,13 @@ function extractExports(content: any): { label: string; value: number }[] {
 }
 
 /** Try to build time-series from any date-ordered array */
-function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string) {
+function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string, locale: string = 'pt-AO') {
   const arr: any[] = content?.data?.[labelKey] || content?.[labelKey] || [];
   return arr
     .filter(r => r && r[dateKey] && r[valueKey] != null)
     .sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime())
     .map(r => ({
-      label: new Date(r[dateKey]).toLocaleDateString('pt-AO', { month: 'short', day: '2-digit' }),
+      label: new Date(r[dateKey]).toLocaleDateString(locale, { month: 'short', day: '2-digit' }),
       value: Number(r[valueKey]),
     }));
 }
@@ -743,7 +743,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const margin = L.MARGIN;
 
   // ── Cover page ──────────────────────────────────────────────────────────
-  const defaultCover = getDefaultCoverPageData();
+  const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
     reportTitle: data.title || `${t.report} AlphaData`,
@@ -754,6 +754,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
     logoBase64,
+    language: lang,
   };
   addCoverPageToPDF(doc, coverData);
   doc.addPage();
@@ -781,32 +782,48 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     ctx.y += L.SECTION_SP;
   }
 
-  // ── Highlights ───────────────────────────────────────────────────────────
+  // ── Highlights (modern card grid) ──────────────────────────────────────
   if (data.highlights && data.highlights.length > 0) {
     sectionTitle(ctx, t.mainHighlights);
-    const boxH = 22;
-    data.highlights.forEach(h => {
-      needsPage(ctx, boxH + 6);
+    const cardW = (contentW - 8) / 2;
+    const cardH = 30;
+    data.highlights.forEach((h, idx) => {
+      const isLeft = idx % 2 === 0;
+      if (isLeft) needsPage(ctx, cardH + 8);
+      const cx = isLeft ? margin : margin + cardW + 8;
+      const cy = isLeft ? ctx.y : ctx.y;
+
+      // Card background with left accent
       ctx.doc.setFillColor(...C.white);
-      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'F');
+      ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'F');
       ctx.doc.setDrawColor(...C.lightGray);
-      ctx.doc.setLineWidth(L.THIN);
-      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'S');
+      ctx.doc.setLineWidth(0.3);
+      ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'S');
 
-      setFont(ctx.doc, 8, 'normal', C.muted);
-      ctx.doc.text(h.title, margin + 8, ctx.y + 9);
-      setFont(ctx.doc, 13, 'bold', C.dark);
-      ctx.doc.text(h.value, margin + 8, ctx.y + 18);
+      // Left accent bar
+      const accentColor = h.trend === 'up' ? C.success : h.trend === 'down' ? C.danger : C.primary;
+      ctx.doc.setFillColor(...accentColor);
+      ctx.doc.roundedRect(cx, cy, 3, cardH, 1, 1, 'F');
 
+      // Label
+      setFont(ctx.doc, 7.5, 'normal', C.muted);
+      ctx.doc.text(h.title, cx + 8, cy + 10);
+
+      // Value
+      setFont(ctx.doc, 14, 'bold', C.dark);
+      ctx.doc.text(h.value, cx + 8, cy + 22);
+
+      // Trend indicator
       if (h.trend) {
         const tColor = h.trend === 'up' ? C.success : h.trend === 'down' ? C.danger : C.muted;
-        ctx.doc.setFillColor(...tColor);
-        ctx.doc.circle(W - margin - 12, ctx.y + 11, 5, 'F');
-        setFont(ctx.doc, 9, 'bold', C.white);
-        const arrow = h.trend === 'up' ? '↑' : h.trend === 'down' ? '↓' : '=';
-        ctx.doc.text(arrow, W - margin - 13.5, ctx.y + 13.5);
+        const arrow = h.trend === 'up' ? '+' : h.trend === 'down' ? '-' : '=';
+        setFont(ctx.doc, 8, 'bold', tColor);
+        ctx.doc.text(arrow, cx + cardW - 14, cy + 16);
       }
-      ctx.y += boxH + 7;
+
+      if (!isLeft || idx === data.highlights!.length - 1) {
+        ctx.y += cardH + 6;
+      }
     });
     ctx.y += L.SUBSEC_SP;
   }
@@ -817,7 +834,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const exportData = extractExports(data.content);
 
   // Price time series (if available)
-  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date');
+  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date', locale);
 
   const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
 
@@ -869,11 +886,12 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
         head: [[t.operator, t.block, t.field, t.productionBpd, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
-        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
-        bodyStyles: { fontSize: 8, textColor: C.darkGray },
-        alternateRowStyles: { fillColor: C.ultraLight },
-        theme: 'plain',
-        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [245, 247, 250] as any },
+        theme: 'grid',
+        styles: { lineColor: [226, 232, 240] as any, lineWidth: 0.25, font: 'helvetica' },
+        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
       });
       ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
     }
@@ -895,11 +913,12 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
         head: [[t.crudeType, t.priceUsd, t.variation, t.date]],
         body: rows,
         margin: { left: margin, right: margin },
-        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
-        bodyStyles: { fontSize: 8, textColor: C.darkGray },
-        alternateRowStyles: { fillColor: C.ultraLight },
-        theme: 'plain',
-        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [245, 247, 250] as any },
+        theme: 'grid',
+        styles: { lineColor: [226, 232, 240] as any, lineWidth: 0.25, font: 'helvetica' },
+        columnStyles: { 1: { halign: 'right', fontStyle: 'bold' }, 2: { halign: 'right' } },
       });
       ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
     }
@@ -919,11 +938,12 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
         head: [[t.destination, t.volume, t.tanker, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
-        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
-        bodyStyles: { fontSize: 8, textColor: C.darkGray },
-        alternateRowStyles: { fillColor: C.ultraLight },
-        theme: 'plain',
-        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [245, 247, 250] as any },
+        theme: 'grid',
+        styles: { lineColor: [226, 232, 240] as any, lineWidth: 0.25, font: 'helvetica' },
+        columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
       });
       ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
     }
@@ -1063,6 +1083,10 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generateExcelReport = (data: ReportData): void => {
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
+
   const esc = (s: string) =>
     String(s || '')
       .replace(/&/g, '&amp;')
@@ -1071,16 +1095,17 @@ export const generateExcelReport = (data: ReportData): void => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
 
-  const defaultCover = getDefaultCoverPageData();
+  const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || 'Relatório AlphaData',
-    reportType: getTypeName(data.type),
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: getTypeName(data.type, lang),
     reportPeriod: data.period || 'Actual',
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
+    language: lang,
   };
 
   const coverRows = getCoverPageExcelRows(coverData);
@@ -1088,9 +1113,10 @@ export const generateExcelReport = (data: ReportData): void => {
   // Build data worksheet rows
   const dataRows: string[] = [];
   const cd = data.content?.data;
+  const sheetName = lang === 'en' ? 'Data' : lang === 'fr' ? 'Donnees' : 'Dados';
 
   if (cd?.production && Array.isArray(cd.production)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Operador</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Bloco</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Campo</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Producao (bpd)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.operator)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.block)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.field)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.productionBpd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.production.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.operator||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.block||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.field||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.daily_production||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
@@ -1098,15 +1124,15 @@ export const generateExcelReport = (data: ReportData): void => {
   }
 
   if (cd?.prices && Array.isArray(cd.prices)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tipo Crude</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Preco USD</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Variacao %</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Data</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.crudeType)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.priceUsd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.variation)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.date)}</Data></Cell></Row>`);
     cd.prices.forEach((r: any) => {
-      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-'}</Data></Cell></Row>`);
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString(locale) : '-'}</Data></Cell></Row>`);
     });
     dataRows.push(`<Row></Row>`);
   }
 
   if (cd?.exports && Array.isArray(cd.exports)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Destino</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Volume (bbl)</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Tanque</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">Status</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.destination)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.volume)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.tanker)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.exports.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.destination||r.country||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.volume||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.tanker_name||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
@@ -1125,7 +1151,7 @@ export const generateExcelReport = (data: ReportData): void => {
   <Worksheet ss:Name="Info">
     <Table>${coverRows.join('\n')}</Table>
   </Worksheet>
-  <Worksheet ss:Name="Dados">
+  <Worksheet ss:Name="${sheetName}">
     <Table>${dataRows.join('\n')}</Table>
   </Worksheet>
 </Workbook>`;
@@ -1134,7 +1160,7 @@ export const generateExcelReport = (data: ReportData): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.xls`;
+  a.download = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || 'report').replace(/\s+/g, '_')}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
