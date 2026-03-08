@@ -613,13 +613,13 @@ function extractExports(content: any): { label: string; value: number }[] {
 }
 
 /** Try to build time-series from any date-ordered array */
-function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string) {
+function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string, locale: string = 'pt-AO') {
   const arr: any[] = content?.data?.[labelKey] || content?.[labelKey] || [];
   return arr
     .filter(r => r && r[dateKey] && r[valueKey] != null)
     .sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime())
     .map(r => ({
-      label: new Date(r[dateKey]).toLocaleDateString('pt-AO', { month: 'short', day: '2-digit' }),
+      label: new Date(r[dateKey]).toLocaleDateString(locale, { month: 'short', day: '2-digit' }),
       value: Number(r[valueKey]),
     }));
 }
