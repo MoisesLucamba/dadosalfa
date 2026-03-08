@@ -1292,8 +1292,10 @@ const Subscription = () => {
         </DialogContent>
       </Dialog>
 
+      <MobileBottomNav />
+
       <style>{`
-        [role="tab"][data-state="active"] { background: ${BLUE_MID} !important; color: #fff !important; }
+        [role="tab"][data-state="active"] { background: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
       `}</style>
     </div>
   );
