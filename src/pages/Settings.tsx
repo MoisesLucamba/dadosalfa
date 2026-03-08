@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
