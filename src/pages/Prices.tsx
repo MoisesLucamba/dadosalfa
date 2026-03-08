@@ -275,7 +275,7 @@ const Prices = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} dy={8} />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
                       <YAxis yAxisId="price" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[70, 90]} />
                       <Tooltip content={<ChartTooltip />} />
                       <Area yAxisId="price" type="monotone" dataKey="price" name="Brent" stroke="var(--accent-blue)" fill="url(#gBrent)" strokeWidth={2} animationDuration={800} />
