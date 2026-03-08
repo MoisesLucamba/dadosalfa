@@ -37,80 +37,20 @@ import { useIsAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ─────────────────────────────────────────
-   GLOBAL THEME TOKENS
+   THEME VARS (semantic, for inline styles only)
 ───────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
-
-    :root {
-      --bg-primary:       #0A0E1A;
-      --bg-secondary:     #0D1117;
-      --bg-surface:       #141B2D;
-      --bg-surface-hover: #1A2235;
-      --border-subtle:    #1E2A45;
-      --accent-blue:      #00A3FF;
-      --accent-amber:     #F5A623;
-      --accent-green:     #00D4AA;
-      --accent-red:       #FF6B35;
-      --text-primary:     #E8EDF5;
-      --text-secondary:   #6B7A99;
-      --text-muted:       #3D4F6E;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
-    body {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono { font-family: 'IBM Plex Mono', monospace; }
-
-    /* card hover */
-    .surface-card {
-      transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
-    }
-    .surface-card:hover {
-      border-color: rgba(0,163,255,0.30) !important;
-      background: var(--bg-surface-hover) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
-    }
-
-    /* mount animations */
-    @keyframes fadeUp {
-      from { opacity:0; transform:translateY(8px); }
-      to   { opacity:1; transform:translateY(0);   }
-    }
-    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity:0; }
-    .d1{animation-delay: 50ms;} .d2{animation-delay:100ms;}
-    .d3{animation-delay:150ms;} .d4{animation-delay:200ms;}
-    .d5{animation-delay:250ms;} .d6{animation-delay:300ms;}
-
-    /* live pulse */
-    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-    .pulse { animation: pulse 2s ease-in-out infinite; }
-
-    /* skeleton shimmer */
-    @keyframes shimmer {
-      0%   { background-position: -600px 0; }
-      100% { background-position:  600px 0; }
-    }
-    .skeleton-dark {
-      background: linear-gradient(90deg, #141B2D 25%, #1E2A45 50%, #141B2D 75%);
-      background-size: 1200px 100%;
-      animation: shimmer 1.6s infinite linear;
-      border-radius: 8px;
-    }
-
-    /* scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-  `}</style>
-);
+const TV = {
+  bgSurface: "hsl(var(--card))",
+  bgPrimary: "hsl(var(--background))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  textSecondary: "hsl(var(--muted-foreground))",
+  textMuted: "hsl(var(--muted-foreground) / 0.6)",
+  accentBlue: "hsl(var(--primary))",
+  accentAmber: "hsl(var(--accent))",
+  accentGreen: "hsl(var(--success))",
+  accentRed: "hsl(var(--destructive))",
+};
 
 /* ─────────────────────────────────────────
    UTILITIES  (unchanged logic)
