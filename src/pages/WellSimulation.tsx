@@ -1197,7 +1197,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.text(t.declineDesc, 20, decY2 + 7);
   autoTable(doc, {
     startY: decY2 + 12,
-    head: [t.declineHeaders],
+    head: [[...t.declineHeaders]],
     body: DECLINE.map(d => [d.y, d.r ? d.r.toLocaleString(locale) : "—", d.p.toLocaleString(locale)]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
