@@ -217,49 +217,102 @@
 
   /* ═══ Typography presets ═══ */
   .text-page-title {
-    @apply text-xl font-semibold tracking-tight;
-    color: #E8EDF5;
+    @apply text-xl font-semibold tracking-tight text-foreground;
   }
 
   .text-section-title {
-    @apply text-sm font-semibold uppercase tracking-widest;
-    color: #6B7A99;
+    @apply text-sm font-semibold uppercase tracking-widest text-muted-foreground;
   }
 
   .text-metric-value {
-    @apply text-2xl font-bold;
+    @apply text-2xl font-bold text-foreground;
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
-    color: #E8EDF5;
   }
 
   .text-metric-label {
-    @apply text-xs uppercase tracking-wide;
-    color: #6B7A99;
+    @apply text-xs uppercase tracking-wide text-muted-foreground;
   }
 
   .text-table-header {
-    @apply text-xs font-semibold uppercase tracking-widest;
-    color: #6B7A99;
+    @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
   }
 
   .text-table-cell {
-    @apply text-sm;
-    color: #E8EDF5;
+    @apply text-sm text-foreground;
   }
 
   .text-numeric {
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
     text-align: right;
   }
+
+  /* ═══ Legacy compat classes (used by Index, Production, Prices) ═══ */
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  .surface-card {
+    @apply transition-all duration-200 ease-out;
+  }
+  .surface-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    @apply shadow-xl;
+  }
+
+  .data-row {
+    border-left: 2px solid transparent;
+    @apply transition-colors duration-200;
+  }
+  .data-row:hover {
+    background: hsl(var(--muted) / 0.3);
+    border-left-color: hsl(var(--accent));
+  }
+
+  .badge-pill {
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* mount animations */
+  .fade-up {
+    animation: fadeUp 300ms ease-out forwards;
+    opacity: 0;
+  }
+  .d1 { animation-delay: 50ms; }
+  .d2 { animation-delay: 100ms; }
+  .d3 { animation-delay: 150ms; }
+  .d4 { animation-delay: 200ms; }
+  .d5 { animation-delay: 250ms; }
+  .d6 { animation-delay: 300ms; }
+
+  .pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .skeleton-dark {
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--surface-elevated)) 50%, hsl(var(--muted)) 75%);
+    background-size: 1200px 100%;
+    animation: shimmer 1.6s infinite linear;
+    border-radius: 8px;
+  }
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-shimmer {
