@@ -397,7 +397,7 @@ const Production = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px", padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-primary)" }}>
                   {["Bloco", "Operadora", "Produção (kbpd)", "Tendência", ""].map((h, i) => (
                     <span key={i} style={{
-                      fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700,
+                      fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700,
                       textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)",
                       textAlign: i >= 2 && i < 4 ? "right" : i === 4 ? "center" : "left",
                     }}>{h}</span>
