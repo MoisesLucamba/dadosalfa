@@ -1906,9 +1906,9 @@ const Search = () => {
             </div>
 
             <div className="flex items-center justify-center gap-3 mt-3">
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>AlphaData © {new Date().getFullYear()}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>AlphaData © {new Date().getFullYear()}</span>
               <div className="w-1 h-1 rounded-full" style={{ background: "#dc2626", opacity: 0.4 }} />
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>Oil & Gas AI Platform</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>Oil & Gas AI Platform</span>
             </div>
           </div>
         </div>
