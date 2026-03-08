@@ -439,7 +439,7 @@ const Prices = () => {
                     {volatilityData.map((item, i) => (
                       <div key={item.period} style={{ marginBottom: i < volatilityData.length - 1 ? 20 : 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                          <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
+                          <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
                             {item.period}
                           </span>
                           <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: volatColor(item.value) }}>
