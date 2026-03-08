@@ -1663,9 +1663,8 @@ const Search = () => {
     : null;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'Outfit', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap');
         .history-scrollbar::-webkit-scrollbar { width: 3px; }
         .history-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .history-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
