@@ -82,12 +82,14 @@ import { supabase } from "@/integrations/supabase/client";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface ChartData {
-  type: "area" | "bar" | "line" | "pie";
+  type: "area" | "bar" | "line" | "pie" | "radar" | "composed";
   title: string;
   unit?: string;
   data: Record<string, string | number>[];
-  dataKeys: { key: string; color: string }[];
+  dataKeys: { key: string; color: string; type?: "bar" | "line" | "area" }[];
   xKey: string;
+  referenceLines?: { y: number; label: string; color?: string }[];
+  referenceAreas?: { y1: number; y2: number; fill?: string }[];
 }
 
 interface Message {
