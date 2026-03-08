@@ -1758,7 +1758,7 @@ const Search = () => {
                     historySidebarExpanded && (
                       <div className="text-center py-12" style={{ color: "#1e3a5f" }}>
                         <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-40" />
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px" }}>Sem sessões</p>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px" }}>Sem sessões</p>
                       </div>
                     )
                   ) : (
