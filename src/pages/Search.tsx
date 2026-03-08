@@ -1079,8 +1079,8 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                   <action.icon className="w-4 h-4" style={{ color: action.accent === "#dc2626" ? "#ef4444" : "#60a5fa" }} />
                 </div>
                 <div className="min-w-0">
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", color: action.accent === "#dc2626" ? "#ef4444" : "#3b82f6", textTransform: "uppercase", marginBottom: "4px", opacity: 0.7 }}>{action.category}</div>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4, display: "block" }}>{action.label}</span>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", color: action.accent === "#dc2626" ? "#ef4444" : "#3b82f6", textTransform: "uppercase", marginBottom: "4px", opacity: 0.7 }}>{action.category}</div>
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4, display: "block" }}>{action.label}</span>
                 </div>
               </div>
             </motion.button>
