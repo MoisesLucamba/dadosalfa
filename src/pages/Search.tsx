@@ -1341,7 +1341,7 @@ const ChatBubble = ({
               <div className="mt-4 pt-3 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(30,58,95,0.3)" }}>
                 {message.sources.map((s, si) => (
                   <span key={si} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(30,58,95,0.25)", border: "1px solid rgba(30,58,95,0.4)", fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 600, color: "#3d5a7a" }}>
+                    style={{ background: "rgba(30,58,95,0.25)", border: "1px solid rgba(30,58,95,0.4)", fontFamily: "'Outfit', sans-serif", fontSize: "10px", fontWeight: 600, color: "#3d5a7a" }}>
                     <Database className="w-3 h-3" style={{ color: "#1e3a5f" }} />{s}
                   </span>
                 ))}
