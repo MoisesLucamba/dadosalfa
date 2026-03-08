@@ -1048,7 +1048,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         {/* Divider and classic quick actions */}
         <div className="flex items-center gap-3 mt-8 mb-5">
           <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.2em", color: "#2d4a6a", textTransform: "uppercase" }}>Consultas Frequentes</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.2em", color: "#2d4a6a", textTransform: "uppercase" }}>Consultas Frequentes</span>
           <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
         </div>
 
