@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { loadLogoAsBase64 } from "@/utils/loadLogoForPDF";
+import { getWellSimTranslation, DocumentLanguageCode, DOCUMENT_LANGUAGES } from "@/i18n";
+import { LanguageDownloadDialog } from "@/components/reports/LanguageDownloadDialog";
 import {
   Eye, Plus, Download, Save, Upload, Cpu, Activity, Layers,
   BarChart3, TrendingDown, Shield, Crosshair, Droplets, Thermometer,
