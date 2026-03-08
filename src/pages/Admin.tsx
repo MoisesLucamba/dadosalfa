@@ -300,8 +300,7 @@ const Admin = () => {
                 </Button>
                 <Button
                   size="sm"
-                  className="rounded-xl h-10 gap-2 text-black font-black text-xs uppercase tracking-widest"
-                  style={{ background: ACCENT }}
+                  className="rounded-xl h-10 gap-2 text-accent-foreground font-black text-xs uppercase tracking-widest bg-accent hover:bg-accent/90"
                 >
                   <Plus className="w-4 h-4" /> Novo Registo
                 </Button>
