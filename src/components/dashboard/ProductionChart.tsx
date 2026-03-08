@@ -14,6 +14,7 @@ import { format, parseISO, subMonths } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3 } from "lucide-react";
+import { DataDepthBadge } from "./DataDepthBadge";
 
 const fallbackData = [
   { month: "Jan", production: 1120, forecast: null },
