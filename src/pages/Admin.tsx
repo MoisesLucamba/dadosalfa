@@ -115,13 +115,13 @@ const TabPill = ({ value, label }: { value: string; label: string }) => (
 /* ─── Status badge ───────────────────────────────────────── */
 const StatusBadge = ({ approved }: { approved: boolean }) => (
   <span
-    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
-    style={{
-      background: approved ? "rgba(74,222,128,0.1)" : "rgba(251,191,36,0.1)",
-      color: approved ? "#4ade80" : "#fbbf24"
-    }}
+    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+      approved
+        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+        : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+    }`}
   >
-    <Dot color={approved ? "#4ade80" : "#fbbf24"} />
+    <Dot color={approved ? "hsl(var(--success))" : "hsl(var(--accent))"} />
     {approved ? "Aprovado" : "Pendente"}
   </span>
 );
