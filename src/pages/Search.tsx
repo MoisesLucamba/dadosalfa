@@ -501,11 +501,26 @@ function generateChartsForQuery(query: string): ChartData[] {
   if (q.includes("risco") || q.includes("alerta") || q.includes("operacional") || q.includes("segurança")) {
     return [
       {
-        type: "bar",
+        type: "radar" as const,
+        title: "Perfil de Risco Multidimensional — Angola",
+        unit: "score",
+        xKey: "dimension",
+        dataKeys: [{ key: "score", color: "#FF6B35" }],
+        data: [
+          { dimension: "Político", score: 62 },
+          { dimension: "Regulatório", score: 45 },
+          { dimension: "Operacional", score: 58 },
+          { dimension: "Mercado", score: 71 },
+          { dimension: "Geopolítico", score: 67 },
+          { dimension: "Ambiental", score: 39 },
+        ],
+      },
+      {
+        type: "bar" as const,
         title: "Alertas de Risco por Categoria (Últimos 30 dias)",
         unit: "ocorrências",
         xKey: "categoria",
-        dataKeys: [{ key: "alertas", color: "#dc2626" }],
+        dataKeys: [{ key: "alertas", color: "#FF6B35" }],
         data: [
           { categoria: "Geopolítico", alertas: 8 },
           { categoria: "Equipamento", alertas: 14 },
@@ -513,25 +528,6 @@ function generateChartsForQuery(query: string): ChartData[] {
           { categoria: "Regulatório", alertas: 6 },
           { categoria: "Logística", alertas: 9 },
           { categoria: "Cibersegurança", alertas: 3 },
-        ],
-      },
-      {
-        type: "line",
-        title: "Tendência de Incidentes Operacionais (2024)",
-        unit: "incidentes",
-        xKey: "mes",
-        dataKeys: [
-          { key: "criticos", color: "#dc2626" },
-          { key: "moderados", color: "#f59e0b" },
-        ],
-        data: [
-          { mes: "Jan", criticos: 2, moderados: 8 },
-          { mes: "Fev", criticos: 3, moderados: 11 },
-          { mes: "Mar", criticos: 1, moderados: 7 },
-          { mes: "Abr", criticos: 4, moderados: 13 },
-          { mes: "Mai", criticos: 2, moderados: 9 },
-          { mes: "Jun", criticos: 1, moderados: 6 },
-          { mes: "Jul", criticos: 3, moderados: 10 },
         ],
       },
     ];
