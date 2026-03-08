@@ -1826,9 +1826,9 @@ const Search = () => {
         {/* Session title breadcrumb */}
         {sessionTitle && (
           <div className="px-8 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(30,58,95,0.2)" }}>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "10px", color: "#2d4a6a", letterSpacing: "0.1em" }}>AI Analyst</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#2d4a6a", letterSpacing: "0.1em" }}>AI Analyst</span>
             <ChevronRight className="w-3 h-3" style={{ color: "#2d4a6a" }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "#5a8ab5", fontWeight: 500 }}>{sessionTitle}</span>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "11px", color: "#5a8ab5", fontWeight: 500 }}>{sessionTitle}</span>
           </div>
         )}
 
