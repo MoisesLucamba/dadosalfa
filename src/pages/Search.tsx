@@ -1787,7 +1787,7 @@ const Search = () => {
                           <MessageSquare className="flex-shrink-0 w-4 h-4" style={{ color: currentSessionId === session.id ? "#ef4444" : "#2d4a6a" }} />
                           {historySidebarExpanded && (
                             <div className="flex-1 min-w-0">
-                              <span className="truncate block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 500, color: currentSessionId === session.id ? "#e2e8f0" : "#3d5a7a" }}>
+                              <span className="truncate block" style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 500, color: currentSessionId === session.id ? "#e2e8f0" : "#3d5a7a" }}>
                                 {session.title}
                               </span>
                               <span className="text-[9px] block" style={{ color: "#2d4a6a" }}>
