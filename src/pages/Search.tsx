@@ -979,8 +979,8 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                 <stat.icon className="w-3.5 h-3.5" style={{ color: "#ef4444" }} />
               </div>
               <div className="text-left">
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "11px", fontWeight: 700, color: "#e2e8f0" }}>{stat.value}</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2d4a6a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", fontWeight: 700, color: "#e2e8f0" }}>{stat.value}</div>
+                <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "9px", color: "#2d4a6a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</div>
               </div>
             </div>
           ))}
