@@ -607,7 +607,7 @@ export function Sidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -8 }}
                   style={{
-                    fontFamily: "'Space Mono', monospace",
+                    fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: "9px",
                     fontWeight: 700,
                     letterSpacing: "0.15em",
