@@ -295,7 +295,7 @@ const Prices = () => {
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Benchmarks</h3>
+                      <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Benchmarks</h3>
                       <SectionLabel>Comparativo em Tempo Real</SectionLabel>
                     </div>
                     <BarChart3 size={18} style={{ color: "var(--text-muted)" }} />
