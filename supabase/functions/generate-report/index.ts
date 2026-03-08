@@ -6,49 +6,45 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ── Translations for report generation ──
-const REPORT_TITLES: Record<string, Record<string, string>> = {
-  pt: {
-    production: 'Relatório de Produção',
-    market: 'Análise de Mercado & Preços',
-    exports: 'Exportações e Logística',
-    risk: 'Avaliação de Riscos',
-    predictions: 'Previsões IA',
-    general: 'Relatório Geral do Setor Petrolífero Angolano',
-  },
-  en: {
-    production: 'Production Report',
-    market: 'Market & Price Analysis',
-    exports: 'Exports and Logistics',
-    risk: 'Risk Assessment',
-    predictions: 'AI Predictions',
-    general: 'General Report on the Angolan Oil Sector',
-  },
-  fr: {
-    production: 'Rapport de Production',
-    market: 'Analyse du Marché & des Prix',
-    exports: 'Exportations et Logistique',
-    risk: 'Évaluation des Risques',
-    predictions: 'Prévisions IA',
-    general: 'Rapport Général du Secteur Pétrolier Angolais',
-  },
+// ── All reports are generated in European Portuguese only ──
+const REPORT_TITLES: Record<string, string> = {
+  production: 'Relatório de Produção',
+  market: 'Análise de Mercado & Preços',
+  exports: 'Exportações e Logística',
+  risk: 'Avaliação de Riscos',
+  predictions: 'Previsões IA',
+  general: 'Relatório Geral do Setor Petrolífero Angolano',
 };
 
-const HIGHLIGHT_LABELS: Record<string, Record<string, string>> = {
-  pt: { totalProduction: 'Produção Total', brentPrice: 'Preço Brent', exportVolume: 'Volume Exportado', activeOperators: 'Operadoras Ativas', riskAlerts: 'Alertas de Risco' },
-  en: { totalProduction: 'Total Production', brentPrice: 'Brent Price', exportVolume: 'Export Volume', activeOperators: 'Active Operators', riskAlerts: 'Risk Alerts' },
-  fr: { totalProduction: 'Production Totale', brentPrice: 'Prix Brent', exportVolume: 'Volume Exporté', activeOperators: 'Opérateurs Actifs', riskAlerts: 'Alertes de Risque' },
+const HIGHLIGHT_LABELS: Record<string, string> = {
+  totalProduction: 'Produção Total',
+  brentPrice: 'Preço Brent',
+  exportVolume: 'Volume Exportado',
+  activeOperators: 'Operadoras Ativas',
+  riskAlerts: 'Alertas de Risco',
 };
 
-const SECTION_NAMES: Record<string, string[]> = {
-  pt: ['Sumário Executivo', 'Produção Petrolífera', 'Análise de Preços e Mercado', 'Exportações e Logística', 'Operadoras e Competidores', 'Avaliação de Riscos Geopolíticos', 'Eventos Regulatórios', 'Previsões e Tendências', 'Conclusões e Recomendações'],
-  en: ['Executive Summary', 'Oil Production', 'Price and Market Analysis', 'Exports and Logistics', 'Operators and Competitors', 'Geopolitical Risk Assessment', 'Regulatory Events', 'Forecasts and Trends', 'Conclusions and Recommendations'],
-  fr: ['Résumé Exécutif', 'Production Pétrolière', 'Analyse des Prix et du Marché', 'Exportations et Logistique', 'Opérateurs et Concurrents', 'Évaluation des Risques Géopolitiques', 'Événements Réglementaires', 'Prévisions et Tendances', 'Conclusions et Recommandations'],
+const SECTION_NAMES: string[] = [
+  'Sumário Executivo',
+  'Produção Petrolífera',
+  'Análise de Preços e Mercado',
+  'Exportações e Logística',
+  'Operadoras e Competidores',
+  'Avaliação de Riscos Geopolíticos',
+  'Eventos Regulatórios',
+  'Previsões e Tendências',
+  'Conclusões e Recomendações',
+];
+
+const TYPE_NAMES: Record<string, string> = {
+  production: 'produção',
+  market: 'mercado e preços',
+  exports: 'exportações',
+  risk: 'avaliação de riscos',
+  predictions: 'previsões',
 };
 
-const AI_PROMPTS: Record<string, { general: string; other: (type: string) => string }> = {
-  pt: {
-    general: `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo abrangente (máximo 1500 palavras) para um relatório geral do setor.
+const AI_PROMPT_GENERAL = `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo abrangente (máximo 1500 palavras) para um relatório geral do setor.
 
 Inclua secções para:
 1. Sumário Executivo com principais destaques
@@ -60,8 +56,9 @@ Inclua secções para:
 7. Previsões e Tendências
 8. Conclusões e Recomendações Estratégicas
 
-Responda em português de Portugal/Angola. Seja detalhado e institucional.`,
-    other: (type: string) => `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${type}.
+IMPORTANTE: Responda EXCLUSIVAMENTE em português europeu. Não use francês nem inglês. Seja detalhado e institucional.`;
+
+const aiPromptOther = (type: string) => `Você é um analista sénior do setor petrolífero angolano. Gere um resumo executivo conciso (máximo 500 palavras) para um relatório de ${type}.
 
 Inclua:
 1. Principais métricas e tendências
@@ -69,63 +66,7 @@ Inclua:
 3. Destaques e alertas importantes
 4. Recomendações estratégicas
 
-Responda em português de Portugal/Angola.`,
-  },
-  en: {
-    general: `You are a senior analyst in the Angolan oil sector. Generate a comprehensive executive summary (maximum 1500 words) for a general sector report.
-
-Include sections for:
-1. Executive Summary with key highlights
-2. Production Analysis by operator
-3. Price and Market Trends
-4. Export Analysis
-5. Geopolitical Risk Assessment
-6. Recent Regulatory Events
-7. Forecasts and Trends
-8. Conclusions and Strategic Recommendations
-
-Respond in English. Be detailed and institutional.`,
-    other: (type: string) => `You are a senior analyst in the Angolan oil sector. Generate a concise executive summary (maximum 500 words) for a ${type} report.
-
-Include:
-1. Key metrics and trends
-2. Comparison with previous period
-3. Important highlights and alerts
-4. Strategic recommendations
-
-Respond in English.`,
-  },
-  fr: {
-    general: `Vous êtes un analyste senior du secteur pétrolier angolais. Générez un résumé exécutif complet (maximum 1500 mots) pour un rapport général du secteur.
-
-Incluez des sections pour:
-1. Résumé exécutif avec les points clés
-2. Analyse de la production par opérateur
-3. Tendances des prix et du marché
-4. Analyse des exportations
-5. Évaluation des risques géopolitiques
-6. Événements réglementaires récents
-7. Prévisions et tendances
-8. Conclusions et recommandations stratégiques
-
-Répondez en français. Soyez détaillé et institutionnel.`,
-    other: (type: string) => `Vous êtes un analyste senior du secteur pétrolier angolais. Générez un résumé exécutif concis (maximum 500 mots) pour un rapport de ${type}.
-
-Incluez:
-1. Principales métriques et tendances
-2. Comparaison avec la période précédente
-3. Points importants et alertes
-4. Recommandations stratégiques
-
-Répondez en français.`,
-  },
-};
-
-const TYPE_NAMES: Record<string, Record<string, string>> = {
-  pt: { production: 'produção', market: 'mercado e preços', exports: 'exportações', risk: 'avaliação de riscos', predictions: 'previsões' },
-  en: { production: 'production', market: 'market and prices', exports: 'exports', risk: 'risk assessment', predictions: 'predictions' },
-  fr: { production: 'production', market: 'marché et prix', exports: 'exportations', risk: 'évaluation des risques', predictions: 'prévisions' },
-};
+IMPORTANTE: Responda EXCLUSIVAMENTE em português europeu. Não use francês nem inglês.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -142,14 +83,13 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { reportType, period, userId, aiGenerated = true, language = 'pt' } = await req.json();
-    const lang = (language && ['pt', 'en', 'fr'].includes(language)) ? language : 'pt';
+    const { reportType, period, userId, aiGenerated = true } = await req.json();
 
+    // Force Portuguese for all reports
+    const lang = 'pt';
     console.log('Generating report:', { reportType, period, aiGenerated, lang });
 
-    const titles = REPORT_TITLES[lang] || REPORT_TITLES.pt;
-    const hlLabels = HIGHLIGHT_LABELS[lang] || HIGHLIGHT_LABELS.pt;
-    const dateLocale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
+    const dateLocale = 'pt-AO';
     const periodStr = period || new Date().toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' });
 
     let reportData: any = {};
@@ -159,19 +99,19 @@ serve(async (req) => {
       case 'production': {
         const { data } = await supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(100);
         reportData.production = data || [];
-        reportTitle = `${titles.production} - ${periodStr}`;
+        reportTitle = `${REPORT_TITLES.production} - ${periodStr}`;
         break;
       }
       case 'market': {
         const { data } = await supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(100);
         reportData.prices = data || [];
-        reportTitle = `${titles.market} - ${periodStr}`;
+        reportTitle = `${REPORT_TITLES.market} - ${periodStr}`;
         break;
       }
       case 'exports': {
         const { data } = await supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(100);
         reportData.exports = data || [];
-        reportTitle = `${titles.exports} - ${periodStr}`;
+        reportTitle = `${REPORT_TITLES.exports} - ${periodStr}`;
         break;
       }
       case 'risk': {
@@ -187,19 +127,18 @@ serve(async (req) => {
           exports: riskExport.data || [],
           riskAlerts: riskAlerts.data || [],
         };
-        reportTitle = `${titles.risk} - Q${Math.ceil((new Date().getMonth() + 1) / 3)} ${new Date().getFullYear()}`;
+        reportTitle = `${REPORT_TITLES.risk} - Q${Math.ceil((new Date().getMonth() + 1) / 3)} ${new Date().getFullYear()}`;
         break;
       }
       case 'predictions': {
         const aiPredResult = await supabase.functions.invoke('ai-predictions');
         reportData.predictions = aiPredResult.data?.predictions || {};
-        reportTitle = `${titles.predictions} - ${periodStr}`;
+        reportTitle = `${REPORT_TITLES.predictions} - ${periodStr}`;
         break;
       }
       case 'general': {
         console.log('Fetching general report data (parallel)...');
 
-        // Parallel fetch - much faster, avoids timeout
         const [gProd, gPrices, gExports, gRiskAlerts, gRiskData, gCountryRisk, gRegEvents] = await Promise.all([
           supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(50),
           supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(50),
@@ -210,7 +149,6 @@ serve(async (req) => {
           supabase.from('regulatory_events').select('*').order('created_at', { ascending: false }).limit(15),
         ]);
 
-        // Log any errors
         for (const [name, res] of [['production', gProd], ['prices', gPrices], ['exports', gExports], ['riskAlerts', gRiskAlerts], ['riskData', gRiskData], ['countryRisk', gCountryRisk], ['regulatoryEvents', gRegEvents]] as const) {
           if ((res as any).error) console.error(`${name} error:`, (res as any).error);
         }
@@ -232,8 +170,6 @@ serve(async (req) => {
           { name: 'Petrobras Angola', shortName: 'Petrobras', production: 12, marketShare: 1.0, blocks: 1 },
         ];
 
-        const sections = SECTION_NAMES[lang] || SECTION_NAMES.pt;
-
         reportData = {
           production: gProd.data || [],
           prices: gPrices.data || [],
@@ -243,9 +179,9 @@ serve(async (req) => {
           countryRisk: gCountryRisk.data || [],
           regulatoryEvents: gRegEvents.data || [],
           operators,
-          sections,
+          sections: SECTION_NAMES,
         };
-        reportTitle = `${titles.general} - ${periodStr}`;
+        reportTitle = `${REPORT_TITLES.general} - ${periodStr}`;
         break;
       }
       default:
@@ -256,21 +192,15 @@ serve(async (req) => {
     let summary = '';
     let pages = reportType === 'general' ? Math.floor(Math.random() * 10) + 8 : Math.floor(Math.random() * 20) + 15;
 
-    // Generate AI summary if requested
+    // Generate AI summary — ALWAYS in Portuguese
     if (aiGenerated) {
-      console.log('Generating AI summary in', lang, '...');
+      console.log('Generating AI summary in Portuguese...');
 
-      const prompts = AI_PROMPTS[lang] || AI_PROMPTS.pt;
-      const typeNames = TYPE_NAMES[lang] || TYPE_NAMES.pt;
       const systemPrompt = reportType === 'general'
-        ? prompts.general
-        : prompts.other(typeNames[reportType] || reportType);
+        ? AI_PROMPT_GENERAL
+        : aiPromptOther(TYPE_NAMES[reportType] || reportType);
 
-      const userMsg = lang === 'en'
-        ? `Analyze the following data and generate the executive summary:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}`
-        : lang === 'fr'
-        ? `Analysez les données suivantes et générez le résumé exécutif:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}`
-        : `Analise os seguintes dados e gere o resumo executivo:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}`;
+      const userMsg = `Analise os seguintes dados e gere o resumo executivo em português europeu:\n\n${JSON.stringify(reportData, null, 2).substring(0, 4000)}`;
 
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -297,26 +227,26 @@ serve(async (req) => {
       }
     }
 
-    // Calculate highlights with translated labels
+    // Calculate highlights
     const highlights = [];
     if (reportData.production?.length) {
       const totalProd = reportData.production.reduce((sum: number, p: any) => sum + (p.daily_production || 0), 0);
-      highlights.push({ title: hlLabels.totalProduction, value: `${(totalProd / 1000).toFixed(0)}K bpd`, trend: 'stable' });
+      highlights.push({ title: HIGHLIGHT_LABELS.totalProduction, value: `${(totalProd / 1000).toFixed(0)}K bpd`, trend: 'stable' });
     }
     if (reportData.prices?.length) {
       const latestBrent = reportData.prices.find((p: any) => p.crude_type === 'Brent')?.price;
       if (latestBrent) {
-        highlights.push({ title: hlLabels.brentPrice, value: `$${latestBrent.toFixed(2)}`, trend: 'up' });
+        highlights.push({ title: HIGHLIGHT_LABELS.brentPrice, value: `$${latestBrent.toFixed(2)}`, trend: 'up' });
       }
     }
     if (reportData.exports?.length) {
       const totalExports = reportData.exports.reduce((sum: number, e: any) => sum + (e.volume || 0), 0);
-      highlights.push({ title: hlLabels.exportVolume, value: `${(totalExports / 1000000).toFixed(1)}M bbl`, trend: 'stable' });
+      highlights.push({ title: HIGHLIGHT_LABELS.exportVolume, value: `${(totalExports / 1000000).toFixed(1)}M bbl`, trend: 'stable' });
     }
     if (reportType === 'general') {
-      highlights.push({ title: hlLabels.activeOperators, value: '14', trend: 'stable' });
+      highlights.push({ title: HIGHLIGHT_LABELS.activeOperators, value: '14', trend: 'stable' });
       if (reportData.riskAlerts?.length) {
-        highlights.push({ title: hlLabels.riskAlerts, value: `${reportData.riskAlerts.length}`, trend: reportData.riskAlerts.length > 5 ? 'down' : 'stable' });
+        highlights.push({ title: HIGHLIGHT_LABELS.riskAlerts, value: `${reportData.riskAlerts.length}`, trend: reportData.riskAlerts.length > 5 ? 'down' : 'stable' });
       }
     }
     content.highlights = highlights;
