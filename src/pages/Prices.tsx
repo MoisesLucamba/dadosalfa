@@ -465,7 +465,7 @@ const Prices = () => {
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
                       <div>
-                        <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-muted)", marginBottom: 4 }}>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-muted)", marginBottom: 4 }}>
                           Média do Sector
                         </div>
                         <span className="mono" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-primary)" }}>21.4%</span>
