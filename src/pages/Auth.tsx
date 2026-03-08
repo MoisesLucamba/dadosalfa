@@ -157,13 +157,32 @@ export default function Auth() {
       if (authError) throw authError;
       
       if (authData.user) {
-        // Create profile
+        // Create profile — derive company_type from selected company's sector
+        const sectorToCompanyType: Record<string, string> = {
+          oil_gas: 'operadora',
+          bank: 'banco',
+          trader: 'trader',
+          consultant: 'consultora',
+          regulator: 'governo',
+          other: 'prestadora_servicos',
+        };
+        // Look up the company sector from predefined_companies
+        const { data: companyData } = await supabase
+          .from('predefined_companies')
+          .select('sector')
+          .eq('id', data.companyId)
+          .maybeSingle();
+        
+        const derivedType = companyData?.sector 
+          ? (sectorToCompanyType[companyData.sector] || 'consultora')
+          : 'consultora';
+
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: authData.user.id,
             company_name: data.companyName,
-            company_type: 'consultora',
+            company_type: derivedType as any,
             contact_name: data.contactName,
             contact_role: data.jobTitle,
             contact_phone: data.phone,
