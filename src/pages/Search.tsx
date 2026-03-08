@@ -180,7 +180,11 @@ const STORAGE_KEY = "alphadata_chat_sessions";
 const CONTEXT_KEY = "alphadata_ai_context";
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-chat`;
 
-const CHART_COLORS = ["#dc2626", "#1e3a5f", "#ef4444", "#3b82f6", "#991b1b", "#1d4ed8"];
+const CHART_COLORS = ["#00A3FF", "#00D4AA", "#F5A623", "#FF6B35", "#A78BFA", "#E8EDF5"];
+const BLOCK_COLORS: Record<string, string> = {
+  "Bloco 17": "#00A3FF", "Bloco 32": "#00D4AA", "Bloco 15": "#F5A623",
+  "Bloco 0": "#FF6B35", "Bloco 18": "#A78BFA", "Bloco 31": "#E8EDF5",
+};
 
 const UNCERTAINTY_PHRASES = [
   "não tenho dados", "informação limitada", "não disponível", "fora do escopo",
