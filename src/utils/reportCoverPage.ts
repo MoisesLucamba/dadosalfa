@@ -254,10 +254,8 @@ const renderCoverPage = (doc: jsPDF, data: CoverPageData): void => {
     const badgeText = T.AI_BADGE;
     const badgeW = doc.getTextWidth(badgeText) + 14;
     const badgeX = W - m - badgeW;
-    doc.setFillColor(0, 163, 255);
-    doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+    doc.setFillColor(0, 30, 50);
     doc.roundedRect(badgeX, y + 2, badgeW, 10, 5, 5, 'F');
-    doc.setGState(new (doc as any).GState({ opacity: 1 }));
     doc.setDrawColor(...C.accentBlue);
     doc.setLineWidth(0.3);
     doc.roundedRect(badgeX, y + 2, badgeW, 10, 5, 5, 'S');
