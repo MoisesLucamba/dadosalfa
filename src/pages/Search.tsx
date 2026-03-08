@@ -1000,7 +1000,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                 background: activeCategory === i ? "rgba(220,38,38,0.12)" : "transparent",
                 border: activeCategory === i ? "1px solid rgba(220,38,38,0.3)" : "1px solid transparent",
                 color: activeCategory === i ? "#ef4444" : "#3d5a7a",
-                fontFamily: "'Space Mono', monospace",
+                fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "0.1em",
