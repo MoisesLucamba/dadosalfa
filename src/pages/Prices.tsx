@@ -411,10 +411,10 @@ const Prices = () => {
                               {news.impact}
                             </span>
                           </div>
-                          <h4 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px", lineHeight: 1.4 }}>
+                          <h4 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px", lineHeight: 1.4 }}>
                             {news.title}
                           </h4>
-                          <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                          <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
                             {news.description}
                           </p>
                           {/* left accent border on read */}
