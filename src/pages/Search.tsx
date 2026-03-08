@@ -1039,7 +1039,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                   (e.currentTarget as HTMLElement).style.background = "#080e1a";
                 }}
               >
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4 }}>{q}</span>
+                <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4 }}>{q}</span>
               </motion.button>
             ))}
           </motion.div>
