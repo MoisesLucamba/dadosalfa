@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
@@ -41,14 +41,18 @@ export function PersonalSignupForm({ onSubmit, isLoading, error }: PersonalSignu
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors },
   } = useForm<PersonalSignupForm>({
     resolver: zodResolver(personalSignupSchema),
+    defaultValues: {
+      acceptTerms: false,
+      acceptNda: false,
+    },
   });
 
   const watchEmail = watch("email");
 
-  // Validate email domain when email or company changes
   useEffect(() => {
     if (selectedCompany && watchEmail) {
       const isValid = validateCorporateEmail(watchEmail, selectedCompany.email_domain);
@@ -200,10 +204,20 @@ export function PersonalSignupForm({ onSubmit, isLoading, error }: PersonalSignu
         )}
       </motion.div>
 
-      {/* Terms & NDA */}
+      {/* Terms & NDA — using Controller for Radix Checkbox */}
       <motion.div variants={itemVariants} className="space-y-4 pt-4 border-t border-border/30">
         <div className="flex items-start gap-3">
-          <Checkbox id="acceptTerms" {...register("acceptTerms")} />
+          <Controller
+            name="acceptTerms"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="acceptTerms"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
           <Label htmlFor="acceptTerms" className="text-sm leading-relaxed cursor-pointer">
             {t('auth.acceptTerms')}
           </Label>
@@ -213,7 +227,17 @@ export function PersonalSignupForm({ onSubmit, isLoading, error }: PersonalSignu
         )}
 
         <div className="flex items-start gap-3">
-          <Checkbox id="acceptNda" {...register("acceptNda")} />
+          <Controller
+            name="acceptNda"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="acceptNda"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
           <Label htmlFor="acceptNda" className="text-sm leading-relaxed cursor-pointer">
             {t('auth.acceptNda')}
           </Label>
