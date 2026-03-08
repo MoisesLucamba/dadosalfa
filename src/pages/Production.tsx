@@ -149,9 +149,8 @@ const Production = () => {
         <title>Produção Petrolífera | AlphaData</title>
         <meta name="description" content="Dados de produção petrolífera de Angola por bloco, operadora e campo." />
       </Helmet>
-      <GlobalStyles />
 
-      <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", color: "var(--text-primary)", overflow: "hidden" }}>
+      <div className="flex h-screen bg-background text-foreground overflow-hidden">
         <Sidebar activeItem="/production" />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
