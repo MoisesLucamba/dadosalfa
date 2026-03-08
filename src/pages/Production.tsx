@@ -166,10 +166,10 @@ const Production = () => {
                     <div className="pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-green)" }} />
                     <SectionLabel>Live Analytics</SectionLabel>
                   </div>
-                  <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                  <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                     Produção Petrolífera
                   </h1>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
+                  <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                     Monitorização em tempo real da extração por bloco e operadora em Angola.
                   </p>
                 </div>
