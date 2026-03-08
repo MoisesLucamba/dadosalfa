@@ -154,7 +154,7 @@ const KPIBlock = ({
         {value}
       </div>
       <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
           {label}
         </span>
         <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{unit}</span>
@@ -192,7 +192,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
           {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {up ? "+" : ""}{change.toFixed(2)}%
         </span>
-        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
+        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
           USD/bbl
         </span>
       </div>
@@ -277,10 +277,10 @@ const Index = () => {
                   <LayoutDashboard size={12} style={{ color: "var(--accent-blue)" }} />
                   <SectionLabel>Visão Geral</SectionLabel>
                 </div>
-                <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                   Dashboard Principal
                 </h1>
-                <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
+                <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                   Monitoramento em tempo real do ecossistema petrolífero de Angola.
                 </p>
               </div>
@@ -294,7 +294,7 @@ const Index = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "transparent", border: "1px solid var(--border-subtle)",
-                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    color: "var(--text-primary)", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: isSyncing ? "not-allowed" : "pointer",
                     opacity: isSyncing ? 0.6 : 1,
                     transition: "border-color 180ms ease-out",
@@ -314,7 +314,7 @@ const Index = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "var(--accent-blue)", border: "none",
-                    color: "#0A0E1A", fontFamily: "'Epilogue',sans-serif",
+                    color: "#0A0E1A", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: isLoading ? "not-allowed" : "pointer",
                     opacity: isLoading ? 0.6 : 1,
                     transition: "filter 180ms ease-out",
@@ -338,7 +338,7 @@ const Index = () => {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <AlertTriangle size={16} style={{ color: "var(--accent-red)", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
+                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
                     Nenhum dado encontrado para o período atual.
                   </span>
                 </div>
@@ -346,7 +346,7 @@ const Index = () => {
                   <button
                     onClick={() => navigate("/admin")}
                     style={{
-                      fontFamily: "'Epilogue',sans-serif", fontSize: 11, fontWeight: 700,
+                      fontFamily: "'Outfit',sans-serif", fontSize: 11, fontWeight: 700,
                       textTransform: "uppercase", letterSpacing: "0.08em",
                       color: "var(--accent-red)", background: "transparent",
                       border: "1px solid rgba(255,107,53,0.30)", borderRadius: 4,

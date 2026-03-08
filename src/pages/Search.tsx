@@ -865,7 +865,7 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       <div className="px-4 pt-1 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 rounded-full" style={{ background: "linear-gradient(180deg, #dc2626, #991b1b)" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#5a8ab5", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#5a8ab5", textTransform: "uppercase" }}>
             {chart.title}
           </span>
           {chart.unit && (
@@ -875,7 +875,7 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "#dc2626", opacity: 0.6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: "#dc2626", opacity: 0.6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live</span>
           <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
         </div>
       </div>
@@ -952,19 +952,19 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
           className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full"
           style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)" }}>
           <Flame className="w-4 h-4" style={{ color: "#ef4444" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "#9bb5d6", textTransform: "uppercase" }}>Oil & Gas Intelligence Platform</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "#9bb5d6", textTransform: "uppercase" }}>Oil & Gas Intelligence Platform</span>
           <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <h1 style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
+          <h1 style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
             <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 48px)", color: "#e2e8f0", letterSpacing: "-0.02em" }}>OIL & GAS</span>
             <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 52px)", background: "linear-gradient(135deg, #dc2626 0%, #ef4444 40%, #60a5fa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "-0.02em" }}>AI ANALYST</span>
           </h1>
         </motion.div>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-          style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", color: "#3d5a7a", lineHeight: 1.7, maxWidth: "480px", margin: "0 auto" }}>
+          style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", color: "#3d5a7a", lineHeight: 1.7, maxWidth: "480px", margin: "0 auto" }}>
           Análise de mercado em tempo real, inteligência preditiva e insights estratégicos para o setor energético.
         </motion.p>
 
@@ -979,8 +979,8 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                 <stat.icon className="w-3.5 h-3.5" style={{ color: "#ef4444" }} />
               </div>
               <div className="text-left">
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "11px", fontWeight: 700, color: "#e2e8f0" }}>{stat.value}</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2d4a6a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", fontWeight: 700, color: "#e2e8f0" }}>{stat.value}</div>
+                <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "9px", color: "#2d4a6a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</div>
               </div>
             </div>
           ))}
@@ -1000,7 +1000,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                 background: activeCategory === i ? "rgba(220,38,38,0.12)" : "transparent",
                 border: activeCategory === i ? "1px solid rgba(220,38,38,0.3)" : "1px solid transparent",
                 color: activeCategory === i ? "#ef4444" : "#3d5a7a",
-                fontFamily: "'Space Mono', monospace",
+                fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "0.1em",
@@ -1039,7 +1039,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                   (e.currentTarget as HTMLElement).style.background = "#080e1a";
                 }}
               >
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4 }}>{q}</span>
+                <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4 }}>{q}</span>
               </motion.button>
             ))}
           </motion.div>
@@ -1048,7 +1048,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         {/* Divider and classic quick actions */}
         <div className="flex items-center gap-3 mt-8 mb-5">
           <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.2em", color: "#2d4a6a", textTransform: "uppercase" }}>Consultas Frequentes</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.2em", color: "#2d4a6a", textTransform: "uppercase" }}>Consultas Frequentes</span>
           <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.35)" }} />
         </div>
 
@@ -1079,8 +1079,8 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
                   <action.icon className="w-4 h-4" style={{ color: action.accent === "#dc2626" ? "#ef4444" : "#60a5fa" }} />
                 </div>
                 <div className="min-w-0">
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", color: action.accent === "#dc2626" ? "#ef4444" : "#3b82f6", textTransform: "uppercase", marginBottom: "4px", opacity: 0.7 }}>{action.category}</div>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4, display: "block" }}>{action.label}</span>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", color: action.accent === "#dc2626" ? "#ef4444" : "#3b82f6", textTransform: "uppercase", marginBottom: "4px", opacity: 0.7 }}>{action.category}</div>
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12.5px", fontWeight: 500, color: "#7aa3cc", lineHeight: 1.4, display: "block" }}>{action.label}</span>
                 </div>
               </div>
             </motion.button>
@@ -1151,7 +1151,7 @@ const ThinkingAnimation = () => {
             className="flex items-center gap-3"
           >
             <current.icon className="w-4 h-4 flex-shrink-0" style={{ color: current.color, animation: stage === 0 ? "spin 2s linear infinite" : stage === 1 ? "pulse 1s ease-in-out infinite" : "none" }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#5a8ab5", letterSpacing: "0.03em" }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", color: "#5a8ab5", letterSpacing: "0.03em" }}>
               {current.text}
             </span>
           </motion.div>
@@ -1235,10 +1235,10 @@ const ChatBubble = ({
       <div className={`flex flex-col space-y-1.5 max-w-[88%] ${isUser ? "items-end" : "items-start"}`}>
         {/* Role label */}
         <div className="flex items-center gap-2 px-1" style={{ flexDirection: isUser ? "row-reverse" : "row" }}>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: isUser ? "#dc2626" : "#3b82f6", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: isUser ? "#dc2626" : "#3b82f6", textTransform: "uppercase" }}>
             {isUser ? "Utilizador" : "AlphaData AI"}
           </span>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>{message.time}</span>
+          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "10px", color: "#2d4a6a" }}>{message.time}</span>
         </div>
 
         {/* Bubble */}
@@ -1269,7 +1269,7 @@ const ChatBubble = ({
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     className="w-full bg-transparent border border-[#1e3a5f] rounded-lg p-3 text-[14px] text-[#e2e8f0] focus:outline-none focus:border-[#dc2626] resize-none"
-                    style={{ fontFamily: "'DM Sans', sans-serif", minHeight: 60 }}
+                    style={{ fontFamily: "'Outfit', sans-serif", minHeight: 60 }}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditSubmit(); } }}
                   />
                   <div className="flex gap-2 justify-end">
@@ -1278,28 +1278,28 @@ const ChatBubble = ({
                   </div>
                 </div>
               ) : (
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#e2e8f0", lineHeight: 1.6 }}>{message.content}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: "14px", color: "#e2e8f0", lineHeight: 1.6 }}>{message.content}</p>
               )
             ) : (
               <div className="ai-response">
                 <style>{`
-                  .ai-response h1 { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(30,58,95,0.4); }
-                  .ai-response h2 { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; color: #9bb5d6; letter-spacing: 0.08em; margin: 16px 0 8px; text-transform: uppercase; }
-                  .ai-response h3 { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #7aa3cc; margin: 12px 0 6px; }
-                  .ai-response p { font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: #7aa3cc; line-height: 1.75; margin-bottom: 10px; }
+                  .ai-response h1 { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(30,58,95,0.4); }
+                  .ai-response h2 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; color: #9bb5d6; letter-spacing: 0.08em; margin: 16px 0 8px; text-transform: uppercase; }
+                  .ai-response h3 { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #7aa3cc; margin: 12px 0 6px; }
+                  .ai-response p { font-family: 'Outfit', sans-serif; font-size: 13.5px; color: #7aa3cc; line-height: 1.75; margin-bottom: 10px; }
                   .ai-response ul { list-style: none; padding: 0; margin-bottom: 12px; }
-                  .ai-response ul li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 4px 0 4px 18px; position: relative; }
+                  .ai-response ul li { font-family: 'Outfit', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 4px 0 4px 18px; position: relative; }
                   .ai-response ul li::before { content: ''; position: absolute; left: 0; top: 13px; width: 6px; height: 1px; background: #dc2626; }
                   .ai-response ol { padding-left: 20px; margin-bottom: 12px; }
-                  .ai-response ol li { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 3px 0; }
+                  .ai-response ol li { font-family: 'Outfit', sans-serif; font-size: 13px; color: #5a8ab5; line-height: 1.65; padding: 3px 0; }
                   .ai-response strong { font-weight: 700; color: #ef4444; }
                   .ai-response em { color: #60a5fa; font-style: normal; font-weight: 600; }
-                  .ai-response code { background: rgba(30,58,95,0.3); color: #93c5fd; font-family: 'Space Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(30,58,95,0.4); }
+                  .ai-response code { background: rgba(30,58,95,0.3); color: #93c5fd; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(30,58,95,0.4); }
                   .ai-response blockquote { border-left: 2px solid #dc2626; padding-left: 14px; margin: 12px 0; background: rgba(220,38,38,0.04); border-radius: 0 6px 6px 0; padding: 10px 14px; }
                   .ai-response blockquote p { color: #9bb5d6; margin: 0; font-style: italic; }
                   .ai-response table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-                  .ai-response th { background: rgba(30,58,95,0.4); color: #9bb5d6; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; text-align: left; border: 1px solid rgba(30,58,95,0.3); }
-                  .ai-response td { color: #5a8ab5; font-family: 'DM Sans', sans-serif; padding: 8px 12px; border: 1px solid rgba(30,58,95,0.2); }
+                  .ai-response th { background: rgba(30,58,95,0.4); color: #9bb5d6; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; text-align: left; border: 1px solid rgba(30,58,95,0.3); }
+                  .ai-response td { color: #5a8ab5; font-family: 'Outfit', sans-serif; padding: 8px 12px; border: 1px solid rgba(30,58,95,0.2); }
                   .ai-response tr:nth-child(even) td { background: rgba(30,58,95,0.08); }
                 `}</style>
                 <ReactMarkdown
@@ -1341,11 +1341,11 @@ const ChatBubble = ({
               <div className="mt-4 pt-3 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(30,58,95,0.3)" }}>
                 {message.sources.map((s, si) => (
                   <span key={si} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(30,58,95,0.25)", border: "1px solid rgba(30,58,95,0.4)", fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 600, color: "#3d5a7a" }}>
+                    style={{ background: "rgba(30,58,95,0.25)", border: "1px solid rgba(30,58,95,0.4)", fontFamily: "'Outfit', sans-serif", fontSize: "10px", fontWeight: 600, color: "#3d5a7a" }}>
                     <Database className="w-3 h-3" style={{ color: "#1e3a5f" }} />{s}
                   </span>
                 ))}
-                <span className="flex items-center gap-1 ml-auto" style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#dc2626", opacity: 0.7 }}>
+                <span className="flex items-center gap-1 ml-auto" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#dc2626", opacity: 0.7 }}>
                   <CheckCircle className="w-3 h-3" /> Verificado
                 </span>
               </div>
@@ -1663,9 +1663,8 @@ const Search = () => {
     : null;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'Outfit', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap');
         .history-scrollbar::-webkit-scrollbar { width: 3px; }
         .history-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .history-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
@@ -1717,7 +1716,7 @@ const Search = () => {
                   <motion.div key="exp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                     <button onClick={startNewChat}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all duration-200 hover:opacity-90"
-                      style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", fontFamily: "'Space Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "white", border: "none" }}>
+                      style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "white", border: "none" }}>
                       <Plus className="w-4 h-4" /> NOVA CONSULTA
                     </button>
 
@@ -1729,12 +1728,12 @@ const Search = () => {
                         onChange={(e) => setHistorySearch(e.target.value)}
                         placeholder="Pesquisar conversas..."
                         className="w-full bg-transparent border rounded-lg pl-8 pr-3 py-2 text-[11px] focus:outline-none focus:border-[#dc2626]"
-                        style={{ borderColor: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontFamily: "'DM Sans', sans-serif" }}
+                        style={{ borderColor: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontFamily: "'Outfit', sans-serif" }}
                       />
                     </div>
 
                     <div className="flex items-center justify-between px-1">
-                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.2em", color: "#1e3a5f", textTransform: "uppercase" }}>Histórico</span>
+                      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: 700, letterSpacing: "0.2em", color: "#1e3a5f", textTransform: "uppercase" }}>Histórico</span>
                       <button onClick={deleteHistory} className="p-1 rounded transition-colors hover:text-red-500" style={{ color: "#1e3a5f" }} title="Eliminar histórico">
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1759,7 +1758,7 @@ const Search = () => {
                     historySidebarExpanded && (
                       <div className="text-center py-12" style={{ color: "#1e3a5f" }}>
                         <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-40" />
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px" }}>Sem sessões</p>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px" }}>Sem sessões</p>
                       </div>
                     )
                   ) : (
@@ -1788,7 +1787,7 @@ const Search = () => {
                           <MessageSquare className="flex-shrink-0 w-4 h-4" style={{ color: currentSessionId === session.id ? "#ef4444" : "#2d4a6a" }} />
                           {historySidebarExpanded && (
                             <div className="flex-1 min-w-0">
-                              <span className="truncate block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 500, color: currentSessionId === session.id ? "#e2e8f0" : "#3d5a7a" }}>
+                              <span className="truncate block" style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 500, color: currentSessionId === session.id ? "#e2e8f0" : "#3d5a7a" }}>
                                 {session.title}
                               </span>
                               <span className="text-[9px] block" style={{ color: "#2d4a6a" }}>
@@ -1827,9 +1826,9 @@ const Search = () => {
         {/* Session title breadcrumb */}
         {sessionTitle && (
           <div className="px-8 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(30,58,95,0.2)" }}>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "10px", color: "#2d4a6a", letterSpacing: "0.1em" }}>AI Analyst</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#2d4a6a", letterSpacing: "0.1em" }}>AI Analyst</span>
             <ChevronRight className="w-3 h-3" style={{ color: "#2d4a6a" }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "#5a8ab5", fontWeight: 500 }}>{sessionTitle}</span>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "11px", color: "#5a8ab5", fontWeight: 500 }}>{sessionTitle}</span>
           </div>
         )}
 
@@ -1892,7 +1891,7 @@ const Search = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                   disabled={loading}
-                  style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#e2e8f0", caretColor: "#dc2626" }}
+                  style={{ fontFamily: "'Outfit', sans-serif", fontSize: "14px", color: "#e2e8f0", caretColor: "#dc2626" }}
                 />
                 <div className="pr-2 flex-shrink-0">
                   <button
@@ -1907,9 +1906,9 @@ const Search = () => {
             </div>
 
             <div className="flex items-center justify-center gap-3 mt-3">
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>AlphaData © {new Date().getFullYear()}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>AlphaData © {new Date().getFullYear()}</span>
               <div className="w-1 h-1 rounded-full" style={{ background: "#dc2626", opacity: 0.4 }} />
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>Oil & Gas AI Platform</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#1e3a5f", letterSpacing: "0.12em", textTransform: "uppercase" }}>Oil & Gas AI Platform</span>
             </div>
           </div>
         </div>
