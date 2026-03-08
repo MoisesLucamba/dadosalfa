@@ -782,32 +782,48 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     ctx.y += L.SECTION_SP;
   }
 
-  // ── Highlights ───────────────────────────────────────────────────────────
+  // ── Highlights (modern card grid) ──────────────────────────────────────
   if (data.highlights && data.highlights.length > 0) {
     sectionTitle(ctx, t.mainHighlights);
-    const boxH = 22;
-    data.highlights.forEach(h => {
-      needsPage(ctx, boxH + 6);
+    const cardW = (contentW - 8) / 2;
+    const cardH = 30;
+    data.highlights.forEach((h, idx) => {
+      const isLeft = idx % 2 === 0;
+      if (isLeft) needsPage(ctx, cardH + 8);
+      const cx = isLeft ? margin : margin + cardW + 8;
+      const cy = isLeft ? ctx.y : ctx.y;
+
+      // Card background with left accent
       ctx.doc.setFillColor(...C.white);
-      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'F');
+      ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'F');
       ctx.doc.setDrawColor(...C.lightGray);
-      ctx.doc.setLineWidth(L.THIN);
-      ctx.doc.roundedRect(margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'S');
+      ctx.doc.setLineWidth(0.3);
+      ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'S');
 
-      setFont(ctx.doc, 8, 'normal', C.muted);
-      ctx.doc.text(h.title, margin + 8, ctx.y + 9);
-      setFont(ctx.doc, 13, 'bold', C.dark);
-      ctx.doc.text(h.value, margin + 8, ctx.y + 18);
+      // Left accent bar
+      const accentColor = h.trend === 'up' ? C.success : h.trend === 'down' ? C.danger : C.primary;
+      ctx.doc.setFillColor(...accentColor);
+      ctx.doc.roundedRect(cx, cy, 3, cardH, 1, 1, 'F');
 
+      // Label
+      setFont(ctx.doc, 7.5, 'normal', C.muted);
+      ctx.doc.text(h.title, cx + 8, cy + 10);
+
+      // Value
+      setFont(ctx.doc, 14, 'bold', C.dark);
+      ctx.doc.text(h.value, cx + 8, cy + 22);
+
+      // Trend indicator
       if (h.trend) {
         const tColor = h.trend === 'up' ? C.success : h.trend === 'down' ? C.danger : C.muted;
-        ctx.doc.setFillColor(...tColor);
-        ctx.doc.circle(W - margin - 12, ctx.y + 11, 5, 'F');
-        setFont(ctx.doc, 9, 'bold', C.white);
-        const arrow = h.trend === 'up' ? '↑' : h.trend === 'down' ? '↓' : '=';
-        ctx.doc.text(arrow, W - margin - 13.5, ctx.y + 13.5);
+        const arrow = h.trend === 'up' ? '+' : h.trend === 'down' ? '-' : '=';
+        setFont(ctx.doc, 8, 'bold', tColor);
+        ctx.doc.text(arrow, cx + cardW - 14, cy + 16);
       }
-      ctx.y += boxH + 7;
+
+      if (!isLeft || idx === data.highlights!.length - 1) {
+        ctx.y += cardH + 6;
+      }
     });
     ctx.y += L.SUBSEC_SP;
   }
