@@ -890,34 +890,40 @@ const ChartRenderer = ({ chart, onDrillDown }: { chart: ChartData; onDrillDown?:
       {/* Data table toggle */}
       {showData && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4">
-          <div className="overflow-x-auto rounded-lg" style={{ border: "1px solid rgba(30,58,95,0.3)" }}>
+          <div className="overflow-x-auto rounded-lg" style={{ background: "#0A0E1A", border: "1px solid #1E2A3A" }}>
             <table className="w-full text-[11px]">
               <thead>
                 <tr>
                   {Object.keys(chart.data[0] || {}).map((k) => (
-                    <th key={k} className="px-3 py-2 text-left font-bold uppercase tracking-wider" style={{ background: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontSize: 9 }}>{k}</th>
+                    <th key={k} className="px-3 py-2 text-left font-bold uppercase tracking-wider" style={{ background: "#141B2D", color: "#6B7A99", fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}>{k}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {chart.data.map((row, i) => (
-                  <tr key={i} className="hover:bg-[#1e3a5f]/10">
+                {chart.data.slice(0, 10).map((row, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? "#0A0E1A" : "#0D1117" }}>
                     {Object.values(row).map((v, j) => (
-                      <td key={j} className="px-3 py-1.5" style={{ color: "#7aa3cc", borderBottom: "1px solid rgba(30,58,95,0.15)" }}>{String(v)}</td>
+                      <td key={j} className="px-3 py-1.5" style={{ color: "#E8EDF5", borderBottom: "1px solid rgba(30,58,95,0.15)", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
+                        {typeof v === "number" ? v.toLocaleString() : String(v)}
+                      </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
+            {chart.data.length > 10 && (
+              <div className="px-3 py-2 text-center" style={{ color: "#6B7A99", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+                ... e mais {chart.data.length - 10} registos
+              </div>
+            )}
           </div>
         </motion.div>
       )}
 
       {/* Footer */}
-      <div className="px-4 pb-3 flex items-center gap-2">
-        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
-        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "#1e3a5f", letterSpacing: "0.1em", textTransform: "uppercase" }}>AlphaData Market Intelligence</span>
-        <div className="h-[1px] flex-1" style={{ background: "rgba(30,58,95,0.2)" }} />
+      <div className="px-4 pb-3 flex items-center justify-between">
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>Fonte: ANPG · AlphaData Analytics</span>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "#6B7A99" }}>Actualizado: {new Date().toLocaleDateString("pt-PT")}</span>
       </div>
     </motion.div>
   );
