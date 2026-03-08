@@ -277,10 +277,10 @@ const Index = () => {
                   <LayoutDashboard size={12} style={{ color: "var(--accent-blue)" }} />
                   <SectionLabel>Visão Geral</SectionLabel>
                 </div>
-                <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                   Dashboard Principal
                 </h1>
-                <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
+                <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                   Monitoramento em tempo real do ecossistema petrolífero de Angola.
                 </p>
               </div>
