@@ -748,7 +748,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
     ...defaultCover,
     reportTitle: data.title || `${t.report} AlphaData`,
     reportType: getTypeName(data.type, lang),
-    reportPeriod: data.period || 'Actual',
+    reportPeriod: data.period || (lang === 'en' ? 'Current' : lang === 'fr' ? 'Actuel' : 'Actual'),
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
