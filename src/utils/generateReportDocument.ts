@@ -834,7 +834,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const exportData = extractExports(data.content);
 
   // Price time series (if available)
-  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date');
+  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date', locale);
 
   const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
 
