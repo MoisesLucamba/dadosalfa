@@ -1634,7 +1634,7 @@ export default function WellSimulation() {
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" size="sm"
                 className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[10px] font-mono w-full ${btnEffect}`}
-                onClick={handleExportPDF}>
+                onClick={() => setShowPdfLangDialog(true)}>
                 <FileText className="w-3 h-3 mr-1" /> PDF
               </Button>
               <Button variant="outline" size="sm"
