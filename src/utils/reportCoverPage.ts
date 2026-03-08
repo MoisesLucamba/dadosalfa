@@ -1,6 +1,6 @@
 /**
- * Cover page generator for reports - PROFESSIONAL MULTILINGUAL VERSION
- * Modern technical design with full i18n support
+ * Cover page generator for reports — DARK THEME REDESIGN
+ * All reports are in European Portuguese only.
  */
 
 import jsPDF from 'jspdf';
@@ -56,264 +56,85 @@ export interface DataSource {
 }
 
 // ============================================================================
-// CONSTANTS
+// DARK THEME DESIGN TOKENS
 // ============================================================================
 
-const COLORS = {
-  primary: [30, 64, 175] as RGBColor,
-  brand: [220, 38, 38] as RGBColor,
-  accent: [236, 72, 153] as RGBColor,
-  dark: [10, 10, 10] as RGBColor,
-  darkGray: [51, 65, 85] as RGBColor,
-  muted: [100, 116, 139] as RGBColor,
-  mediumGray: [148, 163, 184] as RGBColor,
-  lightGray: [203, 213, 225] as RGBColor,
-  light: [241, 245, 249] as RGBColor,
-  ultraLight: [248, 250, 252] as RGBColor,
-  white: [255, 255, 255] as RGBColor,
-  success: [34, 197, 94] as RGBColor,
-  warning: [234, 179, 8] as RGBColor,
-  info: [59, 130, 246] as RGBColor,
-  bgPrimary: [249, 250, 251] as RGBColor,
-  bgSecondary: [243, 244, 246] as RGBColor,
+const C = {
+  pageBg:      [10,  14,  26]  as RGBColor,  // #0A0E1A
+  surface:     [13,  17,  23]  as RGBColor,  // #0D1117
+  border:      [30,  42,  58]  as RGBColor,  // #1E2A3A
+  accentBlue:  [0,   163, 255] as RGBColor,  // #00A3FF
+  accentAmber: [245, 166, 35]  as RGBColor,  // #F5A623
+  accentGreen: [0,   212, 170] as RGBColor,  // #00D4AA
+  accentRed:   [255, 59,  48]  as RGBColor,  // #FF3B30
+  textPrimary: [232, 237, 245] as RGBColor,  // #E8EDF5
+  textSecondary:[107, 122, 153] as RGBColor, // #6B7A99
+  textMuted:   [61,  79,  107] as RGBColor,  // #3D4F6B
+  white:       [255, 255, 255] as RGBColor,
+  brand:       [220, 38,  38]  as RGBColor,  // #DC2626 AlphaData red
 } as const;
 
 const LAYOUT = {
   MARGIN: 20,
-  SECTION_SPACING: 14,
-  SUBSECTION_SPACING: 8,
-  LINE_SPACING: 6,
-  CARD_PADDING: 8,
-  BOX_RADIUS: 6,
-  SMALL_BOX_RADIUS: 3,
   FOOTER_HEIGHT: 28,
-  LINE_WIDTH_THICK: 2.5,
-  LINE_WIDTH_MEDIUM: 1.5,
-  LINE_WIDTH_THIN: 0.75,
 } as const;
 
 // ============================================================================
-// MULTILINGUAL TRANSLATIONS
+// PORTUGUESE-ONLY TRANSLATIONS
 // ============================================================================
 
-const COVER_TRANSLATIONS: Record<DocumentLanguageCode, Record<string, string>> = {
-  pt: {
-    REPORT: 'RELATORIO',
-    TYPE: 'Tipo:',
-    PERIOD: 'Periodo:',
-    GENERATED: 'Gerado:',
-    CURRENT: 'Actual',
-    AI_GENERATED: 'Gerado com IA',
-    GENERATING_COMPANY: 'EMPRESA GERADORA',
-    DATA_SOURCES: 'FONTES DE DADOS',
-    DATA_SOURCES_PAGE_TITLE: 'Fontes de Dados e Referencias',
-    COUNTRY_INFO: 'INFORMACOES DO PAIS',
-    REQUESTING_COMPANY: 'EMPRESA SOLICITANTE',
-    REQUESTED_BY: 'SOLICITADO POR',
-    COUNTRY: 'Pais:',
-    REGION: 'Regiao:',
-    CURRENCY: 'Moeda:',
-    LANGUAGE: 'Idioma:',
-    TIMEZONE: 'Fuso:',
-    COMPANY: 'Empresa:',
-    NIF: 'NIF:',
-    SECTOR: 'Sector:',
-    NAME: 'Nome:',
-    ROLE: 'Cargo:',
-    EMAIL: 'Email:',
-    CONTACT: 'Contacto:',
-    WEBSITE: 'Website:',
-    ADDRESS: 'Endereco:',
-    CONFIDENTIAL_NOTICE: 'Este documento contem informacoes confidenciais. A sua distribuicao esta restrita a destinatarios autorizados.',
-    CONFIDENTIAL_HEADER: 'CONFIDENCIAL - USO INTERNO',
-    DATA_QUALITY_NOTE: 'Todas as fontes de dados sao verificadas e atualizadas regularmente para garantir precisao e confiabilidade nas analises.',
-    DATA_QUALITY_TITLE: 'NOTA SOBRE QUALIDADE DOS DADOS',
-    DATA_SOURCES_INTRO: 'Este relatorio baseia-se em multiplas fontes de dados verificadas e confiaveis para garantir a precisao e integridade das analises apresentadas.',
-    TAGLINE: 'Inteligencia de Mercado Petrolifero Angolano',
-    INFO_PAGE: 'PAGINA INFORMATIVA',
-    REPORT_INFO: 'INFORMACOES DO RELATORIO',
-    TITLE_LABEL: 'Titulo:',
-    METHOD: 'Metodo:',
-    AI_METHOD: 'Gerado com Inteligencia Artificial',
-    END_INFO_PAGE: 'FIM DA PAGINA INFORMATIVA - INICIO DO CONTEUDO DO RELATORIO',
-    DESCRIPTION: 'Descricao:',
-    SOURCE: 'Fonte',
-    SOURCE_TYPE: 'Tipo',
-    SOURCE_DESC: 'Descricao',
-  },
-  en: {
-    REPORT: 'REPORT',
-    TYPE: 'Type:',
-    PERIOD: 'Period:',
-    GENERATED: 'Generated:',
-    CURRENT: 'Current',
-    AI_GENERATED: 'AI Generated',
-    GENERATING_COMPANY: 'GENERATING COMPANY',
-    DATA_SOURCES: 'DATA SOURCES',
-    DATA_SOURCES_PAGE_TITLE: 'Data Sources and References',
-    COUNTRY_INFO: 'COUNTRY INFORMATION',
-    REQUESTING_COMPANY: 'REQUESTING COMPANY',
-    REQUESTED_BY: 'REQUESTED BY',
-    COUNTRY: 'Country:',
-    REGION: 'Region:',
-    CURRENCY: 'Currency:',
-    LANGUAGE: 'Language:',
-    TIMEZONE: 'Timezone:',
-    COMPANY: 'Company:',
-    NIF: 'Tax ID:',
-    SECTOR: 'Sector:',
-    NAME: 'Name:',
-    ROLE: 'Role:',
-    EMAIL: 'Email:',
-    CONTACT: 'Contact:',
-    WEBSITE: 'Website:',
-    ADDRESS: 'Address:',
-    CONFIDENTIAL_NOTICE: 'This document contains confidential information. Distribution is restricted to authorized recipients only.',
-    CONFIDENTIAL_HEADER: 'CONFIDENTIAL - INTERNAL USE',
-    DATA_QUALITY_NOTE: 'All data sources are verified and regularly updated to ensure accuracy and reliability in the analyses presented.',
-    DATA_QUALITY_TITLE: 'DATA QUALITY NOTE',
-    DATA_SOURCES_INTRO: 'This report is based on multiple verified and reliable data sources to ensure the accuracy and integrity of the analyses presented.',
-    TAGLINE: 'Angolan Oil Market Intelligence',
-    INFO_PAGE: 'INFORMATION PAGE',
-    REPORT_INFO: 'REPORT INFORMATION',
-    TITLE_LABEL: 'Title:',
-    METHOD: 'Method:',
-    AI_METHOD: 'Generated with Artificial Intelligence',
-    END_INFO_PAGE: 'END OF INFORMATION PAGE - START OF REPORT CONTENT',
-    DESCRIPTION: 'Description:',
-    SOURCE: 'Source',
-    SOURCE_TYPE: 'Type',
-    SOURCE_DESC: 'Description',
-  },
-  fr: {
-    REPORT: 'RAPPORT',
-    TYPE: 'Type:',
-    PERIOD: 'Periode:',
-    GENERATED: 'Genere:',
-    CURRENT: 'Actuel',
-    AI_GENERATED: 'Genere par IA',
-    GENERATING_COMPANY: 'SOCIETE GENERATRICE',
-    DATA_SOURCES: 'SOURCES DE DONNEES',
-    DATA_SOURCES_PAGE_TITLE: 'Sources de Donnees et References',
-    COUNTRY_INFO: 'INFORMATIONS SUR LE PAYS',
-    REQUESTING_COMPANY: 'SOCIETE DEMANDEUSE',
-    REQUESTED_BY: 'DEMANDE PAR',
-    COUNTRY: 'Pays:',
-    REGION: 'Region:',
-    CURRENCY: 'Monnaie:',
-    LANGUAGE: 'Langue:',
-    TIMEZONE: 'Fuseau:',
-    COMPANY: 'Societe:',
-    NIF: 'ID Fiscal:',
-    SECTOR: 'Secteur:',
-    NAME: 'Nom:',
-    ROLE: 'Poste:',
-    EMAIL: 'Email:',
-    CONTACT: 'Contact:',
-    WEBSITE: 'Site Web:',
-    ADDRESS: 'Adresse:',
-    CONFIDENTIAL_NOTICE: 'Ce document contient des informations confidentielles. Sa distribution est limitee aux destinataires autorises.',
-    CONFIDENTIAL_HEADER: 'CONFIDENTIEL - USAGE INTERNE',
-    DATA_QUALITY_NOTE: 'Toutes les sources de donnees sont verifiees et regulierement mises a jour pour garantir la precision et la fiabilite des analyses.',
-    DATA_QUALITY_TITLE: 'NOTE SUR LA QUALITE DES DONNEES',
-    DATA_SOURCES_INTRO: 'Ce rapport repose sur plusieurs sources de donnees verifiees et fiables pour garantir la precision et l\'integrite des analyses presentees.',
-    TAGLINE: 'Intelligence du Marche Petrolier Angolais',
-    INFO_PAGE: 'PAGE D\'INFORMATION',
-    REPORT_INFO: 'INFORMATIONS SUR LE RAPPORT',
-    TITLE_LABEL: 'Titre:',
-    METHOD: 'Methode:',
-    AI_METHOD: 'Genere avec l\'Intelligence Artificielle',
-    END_INFO_PAGE: 'FIN DE LA PAGE D\'INFORMATION - DEBUT DU CONTENU DU RAPPORT',
-    DESCRIPTION: 'Description:',
-    SOURCE: 'Source',
-    SOURCE_TYPE: 'Type',
-    SOURCE_DESC: 'Description',
-  },
+const T = {
+  INTELLIGENCE: 'INTELIGENCIA DO MERCADO PETROLIFERO',
+  AI_BADGE: 'GERADO POR IA',
+  REPORT_LABEL: 'RELATORIO ALPHADATA',
+  TYPE: 'TIPO',
+  PERIOD: 'PERIODO',
+  GENERATED_AT: 'GERADO EM',
+  LIVE_DATA: 'DADOS EM TEMPO REAL',
+  GENERATING_COMPANY: 'ENTIDADE GERADORA',
+  COUNTRY_INFO: 'INFORMACOES DO PAIS',
+  COUNTRY: 'Pais:',
+  REGION: 'Regiao:',
+  CURRENCY: 'Moeda:',
+  TIMEZONE: 'Fuso:',
+  REQUESTING_COMPANY: 'EMPRESA SOLICITANTE',
+  REQUESTED_BY: 'SOLICITADO POR',
+  COMPANY: 'Empresa:',
+  NIF: 'NIF:',
+  SECTOR: 'Sector:',
+  NAME: 'Nome:',
+  ROLE: 'Cargo:',
+  EMAIL: 'Email:',
+  CONFIDENTIAL: 'CONFIDENCIAL - USO INTERNO',
+  CONFIDENTIAL_NOTICE: 'Este documento contem informacoes confidenciais. A sua distribuicao esta restrita a destinatarios autorizados.',
+  DATA_SOURCES: 'FONTES DE DADOS',
+  DATA_SOURCES_TITLE: 'Fontes de Dados e Referencias',
+  DATA_SOURCES_INTRO: 'Este relatorio baseia-se em multiplas fontes de dados verificadas e confiaveis para garantir a precisao e integridade das analises apresentadas.',
+  DATA_QUALITY_TITLE: 'NOTA SOBRE QUALIDADE DOS DADOS',
+  DATA_QUALITY_NOTE: 'Todas as fontes de dados sao verificadas e atualizadas regularmente para garantir precisao e confiabilidade nas analises.',
+  TAGLINE: 'Inteligencia de Mercado Petrolifero Angolano',
+  PAGE: 'Pagina',
+  OF: 'de',
+  SOURCE: 'Fonte',
+  SOURCE_TYPE: 'Tipo',
+  SOURCE_DESC: 'Descricao',
+  REPORT_INFO: 'INFORMACOES DO RELATORIO',
+  TITLE_LABEL: 'Titulo:',
+  METHOD: 'Metodo:',
+  AI_METHOD: 'Gerado com Inteligencia Artificial',
 };
 
-const COMPANY_TRANSLATIONS: Record<DocumentLanguageCode, { fullName: string; description: string }> = {
-  pt: {
-    fullName: 'AlphaData - Inteligencia de Mercado Petrolifero Angolano',
-    description: 'Plataforma lider em analise de dados e inteligencia artificial para o sector petrolifero de Angola. Fornecemos insights estrategicos, previsoes de mercado e analises de risco em tempo real.',
-  },
-  en: {
-    fullName: 'AlphaData - Angolan Oil Market Intelligence',
-    description: 'Leading platform for data analysis and artificial intelligence for the Angolan oil sector. We provide strategic insights, market forecasts and real-time risk analysis.',
-  },
-  fr: {
-    fullName: 'AlphaData - Intelligence du Marche Petrolier Angolais',
-    description: 'Plateforme leader en analyse de donnees et intelligence artificielle pour le secteur petrolier angolais. Nous fournissons des insights strategiques, des previsions de marche et des analyses de risque en temps reel.',
-  },
-};
-
-const DATA_SOURCES_TRANSLATIONS: Record<DocumentLanguageCode, DataSource[]> = {
-  pt: [
-    { name: 'BPEP - Bureau de Pesquisa Energetica e Petrolifera', type: 'Oficial', description: 'Dados oficiais de producao e exportacao do sector petrolifero angolano' },
-    { name: 'ANP - Agencia Nacional do Petroleo', type: 'Regulador', description: 'Informacoes regulatorias e licenciamento de operacoes' },
-    { name: 'Ministerio dos Recursos Minerais e Petroleo', type: 'Governamental', description: 'Politicas e directivas do sector energetico' },
-    { name: 'APIs de Mercado Internacional', type: 'Mercado', description: 'Cotacoes Brent, WTI e futuros de petroleo em tempo real' },
-    { name: 'AlphaData AI Engine', type: 'IA', description: 'Modelos proprietarios de previsao e analise de tendencias' },
-  ],
-  en: [
-    { name: 'BPEP - Energy and Petroleum Research Bureau', type: 'Official', description: 'Official production and export data from the Angolan oil sector' },
-    { name: 'ANP - National Petroleum Agency', type: 'Regulator', description: 'Regulatory information and operational licensing' },
-    { name: 'Ministry of Mineral Resources and Petroleum', type: 'Government', description: 'Energy sector policies and directives' },
-    { name: 'International Market APIs', type: 'Market', description: 'Real-time Brent, WTI and oil futures quotes' },
-    { name: 'AlphaData AI Engine', type: 'AI', description: 'Proprietary forecasting and trend analysis models' },
-  ],
-  fr: [
-    { name: 'BPEP - Bureau de Recherche Energetique et Petroliere', type: 'Officiel', description: 'Donnees officielles de production et exportation du secteur petrolier angolais' },
-    { name: 'ANP - Agence Nationale du Petrole', type: 'Regulateur', description: 'Informations reglementaires et licences d\'operations' },
-    { name: 'Ministere des Ressources Minerales et du Petrole', type: 'Gouvernemental', description: 'Politiques et directives du secteur energetique' },
-    { name: 'APIs de Marche International', type: 'Marche', description: 'Cotations Brent, WTI et contrats a terme en temps reel' },
-    { name: 'AlphaData AI Engine', type: 'IA', description: 'Modeles proprietaires de prevision et d\'analyse de tendances' },
-  ],
-};
-
-function getCoverTranslation(lang: DocumentLanguageCode) {
-  return COVER_TRANSLATIONS[lang] || COVER_TRANSLATIONS.pt;
-}
+const DATA_SOURCES: DataSource[] = [
+  { name: 'BPEP - Bureau de Pesquisa Energetica e Petrolifera', type: 'Oficial', description: 'Dados oficiais de producao e exportacao do sector petrolifero angolano' },
+  { name: 'ANP - Agencia Nacional do Petroleo', type: 'Regulador', description: 'Informacoes regulatorias e licenciamento de operacoes' },
+  { name: 'Ministerio dos Recursos Minerais e Petroleo', type: 'Governamental', description: 'Politicas e directivas do sector energetico' },
+  { name: 'APIs de Mercado Internacional', type: 'Mercado', description: 'Cotacoes Brent, WTI e futuros de petroleo em tempo real' },
+  { name: 'AlphaData AI Engine', type: 'IA', description: 'Modelos proprietarios de previsao e analise de tendencias' },
+];
 
 // ============================================================================
-// DEFAULT DATA
+// UTILITIES
 // ============================================================================
-
-export const getDefaultCoverPageData = (lang: DocumentLanguageCode = 'pt'): Omit<CoverPageData, 'reportTitle' | 'reportType' | 'reportPeriod' | 'generatedAt' | 'isAiGenerated'> => {
-  const companyT = COMPANY_TRANSLATIONS[lang] || COMPANY_TRANSLATIONS.pt;
-  const dataSources = DATA_SOURCES_TRANSLATIONS[lang] || DATA_SOURCES_TRANSLATIONS.pt;
-  return {
-    generatingCompany: {
-      name: 'AlphaData',
-      fullName: companyT.fullName,
-      description: companyT.description,
-      contact: 'info@alphadata.ao',
-      website: 'www.alphadata.ao',
-      address: 'Luanda, Angola',
-    },
-    dataSources,
-    countryInfo: {
-      name: 'Republica de Angola',
-      region: 'Africa Subsaariana',
-      currency: 'Kwanza (AOA)',
-      language: lang === 'en' ? 'Portuguese' : lang === 'fr' ? 'Portugais' : 'Portugues',
-      timezone: 'WAT (UTC+1)',
-    },
-    language: lang,
-  };
-};
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-const validateCoverPageData = (data: CoverPageData): void => {
-  if (!data) throw new Error('Cover page data is required');
-  if (!data.reportTitle?.trim()) throw new Error('Report title is required');
-  if (!data.reportType?.trim()) throw new Error('Report type is required');
-  if (!data.generatedAt || !(data.generatedAt instanceof Date)) throw new Error('Generated date must be a valid Date object');
-  if (!data.generatingCompany?.name) throw new Error('Generating company name is required');
-  if (!Array.isArray(data.dataSources) || data.dataSources.length === 0) throw new Error('At least one data source is required');
-};
 
 const sanitizeText = (text: string): string => {
   if (!text) return '';
@@ -323,378 +144,428 @@ const sanitizeText = (text: string): string => {
     .replace(/[^\x20-\x7E]/g, '');
 };
 
-const setTextStyle = (
-  doc: jsPDF,
-  fontSize: number,
-  fontWeight: 'normal' | 'bold' | 'italic',
-  color: RGBColor
-): void => {
-  doc.setFontSize(fontSize);
-  doc.setFont('helvetica', fontWeight);
+const setStyle = (doc: jsPDF, size: number, weight: 'normal' | 'bold' | 'italic', color: RGBColor): void => {
+  doc.setFontSize(size);
+  doc.setFont('helvetica', weight);
   doc.setTextColor(...color);
 };
 
-const formatDateTime = (date: Date, lang: DocumentLanguageCode = 'pt'): string => {
+const formatDateTime = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
-  const monthsPt = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-  const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthsFr = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
-  const months = lang === 'en' ? monthsEn : lang === 'fr' ? monthsFr : monthsPt;
+  const months = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const month = months[date.getMonth()];
   const year = date.getFullYear();
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  if (lang === 'en') return `${month} ${day}, ${year} at ${hours}:${minutes}`;
-  if (lang === 'fr') return `${day} ${month} ${year} a ${hours}:${minutes}`;
   return `${day} de ${month} de ${year} as ${hours}:${minutes}`;
 };
 
-// ============================================================================
-// COVER PAGE RENDERING - PROFESSIONAL DESIGN
-// ============================================================================
+const formatDateShort = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${day} ${months[date.getMonth()]} ${date.getFullYear()} · ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')} WAT`;
+};
 
-const renderCoverPage = (doc: jsPDF, data: CoverPageData): void => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = LAYOUT.MARGIN;
-  const lang = data.language || 'pt';
-  const T = getCoverTranslation(lang);
-
-  // === FULL DARK HEADER (top 42%) ===
-  const headerHeight = pageHeight * 0.42;
-  doc.setFillColor(...COLORS.dark);
-  doc.rect(0, 0, pageWidth, headerHeight, 'F');
-
-  // Subtle gradient band at top
-  doc.setFillColor(20, 20, 25);
-  doc.rect(0, 0, pageWidth, 25, 'F');
-
-  // Red accent line
-  doc.setDrawColor(...COLORS.brand);
-  doc.setLineWidth(3);
-  doc.line(margin, headerHeight - 1, margin + 80, headerHeight - 1);
-
-  // === LOGO ===
-  let logoY = 30;
-  if (data.logoBase64) {
-    try {
-      doc.addImage(data.logoBase64, 'PNG', margin, logoY, 22, 22);
-      setTextStyle(doc, 28, 'bold', COLORS.white);
-      doc.text('ALPHADATA', margin + 28, logoY + 15);
-    } catch {
-      setTextStyle(doc, 48, 'bold', COLORS.brand);
-      doc.text('α', margin, logoY + 15);
-      setTextStyle(doc, 28, 'bold', COLORS.white);
-      doc.text('ALPHADATA', margin + 25, logoY + 15);
-    }
-  } else {
-    setTextStyle(doc, 48, 'bold', COLORS.brand);
-    doc.text('α', margin, logoY + 15);
-    setTextStyle(doc, 28, 'bold', COLORS.white);
-    doc.text('ALPHADATA', margin + 25, logoY + 15);
-  }
-
-  // Tagline
-  setTextStyle(doc, 10, 'normal', COLORS.mediumGray);
-  doc.text(T.TAGLINE, margin, logoY + 28);
-
-  // === REPORT TITLE ===
-  const titleY = logoY + 50;
-  setTextStyle(doc, 9, 'bold', COLORS.mediumGray);
-  doc.text(T.REPORT, margin, titleY);
-
-  setTextStyle(doc, 22, 'bold', COLORS.white);
-  const titleLines = doc.splitTextToSize(sanitizeText(data.reportTitle), pageWidth - 2 * margin);
-  doc.text(titleLines, margin, titleY + 14);
-
-  // === METADATA BAR ===
-  const metaY = headerHeight + 12;
-  doc.setFillColor(...COLORS.white);
-  doc.roundedRect(margin, metaY, pageWidth - 2 * margin, 32, 4, 4, 'F');
-  doc.setDrawColor(...COLORS.lightGray);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(margin, metaY, pageWidth - 2 * margin, 32, 4, 4, 'S');
-
-  const labelX = margin + 10;
-  const metaTextY = metaY + 13;
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.TYPE, labelX, metaTextY);
-  setTextStyle(doc, 9, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.reportType), labelX + 16, metaTextY);
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.PERIOD, labelX + 65, metaTextY);
-  setTextStyle(doc, 9, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.reportPeriod) || T.CURRENT, labelX + 88, metaTextY);
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.GENERATED, labelX, metaTextY + 11);
-  setTextStyle(doc, 9, 'normal', COLORS.dark);
-  doc.text(formatDateTime(data.generatedAt, lang), labelX + 22, metaTextY + 11);
-
-  if (data.isAiGenerated) {
-    const badgeX = pageWidth - margin - 48;
-    doc.setFillColor(...COLORS.primary);
-    doc.roundedRect(badgeX, metaY + 10, 38, 13, 3, 3, 'F');
-    setTextStyle(doc, 7, 'bold', COLORS.white);
-    doc.text(T.AI_GENERATED, badgeX + 5, metaY + 18);
-  }
-
-  // === COMPANY INFO SECTION ===
-  let yPos = metaY + 48;
-
-  // Generating Company
-  doc.setFillColor(...COLORS.brand);
-  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
-  setTextStyle(doc, 11, 'bold', COLORS.dark);
-  doc.text(T.GENERATING_COMPANY, margin + 10, yPos + 9);
-  yPos += 18;
-
-  setTextStyle(doc, 10, 'bold', COLORS.dark);
-  doc.text(sanitizeText(data.generatingCompany.fullName), margin, yPos);
-  yPos += 8;
-
-  setTextStyle(doc, 9, 'normal', COLORS.darkGray);
-  const descLines = doc.splitTextToSize(sanitizeText(data.generatingCompany.description), pageWidth - 2 * margin);
-  doc.text(descLines, margin, yPos);
-  yPos += descLines.length * 5 + 5;
-
-  setTextStyle(doc, 8, 'normal', COLORS.muted);
-  doc.text(`${T.CONTACT} ${sanitizeText(data.generatingCompany.contact)} | ${T.WEBSITE} ${sanitizeText(data.generatingCompany.website)} | ${T.ADDRESS} ${sanitizeText(data.generatingCompany.address)}`, margin, yPos);
-  yPos += 14;
-
-  // Country Info
-  doc.setFillColor(...COLORS.success);
-  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
-  setTextStyle(doc, 11, 'bold', COLORS.dark);
-  doc.text(T.COUNTRY_INFO, margin + 10, yPos + 9);
-  yPos += 18;
-
-  doc.setFillColor(...COLORS.bgPrimary);
-  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 22, 3, 3, 'F');
-
-  const ciY = yPos + 9;
-  const ciX = margin + 8;
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.COUNTRY, ciX, ciY);
-  setTextStyle(doc, 8, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.countryInfo.name), ciX + 18, ciY);
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.REGION, ciX + 80, ciY);
-  setTextStyle(doc, 8, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.countryInfo.region), ciX + 100, ciY);
-
-  const ci2Y = ciY + 9;
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.CURRENCY, ciX, ci2Y);
-  setTextStyle(doc, 8, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.countryInfo.currency), ciX + 23, ci2Y);
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.LANGUAGE, ciX + 65, ci2Y);
-  setTextStyle(doc, 8, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.countryInfo.language), ciX + 85, ci2Y);
-
-  setTextStyle(doc, 8, 'bold', COLORS.muted);
-  doc.text(T.TIMEZONE, ciX + 115, ci2Y);
-  setTextStyle(doc, 8, 'normal', COLORS.dark);
-  doc.text(sanitizeText(data.countryInfo.timezone), ciX + 131, ci2Y);
-
-  yPos += 28;
-
-  // Requesting Company
-  if (data.requestingCompany) {
-    doc.setFillColor(...COLORS.warning);
-    doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
-    setTextStyle(doc, 11, 'bold', COLORS.dark);
-    doc.text(T.REQUESTING_COMPANY, margin + 10, yPos + 9);
-    yPos += 18;
-
-    doc.setFillColor(...COLORS.bgPrimary);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 20, 3, 3, 'F');
-
-    const rcY = yPos + 10;
-    setTextStyle(doc, 8, 'bold', COLORS.muted);
-    doc.text(T.COMPANY, margin + 8, rcY);
-    setTextStyle(doc, 8, 'normal', COLORS.dark);
-    doc.text(sanitizeText(data.requestingCompany.name), margin + 35, rcY);
-
-    if (data.requestingCompany.nif) {
-      setTextStyle(doc, 8, 'bold', COLORS.muted);
-      doc.text(T.NIF, margin + 105, rcY);
-      setTextStyle(doc, 8, 'normal', COLORS.dark);
-      doc.text(sanitizeText(data.requestingCompany.nif), margin + 117, rcY);
-    }
-
-    yPos += 26;
-  }
-
-  // Requested By
-  if (data.requestedBy) {
-    doc.setFillColor(...COLORS.info);
-    doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
-    setTextStyle(doc, 11, 'bold', COLORS.dark);
-    doc.text(T.REQUESTED_BY, margin + 10, yPos + 9);
-    yPos += 18;
-
-    doc.setFillColor(...COLORS.bgPrimary);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 14, 3, 3, 'F');
-
-    const rbY = yPos + 9;
-    setTextStyle(doc, 8, 'bold', COLORS.muted);
-    doc.text(T.NAME, margin + 8, rbY);
-    setTextStyle(doc, 8, 'normal', COLORS.dark);
-    doc.text(sanitizeText(data.requestedBy.name), margin + 26, rbY);
-
-    if (data.requestedBy.role) {
-      setTextStyle(doc, 8, 'bold', COLORS.muted);
-      doc.text(T.ROLE, margin + 85, rbY);
-      setTextStyle(doc, 8, 'normal', COLORS.dark);
-      doc.text(sanitizeText(data.requestedBy.role), margin + 103, rbY);
-    }
-
-    yPos += 20;
-  }
-
-  // Footer
-  renderFooter(doc, lang);
+const validateCoverPageData = (data: CoverPageData): void => {
+  if (!data) throw new Error('Cover page data is required');
+  if (!data.reportTitle?.trim()) throw new Error('Report title is required');
+  if (!data.reportType?.trim()) throw new Error('Report type is required');
+  if (!data.generatedAt || !(data.generatedAt instanceof Date)) throw new Error('Generated date must be a valid Date object');
+  if (!data.generatingCompany?.name) throw new Error('Generating company name is required');
 };
 
 // ============================================================================
-// DATA SOURCES PAGE
+// DEFAULT DATA
+// ============================================================================
+
+export const getDefaultCoverPageData = (lang: DocumentLanguageCode = 'pt'): Omit<CoverPageData, 'reportTitle' | 'reportType' | 'reportPeriod' | 'generatedAt' | 'isAiGenerated'> => {
+  return {
+    generatingCompany: {
+      name: 'AlphaData',
+      fullName: 'AlphaData - Inteligencia de Mercado Petrolifero Angolano',
+      description: 'Plataforma lider em analise de dados e inteligencia artificial para o sector petrolifero de Angola. Fornecemos insights estrategicos, previsoes de mercado e analises de risco em tempo real.',
+      contact: 'info@alphadata.ao',
+      website: 'www.alphadata.ao',
+      address: 'Luanda, Angola',
+    },
+    dataSources: DATA_SOURCES,
+    countryInfo: {
+      name: 'Republica de Angola',
+      region: 'Africa Subsaariana',
+      currency: 'Kwanza (AOA)',
+      language: 'Portugues',
+      timezone: 'WAT (UTC+1)',
+    },
+    language: 'pt',
+  };
+};
+
+// ============================================================================
+// COVER PAGE — DARK THEME
+// ============================================================================
+
+const renderCoverPage = (doc: jsPDF, data: CoverPageData): void => {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const m = LAYOUT.MARGIN;
+
+  // === Full dark background ===
+  doc.setFillColor(...C.pageBg);
+  doc.rect(0, 0, W, H, 'F');
+
+  // === Top gradient bar (4px) ===
+  const barH = 1.5;
+  // Blue → Green → Amber gradient (approximated with 3 segments)
+  const segW = W / 3;
+  doc.setFillColor(...C.accentBlue);
+  doc.rect(0, 0, segW, barH, 'F');
+  doc.setFillColor(...C.accentGreen);
+  doc.rect(segW, 0, segW, barH, 'F');
+  doc.setFillColor(...C.accentAmber);
+  doc.rect(segW * 2, 0, segW, barH, 'F');
+
+  // === HEADER: Logo + Tagline + AI Badge ===
+  let y = 14;
+
+  if (data.logoBase64) {
+    try {
+      doc.addImage(data.logoBase64, 'PNG', m, y, 18, 18);
+      setStyle(doc, 22, 'bold', C.textPrimary);
+      doc.text('ALPHADATA', m + 22, y + 12);
+    } catch {
+      setStyle(doc, 36, 'bold', C.accentBlue);
+      doc.text('A', m, y + 15);
+      setStyle(doc, 22, 'bold', C.textPrimary);
+      doc.text('ALPHADATA', m + 18, y + 15);
+    }
+  } else {
+    setStyle(doc, 36, 'bold', C.accentBlue);
+    doc.text('A', m, y + 15);
+    setStyle(doc, 22, 'bold', C.textPrimary);
+    doc.text('ALPHADATA', m + 18, y + 15);
+  }
+
+  // Tagline below logo
+  setStyle(doc, 7, 'normal', C.textSecondary);
+  doc.text(T.INTELLIGENCE, m, y + 24);
+
+  // AI Badge (top right)
+  if (data.isAiGenerated) {
+    const badgeText = T.AI_BADGE;
+    const badgeW = doc.getTextWidth(badgeText) + 14;
+    const badgeX = W - m - badgeW;
+    doc.setFillColor(0, 30, 50);
+    doc.roundedRect(badgeX, y + 2, badgeW, 10, 5, 5, 'F');
+    doc.setDrawColor(...C.accentBlue);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(badgeX, y + 2, badgeW, 10, 5, 5, 'S');
+    setStyle(doc, 7, 'bold', C.accentBlue);
+    doc.text(badgeText, badgeX + 7, y + 9);
+  }
+
+  // === HERO SECTION ===
+  y = 58;
+
+  // Report label with blue left border
+  doc.setFillColor(...C.accentBlue);
+  doc.rect(m, y, 1.2, 7, 'F');
+  setStyle(doc, 7.5, 'normal', C.textSecondary);
+  doc.text(T.REPORT_LABEL, m + 5, y + 5);
+
+  // Main title
+  y += 16;
+  setStyle(doc, 28, 'bold', C.textPrimary);
+  const titleLines = doc.splitTextToSize(sanitizeText(data.reportTitle), W - 2 * m);
+  doc.text(titleLines, m, y);
+  y += titleLines.length * 12;
+
+  // Subtitle (period + location)
+  y += 4;
+  setStyle(doc, 11, 'normal', C.textSecondary);
+  doc.text(sanitizeText(data.reportPeriod) + '  ·  Angola  ·  Bacia do Congo', m, y);
+
+  // Blue divider line
+  y += 10;
+  doc.setFillColor(...C.accentBlue);
+  doc.rect(m, y, 25, 1.2, 'F');
+
+  // === META CARD ===
+  y += 12;
+  const metaCardH = 22;
+  doc.setFillColor(...C.surface);
+  doc.roundedRect(m, y, W - 2 * m, metaCardH, 4, 4, 'F');
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(m, y, W - 2 * m, metaCardH, 4, 4, 'S');
+
+  const col1X = m + 8;
+  const col2X = m + 60;
+  const col3X = m + 115;
+  const metaLabelY = y + 8;
+  const metaValueY = y + 15;
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.TYPE, col1X, metaLabelY);
+  setStyle(doc, 8, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.reportType), col1X, metaValueY);
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.PERIOD, col2X, metaLabelY);
+  setStyle(doc, 8, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.reportPeriod) || 'Actual', col2X, metaValueY);
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.GENERATED_AT, col3X, metaLabelY);
+  setStyle(doc, 8, 'normal', C.textPrimary);
+  doc.text(formatDateShort(data.generatedAt), col3X, metaValueY);
+
+  // Live indicator (right side of card)
+  const liveX = W - m - 42;
+  doc.setFillColor(...C.accentGreen);
+  doc.circle(liveX, y + 11, 1.5, 'F');
+  setStyle(doc, 6, 'bold', C.accentGreen);
+  doc.text(T.LIVE_DATA, liveX + 4, y + 12.5);
+
+  // === COMPANY SECTION ===
+  y += metaCardH + 12;
+  doc.setFillColor(...C.accentBlue);
+  doc.rect(m, y, 1.5, 10, 'F');
+  setStyle(doc, 7, 'bold', C.textSecondary);
+  doc.text(T.GENERATING_COMPANY, m + 6, y + 4);
+  setStyle(doc, 12, 'bold', C.textPrimary);
+  doc.text('AlphaData', m + 6, y + 12);
+
+  y += 16;
+  setStyle(doc, 8, 'normal', C.textSecondary);
+  const descLines = doc.splitTextToSize(sanitizeText(data.generatingCompany.description), W - 2 * m - 6);
+  doc.text(descLines, m + 6, y);
+  y += descLines.length * 4 + 4;
+
+  setStyle(doc, 7, 'normal', C.textMuted);
+  doc.text(
+    `${sanitizeText(data.generatingCompany.contact)}  ·  ${sanitizeText(data.generatingCompany.website)}  ·  ${sanitizeText(data.generatingCompany.address)}`,
+    m + 6, y
+  );
+
+  // === COUNTRY INFO CARD ===
+  y += 12;
+  const countryCardH = 20;
+  doc.setFillColor(...C.surface);
+  doc.roundedRect(m, y, W - 2 * m, countryCardH, 4, 4, 'F');
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(m, y, W - 2 * m, countryCardH, 4, 4, 'S');
+
+  const ciY1 = y + 8;
+  const ciY2 = y + 15;
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.COUNTRY, col1X, ciY1);
+  setStyle(doc, 7.5, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.countryInfo.name), col1X + 16, ciY1);
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.REGION, col2X, ciY1);
+  setStyle(doc, 7.5, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.countryInfo.region), col2X + 18, ciY1);
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.CURRENCY, col1X, ciY2);
+  setStyle(doc, 7.5, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.countryInfo.currency), col1X + 18, ciY2);
+
+  setStyle(doc, 6, 'bold', C.textSecondary);
+  doc.text(T.TIMEZONE, col2X, ciY2);
+  setStyle(doc, 7.5, 'normal', C.textPrimary);
+  doc.text(sanitizeText(data.countryInfo.timezone), col2X + 14, ciY2);
+
+  y += countryCardH;
+
+  // === REQUESTING COMPANY ===
+  if (data.requestingCompany) {
+    y += 10;
+    doc.setFillColor(...C.surface);
+    doc.roundedRect(m, y, W - 2 * m, 18, 4, 4, 'F');
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(m, y, W - 2 * m, 18, 4, 4, 'S');
+
+    setStyle(doc, 6, 'bold', C.textSecondary);
+    doc.text(T.REQUESTING_COMPANY, col1X, y + 6);
+    setStyle(doc, 8, 'normal', C.textPrimary);
+    doc.text(sanitizeText(data.requestingCompany.name), col1X, y + 13);
+
+    if (data.requestingCompany.nif) {
+      setStyle(doc, 6, 'bold', C.textSecondary);
+      doc.text(T.NIF, col2X + 20, y + 6);
+      setStyle(doc, 8, 'normal', C.textPrimary);
+      doc.text(sanitizeText(data.requestingCompany.nif), col2X + 20, y + 13);
+    }
+    y += 18;
+  }
+
+  // === REQUESTED BY ===
+  if (data.requestedBy) {
+    y += 6;
+    doc.setFillColor(...C.surface);
+    doc.roundedRect(m, y, W - 2 * m, 14, 4, 4, 'F');
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(m, y, W - 2 * m, 14, 4, 4, 'S');
+
+    setStyle(doc, 6, 'bold', C.textSecondary);
+    doc.text(T.REQUESTED_BY, col1X, y + 6);
+    setStyle(doc, 8, 'normal', C.textPrimary);
+    doc.text(sanitizeText(data.requestedBy.name), col1X + 32, y + 6);
+
+    if (data.requestedBy.role) {
+      setStyle(doc, 6, 'bold', C.textSecondary);
+      doc.text(T.ROLE, col2X + 20, y + 6);
+      setStyle(doc, 8, 'normal', C.textPrimary);
+      doc.text(sanitizeText(data.requestedBy.role), col2X + 36, y + 6);
+    }
+    y += 14;
+  }
+
+  // === BOTTOM FOOTER BAR ===
+  const footerY = H - LAYOUT.FOOTER_HEIGHT;
+  doc.setFillColor(...C.surface);
+  doc.rect(0, footerY, W, LAYOUT.FOOTER_HEIGHT, 'F');
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(0.3);
+  doc.line(0, footerY, W, footerY);
+
+  setStyle(doc, 7, 'normal', C.textMuted);
+  doc.text('AlphaData  ·  Inteligencia de Mercado', m, footerY + 10);
+
+  setStyle(doc, 7, 'normal', C.textMuted);
+  doc.text(T.CONFIDENTIAL, W - m - 50, footerY + 10);
+};
+
+// ============================================================================
+// DATA SOURCES PAGE — DARK THEME
 // ============================================================================
 
 const renderDataSourcesPage = (doc: jsPDF, data: CoverPageData): void => {
   doc.addPage();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = LAYOUT.MARGIN;
-  const lang = data.language || 'pt';
-  const T = getCoverTranslation(lang);
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const m = LAYOUT.MARGIN;
+
+  // Dark background
+  doc.setFillColor(...C.pageBg);
+  doc.rect(0, 0, W, H, 'F');
 
   // Header bar
-  doc.setFillColor(...COLORS.dark);
-  doc.rect(0, 0, pageWidth, 60, 'F');
+  doc.setFillColor(...C.surface);
+  doc.rect(0, 0, W, 50, 'F');
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(0.3);
+  doc.line(0, 50, W, 50);
 
   if (data.logoBase64) {
     try {
-      doc.addImage(data.logoBase64, 'PNG', margin, 14, 16, 16);
-      setTextStyle(doc, 22, 'bold', COLORS.white);
-      doc.text('ALPHADATA', margin + 22, 28);
+      doc.addImage(data.logoBase64, 'PNG', m, 12, 14, 14);
+      setStyle(doc, 18, 'bold', C.textPrimary);
+      doc.text('ALPHADATA', m + 18, 23);
     } catch {
-      setTextStyle(doc, 36, 'bold', COLORS.brand);
-      doc.text('α', margin, 32);
-      setTextStyle(doc, 22, 'bold', COLORS.white);
-      doc.text('ALPHADATA', margin + 22, 32);
+      setStyle(doc, 18, 'bold', C.textPrimary);
+      doc.text('ALPHADATA', m, 23);
     }
   } else {
-    setTextStyle(doc, 36, 'bold', COLORS.brand);
-    doc.text('α', margin, 32);
-    setTextStyle(doc, 22, 'bold', COLORS.white);
-    doc.text('ALPHADATA', margin + 22, 32);
+    setStyle(doc, 18, 'bold', C.textPrimary);
+    doc.text('ALPHADATA', m, 23);
   }
 
-  setTextStyle(doc, 10, 'normal', COLORS.lightGray);
-  doc.text(T.DATA_SOURCES_PAGE_TITLE, margin, 46);
+  setStyle(doc, 9, 'normal', C.textSecondary);
+  doc.text(T.DATA_SOURCES_TITLE, m, 38);
 
-  let yPos = 75;
+  let y = 65;
 
   // Section title
-  doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(margin, yPos, 4, 12, 1, 1, 'F');
-  setTextStyle(doc, 11, 'bold', COLORS.dark);
-  doc.text(T.DATA_SOURCES, margin + 10, yPos + 9);
-  yPos += 22;
+  doc.setFillColor(...C.accentBlue);
+  doc.rect(m, y, 1.5, 10, 'F');
+  setStyle(doc, 10, 'bold', C.textPrimary);
+  doc.text(T.DATA_SOURCES, m + 6, y + 7);
+  y += 18;
 
   // Intro text
-  setTextStyle(doc, 9, 'normal', COLORS.darkGray);
-  const introLines = doc.splitTextToSize(T.DATA_SOURCES_INTRO, pageWidth - 2 * margin);
-  doc.text(introLines, margin, yPos);
-  yPos += introLines.length * 5 + 14;
+  setStyle(doc, 8, 'normal', C.textSecondary);
+  const introLines = doc.splitTextToSize(T.DATA_SOURCES_INTRO, W - 2 * m);
+  doc.text(introLines, m, y);
+  y += introLines.length * 4.5 + 10;
 
-  // Data sources cards
-  data.dataSources.forEach((source, index) => {
-    const cardHeight = 30;
-    if (yPos + cardHeight + 10 > doc.internal.pageSize.getHeight() - LAYOUT.FOOTER_HEIGHT - margin) {
-      renderFooter(doc, lang);
+  // Data source cards
+  const sources = data.dataSources || DATA_SOURCES;
+  sources.forEach((source, index) => {
+    const cardH = 26;
+    if (y + cardH + 8 > H - LAYOUT.FOOTER_HEIGHT - m) {
       doc.addPage();
-      yPos = margin;
+      doc.setFillColor(...C.pageBg);
+      doc.rect(0, 0, W, H, 'F');
+      y = m;
     }
 
-    doc.setFillColor(...COLORS.white);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, cardHeight, 4, 4, 'F');
-    doc.setDrawColor(...COLORS.lightGray);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, cardHeight, 4, 4, 'S');
+    doc.setFillColor(...C.surface);
+    doc.roundedRect(m, y, W - 2 * m, cardH, 4, 4, 'F');
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(m, y, W - 2 * m, cardH, 4, 4, 'S');
 
     // Number badge
-    const badgeX = margin + 10;
-    const badgeY = yPos + 15;
-    doc.setFillColor(...COLORS.primary);
-    doc.circle(badgeX, badgeY, 8, 'F');
-    setTextStyle(doc, 10, 'bold', COLORS.white);
-    doc.text(`${index + 1}`, badgeX, badgeY + 3, { align: 'center' });
+    const badgeX = m + 10;
+    const badgeY = y + 13;
+    doc.setFillColor(...C.accentBlue);
+    doc.circle(badgeX, badgeY, 6, 'F');
+    setStyle(doc, 8, 'bold', C.white);
+    doc.text(`${index + 1}`, badgeX, badgeY + 2.5, { align: 'center' });
 
     // Source name
-    setTextStyle(doc, 10, 'bold', COLORS.dark);
-    doc.text(sanitizeText(source.name), margin + 24, yPos + 11);
+    setStyle(doc, 9, 'bold', C.textPrimary);
+    doc.text(sanitizeText(source.name), m + 22, y + 10);
 
     // Type badge
     const typeText = `[${sanitizeText(source.type)}]`;
     const typeWidth = doc.getTextWidth(typeText) + 8;
-    const typeBadgeX = pageWidth - margin - typeWidth - 6;
-    doc.setFillColor(...COLORS.brand);
-    doc.roundedRect(typeBadgeX, yPos + 5, typeWidth, 10, 2, 2, 'F');
-    setTextStyle(doc, 7, 'bold', COLORS.white);
-    doc.text(typeText, typeBadgeX + 4, yPos + 12);
+    const typeBadgeX = W - m - typeWidth - 6;
+    doc.setFillColor(...C.accentBlue);
+    doc.roundedRect(typeBadgeX, y + 4, typeWidth, 9, 2, 2, 'F');
+    setStyle(doc, 6.5, 'bold', C.white);
+    doc.text(typeText, typeBadgeX + 4, y + 10);
 
     // Description
-    setTextStyle(doc, 8, 'normal', COLORS.darkGray);
-    doc.text(sanitizeText(source.description), margin + 24, yPos + 21);
+    setStyle(doc, 7.5, 'normal', C.textSecondary);
+    doc.text(sanitizeText(source.description), m + 22, y + 19);
 
-    yPos += cardHeight + 8;
+    y += cardH + 6;
   });
 
   // Quality note
-  yPos += 8;
-  doc.setFillColor(235, 248, 255);
-  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 24, 4, 4, 'F');
+  y += 6;
+  doc.setFillColor(0, 30, 50);
+  doc.roundedRect(m, y, W - 2 * m, 22, 4, 4, 'F');
 
-  setTextStyle(doc, 8, 'bold', COLORS.primary);
-  doc.text(T.DATA_QUALITY_TITLE, margin + 8, yPos + 9);
-  setTextStyle(doc, 8, 'normal', COLORS.darkGray);
-  const noteLines = doc.splitTextToSize(sanitizeText(T.DATA_QUALITY_NOTE), pageWidth - 2 * margin - 16);
-  doc.text(noteLines, margin + 8, yPos + 17);
+  setStyle(doc, 7.5, 'bold', C.accentBlue);
+  doc.text(T.DATA_QUALITY_TITLE, m + 8, y + 8);
+  setStyle(doc, 7, 'normal', C.textSecondary);
+  const noteLines = doc.splitTextToSize(T.DATA_QUALITY_NOTE, W - 2 * m - 16);
+  doc.text(noteLines, m + 8, y + 15);
 
-  renderFooter(doc, lang);
+  // Footer
+  const footerY = H - LAYOUT.FOOTER_HEIGHT;
+  doc.setFillColor(...C.surface);
+  doc.rect(0, footerY, W, LAYOUT.FOOTER_HEIGHT, 'F');
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(0.3);
+  doc.line(0, footerY, W, footerY);
+
+  setStyle(doc, 7, 'normal', C.textMuted);
+  doc.text('AlphaData  ·  Inteligencia de Mercado', m, footerY + 10);
+  doc.text(T.CONFIDENTIAL, W - m - 50, footerY + 10);
 };
 
 // ============================================================================
-// FOOTER
-// ============================================================================
-
-const renderFooter = (doc: jsPDF, lang: DocumentLanguageCode = 'pt'): void => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const T = getCoverTranslation(lang);
-
-  doc.setFillColor(...COLORS.dark);
-  doc.rect(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, LAYOUT.FOOTER_HEIGHT, 'F');
-
-  doc.setDrawColor(...COLORS.brand);
-  doc.setLineWidth(LAYOUT.LINE_WIDTH_MEDIUM);
-  doc.line(0, pageHeight - LAYOUT.FOOTER_HEIGHT, pageWidth, pageHeight - LAYOUT.FOOTER_HEIGHT);
-
-  setTextStyle(doc, 8, 'normal', COLORS.mediumGray);
-  doc.text(sanitizeText(T.CONFIDENTIAL_NOTICE), pageWidth / 2, pageHeight - 16, { align: 'center' });
-
-  setTextStyle(doc, 8, 'bold', COLORS.brand);
-  doc.text(T.CONFIDENTIAL_HEADER, pageWidth / 2, pageHeight - 8, { align: 'center' });
-};
-
-// ============================================================================
-// MAIN EXPORT FUNCTION
+// MAIN EXPORT
 // ============================================================================
 
 export const addCoverPageToPDF = (doc: jsPDF, data: CoverPageData): void => {
@@ -748,55 +619,36 @@ const escapeXml = (str: string): string => {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 };
 
-const addExcelRow = (
-  styleId: string,
-  label: string,
-  value?: string,
-  isHeader: boolean = false
-): string => {
-  if (isHeader) {
-    return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell></Row>`;
-  }
-  if (value !== undefined) {
-    return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell></Row>`;
-  }
+const addExcelRow = (styleId: string, label: string, value?: string, isHeader: boolean = false): string => {
+  if (isHeader) return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell></Row>`;
+  if (value !== undefined) return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell></Row>`;
   return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell></Row>`;
 };
 
 const addExcelSeparator = (): string => `<Row></Row>`;
-
-const addExcelDivider = (styleId: string = 'brand'): string => {
-  return `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">===============================================================</Data></Cell></Row>`;
-};
+const addExcelDivider = (styleId: string = 'brand'): string => `<Row><Cell ss:StyleID="${styleId}"><Data ss:Type="String">===============================================================</Data></Cell></Row>`;
 
 export const getCoverPageExcelRows = (data: CoverPageData): string[] => {
   validateCoverPageData(data);
-  const lang = data.language || 'pt';
-  const T = getCoverTranslation(lang);
-
   const rows: string[] = [];
 
   rows.push(addExcelDivider());
-  rows.push(addExcelRow('brand', `a ALPHADATA - ${T.INFO_PAGE}`, undefined, true));
+  rows.push(addExcelRow('brand', `ALPHADATA - PAGINA INFORMATIVA`, undefined, true));
   rows.push(addExcelDivider());
   rows.push(addExcelSeparator());
 
   rows.push(addExcelRow('subheader', T.GENERATING_COMPANY, undefined, true));
   rows.push(addExcelRow('bold', T.NAME, data.generatingCompany.fullName));
-  rows.push(addExcelRow('bold', T.DESCRIPTION, data.generatingCompany.description));
-  rows.push(addExcelRow('bold', T.CONTACT, data.generatingCompany.contact));
-  rows.push(addExcelRow('bold', T.WEBSITE, data.generatingCompany.website));
-  rows.push(addExcelRow('bold', T.ADDRESS, data.generatingCompany.address));
+  rows.push(addExcelRow('bold', 'Descricao:', data.generatingCompany.description));
+  rows.push(addExcelRow('bold', 'Contacto:', data.generatingCompany.contact));
+  rows.push(addExcelRow('bold', 'Website:', data.generatingCompany.website));
+  rows.push(addExcelRow('bold', 'Endereco:', data.generatingCompany.address));
   rows.push(addExcelSeparator());
 
   rows.push(addExcelRow('subheader', T.DATA_SOURCES, undefined, true));
-  rows.push(
-    `<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE_TYPE}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE_DESC}</Data></Cell></Row>`
-  );
-  data.dataSources.forEach((source) => {
-    rows.push(
-      `<Row><Cell><Data ss:Type="String">${escapeXml(source.name)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(source.type)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(source.description)}</Data></Cell></Row>`
-    );
+  rows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE_TYPE}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${T.SOURCE_DESC}</Data></Cell></Row>`);
+  (data.dataSources || DATA_SOURCES).forEach((source) => {
+    rows.push(`<Row><Cell><Data ss:Type="String">${escapeXml(source.name)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(source.type)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(source.description)}</Data></Cell></Row>`);
   });
   rows.push(addExcelSeparator());
 
@@ -804,7 +656,6 @@ export const getCoverPageExcelRows = (data: CoverPageData): string[] => {
   rows.push(addExcelRow('bold', T.COUNTRY, data.countryInfo.name));
   rows.push(addExcelRow('bold', T.REGION, data.countryInfo.region));
   rows.push(addExcelRow('bold', T.CURRENCY, data.countryInfo.currency));
-  rows.push(addExcelRow('bold', T.LANGUAGE, data.countryInfo.language));
   rows.push(addExcelRow('bold', T.TIMEZONE, data.countryInfo.timezone));
   rows.push(addExcelSeparator());
 
@@ -813,7 +664,6 @@ export const getCoverPageExcelRows = (data: CoverPageData): string[] => {
     rows.push(addExcelRow('bold', T.COMPANY, data.requestingCompany.name));
     if (data.requestingCompany.nif) rows.push(addExcelRow('bold', T.NIF, data.requestingCompany.nif));
     if (data.requestingCompany.sector) rows.push(addExcelRow('bold', T.SECTOR, data.requestingCompany.sector));
-    if (data.requestingCompany.country) rows.push(addExcelRow('bold', T.COUNTRY, data.requestingCompany.country));
     rows.push(addExcelSeparator());
   }
 
@@ -827,18 +677,16 @@ export const getCoverPageExcelRows = (data: CoverPageData): string[] => {
 
   rows.push(addExcelRow('subheader', T.REPORT_INFO, undefined, true));
   rows.push(addExcelRow('bold', T.TITLE_LABEL, data.reportTitle));
-  rows.push(addExcelRow('bold', T.TYPE, data.reportType));
-  rows.push(addExcelRow('bold', T.PERIOD, data.reportPeriod || T.CURRENT));
-  rows.push(addExcelRow('bold', T.GENERATED, formatDateTime(data.generatedAt, lang)));
+  rows.push(addExcelRow('bold', 'Tipo:', data.reportType));
+  rows.push(addExcelRow('bold', 'Periodo:', data.reportPeriod || 'Actual'));
+  rows.push(addExcelRow('bold', 'Gerado:', formatDateTime(data.generatedAt)));
   if (data.isAiGenerated) {
     rows.push(addExcelRow('bold', T.METHOD, T.AI_METHOD));
   }
   rows.push(addExcelSeparator());
-
   rows.push(addExcelDivider());
-  rows.push(addExcelRow('footer', T.END_INFO_PAGE, undefined, true));
+  rows.push(addExcelRow('footer', 'FIM DA PAGINA INFORMATIVA - INICIO DO CONTEUDO DO RELATORIO', undefined, true));
   rows.push(addExcelDivider());
-  rows.push(addExcelSeparator());
   rows.push(addExcelSeparator());
 
   return rows;
