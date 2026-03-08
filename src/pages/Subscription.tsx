@@ -21,30 +21,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS
+   DESIGN TOKENS (semantic)
 ═══════════════════════════════════════════════════════ */
-const BG_DEEP  = "#04060D";
-const BG_NAVY  = "#080D1A";
-const BG_CARD  = "#0D1526";
-const BG_HOVER = "#111E33";
-const RED      = "#E8192C";
-const RED_DIM  = "rgba(232,25,44,0.12)";
-const RED_BDR  = "rgba(232,25,44,0.30)";
-const BLUE     = "#1A5CFF";
-const BLUE_MID = "#3B7BFF";
-const BLUE_DIM = "rgba(26,92,255,0.15)";
-const BLUE_BDR = "rgba(59,123,255,0.30)";
-const WHITE    = "#FFFFFF";
-const W60      = "rgba(255,255,255,0.60)";
-const W30      = "rgba(255,255,255,0.30)";
-const W10      = "rgba(255,255,255,0.08)";
-const BORDER   = "rgba(255,255,255,0.07)";
-const GOLD     = "#F59E0B";
-const GOLD_DIM = "rgba(245,158,11,0.12)";
-const GOLD_BDR = "rgba(245,158,11,0.30)";
-const GREEN    = "#4ade80";
-const GREEN_DIM= "rgba(74,222,128,0.10)";
-const GREEN_BDR= "rgba(74,222,128,0.25)";
+const TV = {
+  bgDeep:   "hsl(var(--background))",
+  bgCard:   "hsl(var(--card))",
+  bgHover:  "hsl(var(--muted))",
+  border:   "hsl(var(--border))",
+  text:     "hsl(var(--foreground))",
+  textMuted: "hsl(var(--muted-foreground))",
+  textDim:  "hsl(var(--muted-foreground) / 0.6)",
+  primary:  "hsl(var(--primary))",
+  primaryDim: "hsl(var(--primary) / 0.15)",
+  primaryBdr: "hsl(var(--primary) / 0.30)",
+  accent:   "hsl(var(--accent))",
+  accentDim: "hsl(var(--accent) / 0.12)",
+  accentBdr: "hsl(var(--accent) / 0.30)",
+  success:  "hsl(var(--success))",
+  successDim: "hsl(var(--success) / 0.10)",
+  successBdr: "hsl(var(--success) / 0.25)",
+  destructive: "hsl(var(--destructive))",
+  destructiveDim: "hsl(var(--destructive) / 0.12)",
+  destructiveBdr: "hsl(var(--destructive) / 0.30)",
+};
 
 /* ═══════════════════════════════════════════════════════
    TYPES
