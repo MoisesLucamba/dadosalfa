@@ -1151,7 +1151,7 @@ const ThinkingAnimation = () => {
             className="flex items-center gap-3"
           >
             <current.icon className="w-4 h-4 flex-shrink-0" style={{ color: current.color, animation: stage === 0 ? "spin 2s linear infinite" : stage === 1 ? "pulse 1s ease-in-out infinite" : "none" }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#5a8ab5", letterSpacing: "0.03em" }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", color: "#5a8ab5", letterSpacing: "0.03em" }}>
               {current.text}
             </span>
           </motion.div>
