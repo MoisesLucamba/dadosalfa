@@ -434,7 +434,7 @@ const Production = () => {
                       </div>
 
                       {/* operator */}
-                      <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
+                      <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
                         {block.operator}
                       </span>
 
