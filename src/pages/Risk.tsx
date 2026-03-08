@@ -76,6 +76,7 @@ const Risk = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [showSimulator, setShowSimulator] = useState(false);
+  const [activeTab, setActiveTab] = useState<'risk' | 'transition'>('risk');
 
   const fetchRiskData = async () => {
     setLoading(true);
