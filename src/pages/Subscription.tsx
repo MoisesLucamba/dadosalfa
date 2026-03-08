@@ -67,7 +67,6 @@ interface SubscriptionData {
   currentUsers: number; currentWorkspaces: number; usagePercent: number;
 }
 
-// Bitcoin removed from PaymentMethodType
 type PaymentMethodType =
   | 'visa' | 'mastercard' | 'amex' | 'unionpay'
   | 'transfer' | 'multicaixa' | 'mpesa' | 'unitel'
@@ -81,11 +80,12 @@ interface PaymentMethod {
 }
 
 /* ═══════════════════════════════════════════════════════
-   STATIC DATA
+   STATIC DATA — PREÇOS ATUALIZADOS
 ═══════════════════════════════════════════════════════ */
 const PLANS: Plan[] = [
   {
-    id: "starter", name: "Starter", price: 14999, priceMonthly: 1499,
+    // ── STARTER: $8,000/ano | $800/mês ──
+    id: "starter", name: "Starter", price: 8000, priceMonthly: 800,
     maxUsers: 6, maxWorkspaces: 1,
     accent: W60, accentDim: W10, accentBdr: BORDER,
     icon: Shield,
@@ -102,7 +102,8 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    id: "professional", name: "Professional", price: 49999, priceMonthly: 4999,
+    // ── PROFESSIONAL: $60,000/ano | $5,500/mês ──
+    id: "professional", name: "Professional", price: 60000, priceMonthly: 5500,
     maxUsers: 16, maxWorkspaces: -1, popular: true,
     accent: BLUE_MID, accentDim: BLUE_DIM, accentBdr: BLUE_BDR,
     icon: Zap,
@@ -119,7 +120,8 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    id: "enterprise", name: "Enterprise", price: 250000, priceMonthly: 25000,
+    // ── ENTERPRISE: $120,000/ano | $11,000/mês ──
+    id: "enterprise", name: "Enterprise", price: 120000, priceMonthly: 11000,
     maxUsers: -1, maxWorkspaces: -1,
     accent: GOLD, accentDim: GOLD_DIM, accentBdr: GOLD_BDR,
     icon: Sparkles,
@@ -138,12 +140,12 @@ const PLANS: Plan[] = [
 ];
 
 const MOCK_BILLING: BillingHistoryItem[] = [
-  { id:"1", date: new Date("2025-12-01"), amount:49999, status:"paid",    description:"Plano Professional — Dez 2025", invoice:"INV-2025-012", method:"Visa •••• 4242" },
-  { id:"2", date: new Date("2025-11-01"), amount:49999, status:"paid",    description:"Plano Professional — Nov 2025", invoice:"INV-2025-011", method:"Visa •••• 4242" },
-  { id:"3", date: new Date("2025-10-01"), amount:49999, status:"paid",    description:"Plano Professional — Out 2025", invoice:"INV-2025-010", method:"MULTICAIXA"    },
-  { id:"4", date: new Date("2025-09-01"), amount:14999, status:"paid",    description:"Plano Starter — Set 2025",     invoice:"INV-2025-009", method:"Transferência" },
-  { id:"5", date: new Date("2025-08-01"), amount:14999, status:"failed",  description:"Plano Starter — Ago 2025",     invoice:"INV-2025-008", method:"Mastercard •••• 5353" },
-  { id:"6", date: new Date("2025-07-01"), amount:14999, status:"pending", description:"Plano Starter — Jul 2025",     invoice:"INV-2025-007", method:"USDT (TRC-20)" },
+  { id:"1", date: new Date("2025-12-01"), amount:60000,  status:"paid",    description:"Plano Professional — Dez 2025", invoice:"INV-2025-012", method:"Visa •••• 4242" },
+  { id:"2", date: new Date("2025-11-01"), amount:60000,  status:"paid",    description:"Plano Professional — Nov 2025", invoice:"INV-2025-011", method:"Visa •••• 4242" },
+  { id:"3", date: new Date("2025-10-01"), amount:60000,  status:"paid",    description:"Plano Professional — Out 2025", invoice:"INV-2025-010", method:"MULTICAIXA"    },
+  { id:"4", date: new Date("2025-09-01"), amount:8000,   status:"paid",    description:"Plano Starter — Set 2025",     invoice:"INV-2025-009", method:"Transferência" },
+  { id:"5", date: new Date("2025-08-01"), amount:8000,   status:"failed",  description:"Plano Starter — Ago 2025",     invoice:"INV-2025-008", method:"Mastercard •••• 5353" },
+  { id:"6", date: new Date("2025-07-01"), amount:8000,   status:"pending", description:"Plano Starter — Jul 2025",     invoice:"INV-2025-007", method:"USDT (TRC-20)" },
 ];
 
 const MOCK_SUB: SubscriptionData = {
@@ -395,8 +397,6 @@ const PMCard = ({ method, onDelete, onSetDefault }:
 /* ═══════════════════════════════════════════════════════
    PAYMENT TAB
 ═══════════════════════════════════════════════════════ */
-
-// Bitcoin removed from AddStep
 type AddStep = "choose" | "card" | "transfer" | "multicaixa" | "mobile_money" | "paypal" | "stablecoin";
 
 const PAYMENT_GROUPS = [
@@ -515,7 +515,6 @@ const PaymentTab = () => {
     ["Referência",  `SUB-${Date.now().toString().slice(-6)}`],
   ];
 
-  // Only stablecoins — no Bitcoin
   const STABLE_WALLETS: Record<string, string> = {
     "usdt-TRC-20":  "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
     "usdt-ERC-20":  "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -531,7 +530,6 @@ const PaymentTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="font-black text-white">Métodos de Pagamento</p>
@@ -558,7 +556,6 @@ const PaymentTab = () => {
         </div>
       </div>
 
-      {/* List */}
       <div className="space-y-3">
         <AnimatePresence>
           {methods.length > 0 ? methods.map(m => (
@@ -582,7 +579,6 @@ const PaymentTab = () => {
         </AnimatePresence>
       </div>
 
-      {/* Next payment */}
       <div className="rounded-2xl p-5" style={{ background:BG_CARD, border:`1px solid ${BORDER}` }}>
         <p className="text-[10px] font-black uppercase tracking-widest mb-4" style={{ color:W30 }}>Próximo Pagamento</p>
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -609,7 +605,6 @@ const PaymentTab = () => {
         </div>
       </div>
 
-      {/* Security */}
       <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background:BLUE_DIM, border:`1px solid ${BLUE_BDR}` }}>
         <Lock className="w-4 h-4 shrink-0 mt-0.5" style={{ color:BLUE_MID }}/>
         <p className="text-[11px] font-medium" style={{ color:W60 }}>
@@ -618,7 +613,6 @@ const PaymentTab = () => {
         </p>
       </div>
 
-      {/* ══ ADD METHOD DIALOG ══ */}
       <Dialog open={showDialog} onOpenChange={open => !open && closeDialog()}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
           style={{ background:BG_CARD, border:`1px solid ${BLUE_BDR}`, borderRadius:"1.25rem", scrollbarWidth:"thin", scrollbarColor:`${BORDER} transparent` }}>
@@ -648,8 +642,6 @@ const PaymentTab = () => {
           </DialogHeader>
 
           <AnimatePresence mode="wait">
-
-            {/* ─── CHOOSE ─── */}
             {step === "choose" && (
               <motion.div key="choose" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-5 py-2">
                 {PAYMENT_GROUPS.map(group => (
@@ -679,7 +671,6 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── CARD ─── */}
             {step === "card" && (
               <motion.div key="card" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
                 <div className="relative h-36 rounded-2xl overflow-hidden p-5 flex flex-col justify-between"
@@ -728,7 +719,6 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── TRANSFER ─── */}
             {step === "transfer" && (
               <motion.div key="transfer" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -765,7 +755,6 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── MULTICAIXA ─── */}
             {step === "multicaixa" && (
               <motion.div key="multicaixa" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
                 <div className="p-5 rounded-xl flex flex-col items-center gap-3 text-center" style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
@@ -803,7 +792,6 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── MOBILE MONEY ─── */}
             {step === "mobile_money" && (
               <motion.div key="mobile" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
                 <div className="flex gap-2 p-1.5 rounded-xl" style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
@@ -844,7 +832,6 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── PAYPAL ─── */}
             {step === "paypal" && (
               <motion.div key="paypal" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
                 <div className="p-5 rounded-xl flex flex-col items-center gap-3 text-center" style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
@@ -877,10 +864,8 @@ const PaymentTab = () => {
               </motion.div>
             )}
 
-            {/* ─── STABLECOIN (USDT / USDC — no Bitcoin) ─── */}
             {step === "stablecoin" && (
               <motion.div key="stablecoin" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-4 py-2">
-                {/* Coin selector */}
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest block mb-2" style={{ color:W30 }}>Moeda</label>
                   <div className="flex gap-2">
@@ -897,8 +882,6 @@ const PaymentTab = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Network selector */}
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest block mb-2" style={{ color:W30 }}>Rede Blockchain</label>
                   <div className="flex gap-2">
@@ -915,8 +898,6 @@ const PaymentTab = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Wallet address */}
                 {STABLE_WALLETS[walletKey] && (
                   <div className="p-4 rounded-xl space-y-3" style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: stableCoinColor[stableCoin] }}>
@@ -936,8 +917,6 @@ const PaymentTab = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Return wallet (optional) */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest" style={{ color:W30 }}>
                     Endereço de retorno <span className="normal-case font-normal" style={{ color:"rgba(255,255,255,0.18)" }}>(opcional, para recibos)</span>
@@ -945,7 +924,6 @@ const PaymentTab = () => {
                   <input className={inp} placeholder="O seu endereço de carteira"
                     value={crForm.wallet} onChange={e => setCrForm({ wallet:e.target.value })}/>
                 </div>
-
                 <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background:GOLD_DIM, border:`1px solid ${GOLD_BDR}` }}>
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color:GOLD }}/>
                   <p className="text-[11px]" style={{ color:W60 }}>
@@ -957,7 +935,6 @@ const PaymentTab = () => {
             )}
           </AnimatePresence>
 
-          {/* Footer */}
           {step !== "choose" && (
             <DialogFooter className="gap-2 mt-2">
               <button onClick={closeDialog} disabled={isAdding}
@@ -1015,14 +992,11 @@ const Subscription = () => {
   return (
     <div className="flex h-screen overflow-hidden font-sans" style={{ background:BG_DEEP, color:WHITE }}>
       <Sidebar activeItem="/subscription"/>
-
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header activeItem="/subscription"/>
-
         <main className="flex-1 overflow-y-auto p-6 md:p-10" style={{ scrollbarWidth:"thin", scrollbarColor:`${BORDER} transparent` }}>
           <div className="max-w-[1300px] mx-auto space-y-8">
 
-            {/* Page header */}
             <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
@@ -1038,7 +1012,6 @@ const Subscription = () => {
               </p>
             </motion.div>
 
-            {/* Hero — current plan */}
             <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.05 }}
               className="rounded-2xl overflow-hidden"
               style={{ background:BG_CARD, border:`1px solid ${currentPlan.accentBdr}` }}>
@@ -1083,8 +1056,6 @@ const Subscription = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Usage */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 md:p-8 border-t" style={{ borderColor:BORDER }}>
                 <UsageBar label="Utilizadores"   current={MOCK_SUB.currentUsers}      max={currentPlan.maxUsers}      accent={currentPlan.accent}/>
                 <UsageBar label="Workspaces"     current={MOCK_SUB.currentWorkspaces}  max={currentPlan.maxWorkspaces} accent={currentPlan.accent}/>
@@ -1092,7 +1063,6 @@ const Subscription = () => {
               </div>
             </motion.div>
 
-            {/* Tabs */}
             <Tabs defaultValue="plans" className="space-y-6">
               <TabsList className="flex gap-1 p-1.5 rounded-2xl h-auto w-fit"
                 style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
@@ -1104,7 +1074,6 @@ const Subscription = () => {
                 ))}
               </TabsList>
 
-              {/* PLANS */}
               <TabsContent value="plans" className="mt-0 space-y-6">
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color:W30 }}>Ciclo de Faturação:</span>
@@ -1123,7 +1092,6 @@ const Subscription = () => {
                     </span>
                   )}
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   {PLANS.map((plan, i) => (
                     <PlanCard key={plan.id} plan={plan} index={i}
@@ -1131,7 +1099,6 @@ const Subscription = () => {
                       onAction={handlePlanAction} cycle={billingCycle}/>
                   ))}
                 </div>
-
                 <div className="flex items-center justify-center gap-2 pt-2">
                   <Info className="w-4 h-4" style={{ color:W30 }}/>
                   <span className="text-[11px]" style={{ color:W30 }}>
@@ -1140,7 +1107,6 @@ const Subscription = () => {
                 </div>
               </TabsContent>
 
-              {/* BILLING */}
               <TabsContent value="billing" className="mt-0 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
@@ -1154,7 +1120,6 @@ const Subscription = () => {
                     </div>
                   ))}
                 </div>
-
                 <div className="rounded-2xl overflow-hidden" style={{ background:BG_CARD, border:`1px solid ${BORDER}` }}>
                   <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor:BORDER }}>
                     <div>
@@ -1211,7 +1176,6 @@ const Subscription = () => {
                 </div>
               </TabsContent>
 
-              {/* PAYMENT */}
               <TabsContent value="payment" className="mt-0">
                 <PaymentTab/>
               </TabsContent>
@@ -1220,7 +1184,6 @@ const Subscription = () => {
         </main>
       </div>
 
-      {/* Plan change dialog */}
       <Dialog open={!!dialogState.type} onOpenChange={open => !open && closeDialog()}>
         <DialogContent className="sm:max-w-[460px]"
           style={{ background:BG_CARD, border:`1px solid ${dialogState.type==="downgrade" ? RED_BDR : BLUE_BDR}`, borderRadius:"1.25rem" }}>
@@ -1237,7 +1200,6 @@ const Subscription = () => {
               </DialogTitle>
             </div>
           </DialogHeader>
-
           <div className="space-y-4 py-2">
             {dialogState.type==="downgrade" && (
               <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background:RED_DIM, border:`1px solid ${RED_BDR}` }}>
@@ -1248,7 +1210,6 @@ const Subscription = () => {
                 </p>
               </div>
             )}
-
             <div className="rounded-xl p-5 space-y-3" style={{ background:BG_NAVY, border:`1px solid ${BORDER}` }}>
               {[["Plano Atual", currentPlan.name, WHITE],["Novo Plano", targetPlan?.name||"—", targetPlan?.accent||WHITE]].map(([k,v,c]) => (
                 <React.Fragment key={k}>
@@ -1264,14 +1225,12 @@ const Subscription = () => {
                 <span className="text-2xl font-black text-white">{targetPlan ? fmt(targetPlan.price) : "—"}/ano</span>
               </div>
             </div>
-
             <p className="text-[11px] font-medium" style={{ color:W30 }}>
               {dialogState.type==="upgrade"
                 ? `Terá acesso imediato a todas as funcionalidades do plano ${targetPlan?.name}. O valor será ajustado pro-rata.`
                 : `Algumas funcionalidades serão desativadas no próximo ciclo de faturação.`}
             </p>
           </div>
-
           <DialogFooter className="gap-2 mt-2">
             <button onClick={closeDialog} disabled={isProcessing}
               className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-40"
