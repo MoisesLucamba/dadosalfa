@@ -1965,6 +1965,14 @@ export default function WellSimulation() {
         open={showFileUpload}
         onOpenChange={setShowFileUpload}
       />
+
+      {/* ── PDF LANGUAGE DIALOG ── */}
+      <LanguageDownloadDialog
+        open={showPdfLangDialog}
+        onOpenChange={setShowPdfLangDialog}
+        onDownload={handleExportPDF}
+        reportTitle={`Well Simulation — ${selected.name}`}
+      />
     </div>
   );
 }
