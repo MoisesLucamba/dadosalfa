@@ -1298,6 +1298,7 @@ export default function WellSimulation() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showPdfLangDialog, setShowPdfLangDialog] = useState(false);
 
   const riskCol = (r: string) => r === "Baixo" ? "#00e5a0" : r === "Médio" ? "#ffb830" : "#ff4365";
 
