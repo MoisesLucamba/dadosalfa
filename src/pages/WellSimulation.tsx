@@ -1178,7 +1178,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.text(t.aiModel, 20, 44);
   autoTable(doc, {
     startY: 52,
-    head: [t.prodHeaders],
+    head: [[...t.prodHeaders]],
     body: PROD_DATA.map(d => [d.m, d.real.toLocaleString(locale), d.cap.toLocaleString(locale), d.ai.toLocaleString(locale), d.inj.toLocaleString(locale)]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
