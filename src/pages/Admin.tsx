@@ -294,7 +294,7 @@ const Admin = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl h-10 gap-2 border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 text-xs font-bold"
+                  className="rounded-xl h-10 gap-2 border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 text-xs font-bold"
                 >
                   <Download className="w-4 h-4" /> Exportar Logs
                 </Button>
