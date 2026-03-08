@@ -387,7 +387,7 @@ const Production = () => {
                     background: "rgba(0,163,255,0.08)", border: "1px solid rgba(0,163,255,0.20)",
                   }}>
                     <MapPin size={14} style={{ color: "var(--accent-blue)" }} />
-                    <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent-blue)" }}>
+                    <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent-blue)" }}>
                       6 Blocos Activos
                     </span>
                   </div>
