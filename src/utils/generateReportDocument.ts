@@ -886,11 +886,12 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
         head: [[t.operator, t.block, t.field, t.productionBpd, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
-        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
-        bodyStyles: { fontSize: 8, textColor: C.darkGray },
-        alternateRowStyles: { fillColor: C.ultraLight },
-        theme: 'plain',
-        styles: { cellPadding: 3.5, lineColor: C.lightGray, lineWidth: 0.1 },
+        headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
+        bodyStyles: { fontSize: 8, textColor: C.darkGray, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [245, 247, 250] as any },
+        theme: 'grid',
+        styles: { lineColor: [226, 232, 240] as any, lineWidth: 0.25, font: 'helvetica' },
+        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
       });
       ctx.y = (doc as any).lastAutoTable.finalY + L.SECTION_SP;
     }
