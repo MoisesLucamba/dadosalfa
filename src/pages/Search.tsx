@@ -1914,6 +1914,8 @@ const Search = () => {
           </div>
         </div>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 };
