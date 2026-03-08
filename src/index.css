@@ -170,6 +170,87 @@
     background: hsl(var(--muted));
     border-radius: 3px;
   }
+
+  /* ═══ Font utilities ═══ */
+  .font-mono-data {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  /* ═══ Interactive card hover ═══ */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+  .card-hover:hover {
+    border-color: rgba(0, 163, 255, 0.40);
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+  }
+
+  /* ═══ Interactive table row hover ═══ */
+  .row-hover {
+    @apply transition-colors duration-150 cursor-pointer;
+  }
+  .row-hover:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* ═══ Icon button hover ═══ */
+  .icon-btn-hover {
+    @apply transition-all duration-200 rounded-lg p-1.5;
+  }
+  .icon-btn-hover:hover {
+    color: #00A3FF;
+    background: rgba(0, 163, 255, 0.10);
+  }
+
+  /* ═══ Primary button hover ═══ */
+  .btn-primary-hover {
+    @apply transition-all duration-200;
+  }
+  .btn-primary-hover:hover {
+    filter: brightness(1.15);
+    transform: scale(1.02);
+  }
+  .btn-primary-hover:active {
+    transform: scale(0.98);
+  }
+
+  /* ═══ Typography presets ═══ */
+  .text-page-title {
+    @apply text-xl font-semibold tracking-tight;
+    color: #E8EDF5;
+  }
+
+  .text-section-title {
+    @apply text-sm font-semibold uppercase tracking-widest;
+    color: #6B7A99;
+  }
+
+  .text-metric-value {
+    @apply text-2xl font-bold;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    color: #E8EDF5;
+  }
+
+  .text-metric-label {
+    @apply text-xs uppercase tracking-wide;
+    color: #6B7A99;
+  }
+
+  .text-table-header {
+    @apply text-xs font-semibold uppercase tracking-widest;
+    color: #6B7A99;
+  }
+
+  .text-table-cell {
+    @apply text-sm;
+    color: #E8EDF5;
+  }
+
+  .text-numeric {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    text-align: right;
+  }
 }
 
 @keyframes shimmer {
@@ -195,4 +276,11 @@
 /* Safe area for mobile bottom navigation */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Print styles for export */
+@media print {
+  .no-print, nav, aside, header { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .print-show { display: block !important; }
 }
