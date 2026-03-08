@@ -1063,13 +1063,15 @@ const Admin = () => {
       </div>
 
       {/* Tab active style override */}
+      <MobileBottomNav />
+
       <style>{`
         [role="tab"][data-state="active"] {
-          background: ${ACCENT} !important;
-          color: #000 !important;
+          background: hsl(var(--accent)) !important;
+          color: hsl(var(--accent-foreground)) !important;
         }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 8px; }
       `}</style>
     </div>
   );
