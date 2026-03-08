@@ -421,7 +421,7 @@ const Index = () => {
             )}
 
             {/* ── KPI GRID ── */}
-            <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+            <div className="fade-up d2" data-tour="kpi-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
               {isLoading
                 ? [...Array(4)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 128 }} />)
                 : kpiDefs.map((def, i) => {
