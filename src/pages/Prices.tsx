@@ -174,10 +174,10 @@ const Prices = () => {
                     <Globe size={12} style={{ color: "var(--accent-blue)" }} />
                     <SectionLabel>Global Market Intelligence</SectionLabel>
                   </div>
-                  <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                  <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                     Preços &amp; Mercado
                   </h1>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                  <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
                     Benchmarks globais e análise de spreads para o crude angolano.
                   </p>
                 </div>
