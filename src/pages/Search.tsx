@@ -1278,7 +1278,7 @@ const ChatBubble = ({
                   </div>
                 </div>
               ) : (
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#e2e8f0", lineHeight: 1.6 }}>{message.content}</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: "14px", color: "#e2e8f0", lineHeight: 1.6 }}>{message.content}</p>
               )
             ) : (
               <div className="ai-response">
