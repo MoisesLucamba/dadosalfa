@@ -128,12 +128,13 @@ const StatusBadge = ({ approved }: { approved: boolean }) => (
 
 /* ─── Score ring ─────────────────────────────────────────── */
 const ScorePill = ({ score }: { score: number }) => {
-  const color = score > 70 ? "#f87171" : score > 40 ? "#fbbf24" : "#4ade80";
+  const cls = score > 70
+    ? "bg-destructive/10 text-destructive"
+    : score > 40
+    ? "bg-amber-500/10 text-amber-500"
+    : "bg-emerald-500/10 text-emerald-500";
   return (
-    <span
-      className="font-black text-xs px-2 py-0.5 rounded-lg"
-      style={{ background: `${color}15`, color }}
-    >
+    <span className={`font-black text-xs px-2 py-0.5 rounded-lg ${cls}`}>
       {score}/100
     </span>
   );
