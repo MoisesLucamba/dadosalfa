@@ -266,6 +266,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
 const Index = () => {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
+  const { showTour, trigger: triggerTour, reset: resetTour } = useOnboardingTour();
 
   const { data: prodData,   isLoading: loadProd,   refetch: refetchProd  } = useProductionData();
   const { data: priceData,  isLoading: loadPrice,  refetch: refetchPrice } = usePriceData();
