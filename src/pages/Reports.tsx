@@ -143,6 +143,7 @@ const Reports = () => {
   const [selectedReportType, setSelectedReportType] = useState("production");
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [isAiGenerated, setIsAiGenerated] = useState(true);
+  const [generateLanguage, setGenerateLanguage] = useState<DocumentLanguageCode>("pt");
   
   // Schedule dialog states
   const [scheduleName, setScheduleName] = useState("");
