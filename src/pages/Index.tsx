@@ -456,7 +456,7 @@ const Index = () => {
 
               {/* left column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
+                <div data-tour="production-chart" style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
