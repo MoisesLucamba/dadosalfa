@@ -950,11 +950,14 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
 export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const children: any[] = [];
+  const lang = data.language || 'pt';
+  const t = getDocumentTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
 
   // Title
   children.push(
     new Paragraph({
-      text: data.title || 'Relatório AlphaData',
+      text: data.title || `${t.report} AlphaData`,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
     })
@@ -963,8 +966,8 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   children.push(
     new Paragraph({
       children: [
-        new TextRun({ text: `Período: ${data.period || 'N/D'}   |   `, color: '64748B', size: 20 }),
-        new TextRun({ text: `Gerado em: ${safeDate(data.generatedAt).toLocaleDateString('pt-AO')}`, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.docxPeriod}: ${data.period || t.notAvailable}   |   `, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.docxGeneratedAt}: ${safeDate(data.generatedAt).toLocaleDateString(locale)}`, color: '64748B', size: 20 }),
       ],
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 },
@@ -973,7 +976,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
 
   // Render markdown blocks for summary
   if (data.summary) {
-    children.push(new Paragraph({ text: 'Sumário Executivo', heading: HeadingLevel.HEADING_1 }));
+    children.push(new Paragraph({ text: t.executiveSummary, heading: HeadingLevel.HEADING_1 }));
 
     const blocks = parseMarkdown(data.summary);
     for (const block of blocks) {
@@ -1013,9 +1016,9 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   // Tables from content
   const cd = data.content?.data;
   if (cd?.production && Array.isArray(cd.production) && cd.production.length > 0) {
-    children.push(new Paragraph({ text: 'Dados de Produção', heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
+    children.push(new Paragraph({ text: t.productionData, heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
     const headerRow = new TableRow({
-      children: ['Operador', 'Bloco', 'Campo', 'Produção (bpd)', 'Status'].map(h =>
+      children: [t.operator, t.block, t.field, t.productionBpd, t.status].map(h =>
         new TableCell({
           children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: 'FFFFFF', size: 18 })] })],
           shading: { fill: '0A0A0A' },
@@ -1048,7 +1051,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
+  a.download = `AlphaData_${getTypeName(data.type, lang)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
