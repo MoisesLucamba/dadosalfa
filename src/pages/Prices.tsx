@@ -344,7 +344,7 @@ const Prices = () => {
                   display: "flex", flexDirection: "column",
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)" }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Spreads de Referência</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Spreads de Referência</h3>
                     <SectionLabel>Diferenciais de Mercado</SectionLabel>
                   </div>
 
