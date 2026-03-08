@@ -428,7 +428,7 @@ const Production = () => {
                         }}>
                           {blockNum}
                         </div>
-                        <span className="row-name" style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
+                        <span className="row-name" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
                           {block.block}
                         </span>
                       </div>
