@@ -338,7 +338,7 @@ const Index = () => {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <AlertTriangle size={16} style={{ color: "var(--accent-red)", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
+                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
                     Nenhum dado encontrado para o período atual.
                   </span>
                 </div>
