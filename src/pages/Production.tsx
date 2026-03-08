@@ -125,7 +125,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 const CardHeader = ({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) => (
   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
     <div>
-      <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
+      <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
       {sub && <div style={{ marginTop: 3 }}><SectionLabel>{sub}</SectionLabel></div>}
     </div>
     {right}
