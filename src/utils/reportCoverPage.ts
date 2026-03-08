@@ -544,10 +544,8 @@ const renderDataSourcesPage = (doc: jsPDF, data: CoverPageData): void => {
 
   // Quality note
   y += 6;
-  doc.setFillColor(0, 163, 255);
-  doc.setGState?.(new (doc as any).GState?.({ opacity: 0.08 }));
+  doc.setFillColor(0, 30, 50);
   doc.roundedRect(m, y, W - 2 * m, 22, 4, 4, 'F');
-  doc.setGState?.(new (doc as any).GState?.({ opacity: 1 }));
 
   setStyle(doc, 7.5, 'bold', C.accentBlue);
   doc.text(T.DATA_QUALITY_TITLE, m + 8, y + 8);
