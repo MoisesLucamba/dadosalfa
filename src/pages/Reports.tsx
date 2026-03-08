@@ -207,11 +207,13 @@ const Reports = () => {
           period: selectedPeriod || undefined,
           userId: user?.id,
           aiGenerated: isAiGenerated,
+          language: generateLanguage,
         },
       });
       if (error) throw error;
       if (data?.success) {
-        toast.success("Relatório gerado com sucesso!");
+        const successMsg = { pt: "Relatório gerado com sucesso!", en: "Report generated successfully!", fr: "Rapport généré avec succès!" };
+        toast.success(successMsg[generateLanguage] || successMsg.pt);
         fetchReports();
         setShowGenerateDialog(false);
       } else {
