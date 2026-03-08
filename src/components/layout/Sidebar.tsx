@@ -553,7 +553,7 @@ export function Sidebar({
                   style={{
                     background: "rgba(30,58,95,0.4)",
                     border: "1px solid rgba(30,58,95,0.6)",
-                    fontFamily: "'Space Mono', monospace",
+                    fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: "9px",
                     fontWeight: 700,
                     letterSpacing: "0.15em",
