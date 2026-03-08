@@ -222,17 +222,14 @@ export function Sidebar({
 
   return (
     <>
-      {/* Google Fonts */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap');
-
         .sidebar-scrollbar::-webkit-scrollbar { width: 3px; }
         .sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .sidebar-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
         .sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: #dc2626; }
 
         .group-label {
-          font-family: 'Space Mono', monospace;
+          font-family: 'IBM Plex Mono', monospace;
           font-size: 9px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -240,7 +237,7 @@ export function Sidebar({
         }
 
         .logo-text-primary {
-          font-family: 'Space Mono', monospace;
+          font-family: 'IBM Plex Mono', monospace;
           font-size: 15px;
           font-weight: 700;
           letter-spacing: 0.12em;
@@ -248,7 +245,7 @@ export function Sidebar({
         }
 
         .logo-text-sub {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Outfit', sans-serif;
           font-size: 9px;
           font-weight: 700;
           letter-spacing: 0.3em;
@@ -262,7 +259,7 @@ export function Sidebar({
         }
 
         .bottom-item {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Outfit', sans-serif;
           font-size: 12.5px;
           font-weight: 600;
         }
