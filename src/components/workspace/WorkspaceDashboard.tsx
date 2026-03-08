@@ -400,14 +400,22 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
 
         <TabsContent value="reports" className="space-y-4">
           <Card className="bg-card border-border">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Relatórios Partilhados</CardTitle>
+              <Button 
+                size="sm" 
+                onClick={() => setShowShareDialog(true)}
+                className="gap-2"
+              >
+                <Send className="h-4 w-4" />
+                Enviar Relatório
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {sharedReports?.map((report) => (
+                {sharedReports?.map((sr: any) => (
                   <div 
-                    key={report.id} 
+                    key={sr.id} 
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -416,22 +424,53 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          Relatório {report.report_id.slice(0, 8)}
+                          {sr.report?.title || `Relatório ${sr.report_id.slice(0, 8)}`}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Partilhado em {format(new Date(report.shared_at), "dd MMM yyyy", { locale: pt })}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {sr.report?.type && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {sr.report.type}
+                            </Badge>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Partilhado em {format(new Date(sr.shared_at), "dd MMM yyyy", { locale: pt })}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      {isOwnerOrAdmin && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => unshareReport.mutate(sr.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {(!sharedReports || sharedReports.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum relatório partilhado
-                  </p>
+                  <div className="text-center py-8">
+                    <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Nenhum relatório partilhado neste workspace
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowShareDialog(true)}
+                      className="gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      Enviar primeiro relatório
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -477,6 +516,80 @@ export const WorkspaceDashboard = ({ workspaceId }: WorkspaceDashboardProps) => 
 
       {/* Workspace Settings Panel */}
       <WorkspacePanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* Share Report Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              Enviar Relatório ao Workspace
+            </DialogTitle>
+            <DialogDescription>
+              Selecione um relatório para partilhar com a equipa
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Pesquisar relatórios..." 
+                value={reportSearch}
+                onChange={(e) => setReportSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <div className="max-h-[320px] overflow-y-auto space-y-2">
+              {filteredReports.length > 0 ? (
+                filteredReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{report.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant="secondary" className="text-[10px]">{report.type}</Badge>
+                          {report.period && (
+                            <span className="text-[10px] text-muted-foreground">{report.period}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 shrink-0 ml-2"
+                      onClick={() => {
+                        shareReport.mutate(report.id);
+                        setShowShareDialog(false);
+                        setReportSearch("");
+                      }}
+                      disabled={shareReport.isPending}
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      Enviar
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                  <p className="text-sm text-muted-foreground">
+                    {reportSearch ? "Nenhum relatório encontrado" : "Todos os relatórios já foram partilhados"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
