@@ -115,7 +115,7 @@ const useDashboardKPIs = (productionData: any[], priceData: any[], exportData: a
    HELPERS
 ───────────────────────────────────────── */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
     {children}
   </span>
 );
