@@ -39,6 +39,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
+import { EnergyTransitionRisk } from "@/components/dashboard/EnergyTransitionRisk";
+import { DataDepthBadge } from "@/components/dashboard/DataDepthBadge";
+import { DataSourcesPanel } from "@/components/dashboard/DataSourcesPanel";
 import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
 // --- Interfaces ---
@@ -73,6 +76,7 @@ const Risk = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [showSimulator, setShowSimulator] = useState(false);
+  const [activeTab, setActiveTab] = useState<'risk' | 'transition'>('risk');
 
   const fetchRiskData = async () => {
     setLoading(true);
@@ -216,6 +220,38 @@ const Risk = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-1 bg-secondary/50 dark:bg-white/[0.04] p-1 rounded-xl border border-border/50 w-fit">
+              <button
+                onClick={() => setActiveTab('risk')}
+                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                  activeTab === 'risk'
+                    ? 'bg-background dark:bg-white/10 text-foreground shadow-sm border border-border/50'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Risco & Geopolítica
+              </button>
+              <button
+                onClick={() => setActiveTab('transition')}
+                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'transition'
+                    ? 'bg-background dark:bg-white/10 text-foreground shadow-sm border border-border/50'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Transition Risk
+                <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-black uppercase px-1.5 py-0">
+                  NEW
+                </Badge>
+              </button>
+            </div>
+
+            {activeTab === 'transition' ? (
+              <EnergyTransitionRisk />
+            ) : (
+            <>
 
             {/* KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -432,10 +468,23 @@ const Risk = () => {
               </div>
             </div>
 
-            {/* History Chart */}
-            <div className="grid grid-cols-1 gap-8">
-              <RiskHistoryChart />
+            {/* History Chart + Data Sources */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-9">
+                <div className="relative">
+                  <div className="absolute top-4 right-4 z-10">
+                    <DataDepthBadge startYear={2019} endYear={2025} source="ANPG Annual Reports, Sonangol Production Data, OPEC Statistical Bulletin" />
+                  </div>
+                  <RiskHistoryChart />
+                </div>
+              </div>
+              <div className="lg:col-span-3">
+                <DataSourcesPanel />
+              </div>
             </div>
+
+            </>
+            )}
 
           </div>
         </main>

@@ -14,6 +14,7 @@ import { format, parseISO, subMonths } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3 } from "lucide-react";
+import { DataDepthBadge } from "./DataDepthBadge";
 
 const fallbackData = [
   { month: "Jan", production: 1120, forecast: null },
@@ -151,6 +152,7 @@ export function ProductionChart() {
           <p className="text-sm text-muted-foreground">Angola - milhares de barris/dia</p>
         </div>
         <div className="flex items-center gap-4">
+          <DataDepthBadge startYear={2018} endYear={2025} />
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-xs text-muted-foreground">Produção Real</span>
