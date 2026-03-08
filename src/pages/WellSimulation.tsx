@@ -1232,7 +1232,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.text(t.riskDesc, 20, 44);
   autoTable(doc, {
     startY: 52,
-    head: [t.riskHeaders],
+    head: [[...t.riskHeaders]],
     body: RISK_DATA.map(r => {
       const status = r.v >= r.t ? t.critical : r.v >= r.t * 0.75 ? t.warning : t.ok;
       return [r.f, String(r.v), String(r.t), status];
