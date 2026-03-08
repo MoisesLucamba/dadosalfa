@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -236,7 +237,7 @@ const Settings = () => {
     <>
       <Helmet><title>Configurações | AlphaData</title></Helmet>
 
-      <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground relative">
         <Sidebar activeItem="/settings" />
 
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -512,6 +513,8 @@ const Settings = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <MobileBottomNav />
     </>
   );
 };

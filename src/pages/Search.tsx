@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -1663,15 +1664,15 @@ const Search = () => {
     : null;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#050b14", fontFamily: "'Outfit', sans-serif" }}>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground" style={{ fontFamily: "'Outfit', sans-serif" }}>
       <style>{`
         .history-scrollbar::-webkit-scrollbar { width: 3px; }
         .history-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .history-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
+        .history-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 10px; }
         .chat-scrollbar::-webkit-scrollbar { width: 4px; }
         .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(30,58,95,0.4); border-radius: 10px; }
-        .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: #dc2626; }
+        .chat-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 10px; }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--destructive)); }
       `}</style>
 
       <Sidebar activeItem="/search" />
@@ -1913,6 +1914,8 @@ const Search = () => {
           </div>
         </div>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 };

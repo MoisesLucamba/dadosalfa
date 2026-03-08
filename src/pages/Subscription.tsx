@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,30 +21,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS
+   DESIGN TOKENS — mapped to Tailwind semantic vars
 ═══════════════════════════════════════════════════════ */
-const BG_DEEP  = "#04060D";
-const BG_NAVY  = "#080D1A";
-const BG_CARD  = "#0D1526";
-const BG_HOVER = "#111E33";
-const RED      = "#E8192C";
-const RED_DIM  = "rgba(232,25,44,0.12)";
-const RED_BDR  = "rgba(232,25,44,0.30)";
-const BLUE     = "#1A5CFF";
-const BLUE_MID = "#3B7BFF";
-const BLUE_DIM = "rgba(26,92,255,0.15)";
-const BLUE_BDR = "rgba(59,123,255,0.30)";
-const WHITE    = "#FFFFFF";
-const W60      = "rgba(255,255,255,0.60)";
-const W30      = "rgba(255,255,255,0.30)";
-const W10      = "rgba(255,255,255,0.08)";
-const BORDER   = "rgba(255,255,255,0.07)";
-const GOLD     = "#F59E0B";
-const GOLD_DIM = "rgba(245,158,11,0.12)";
-const GOLD_BDR = "rgba(245,158,11,0.30)";
-const GREEN    = "#4ade80";
-const GREEN_DIM= "rgba(74,222,128,0.10)";
-const GREEN_BDR= "rgba(74,222,128,0.25)";
+const BG_DEEP  = "hsl(var(--background))";
+const BG_NAVY  = "hsl(var(--card))";
+const BG_CARD  = "hsl(var(--card))";
+const BG_HOVER = "hsl(var(--muted))";
+const RED      = "hsl(var(--destructive))";
+const RED_DIM  = "hsl(var(--destructive) / 0.12)";
+const RED_BDR  = "hsl(var(--destructive) / 0.30)";
+const BLUE     = "hsl(var(--primary))";
+const BLUE_MID = "hsl(var(--primary))";
+const BLUE_DIM = "hsl(var(--primary) / 0.15)";
+const BLUE_BDR = "hsl(var(--primary) / 0.30)";
+const WHITE    = "hsl(var(--foreground))";
+const W60      = "hsl(var(--muted-foreground))";
+const W30      = "hsl(var(--muted-foreground) / 0.5)";
+const W10      = "hsl(var(--border))";
+const BORDER   = "hsl(var(--border))";
+const GOLD     = "hsl(var(--accent))";
+const GOLD_DIM = "hsl(var(--accent) / 0.12)";
+const GOLD_BDR = "hsl(var(--accent) / 0.30)";
+const GREEN    = "hsl(var(--success))";
+const GREEN_DIM= "hsl(var(--success) / 0.10)";
+const GREEN_BDR= "hsl(var(--success) / 0.25)";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -1013,7 +1014,7 @@ const Subscription = () => {
   const TD = "py-4 px-5 text-sm";
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans" style={{ background:BG_DEEP, color:WHITE }}>
+    <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground">
       <Sidebar activeItem="/subscription"/>
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1291,8 +1292,10 @@ const Subscription = () => {
         </DialogContent>
       </Dialog>
 
+      <MobileBottomNav />
+
       <style>{`
-        [role="tab"][data-state="active"] { background: ${BLUE_MID} !important; color: #fff !important; }
+        [role="tab"][data-state="active"] { background: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
       `}</style>
     </div>
   );

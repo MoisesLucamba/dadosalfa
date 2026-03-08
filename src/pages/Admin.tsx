@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -43,7 +44,7 @@ import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
 
 /* ─── Design tokens ──────────────────────────────────────── */
-const ACCENT   = "#E8FF47";  // electric chartreuse
+const ACCENT   = "hsl(var(--accent))";
 const PANEL_BG = "hsl(var(--card))";
 const BORDER   = "hsl(var(--border))";
 
@@ -114,25 +115,26 @@ const TabPill = ({ value, label }: { value: string; label: string }) => (
 /* ─── Status badge ───────────────────────────────────────── */
 const StatusBadge = ({ approved }: { approved: boolean }) => (
   <span
-    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
-    style={{
-      background: approved ? "rgba(74,222,128,0.1)" : "rgba(251,191,36,0.1)",
-      color: approved ? "#4ade80" : "#fbbf24"
-    }}
+    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+      approved
+        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+        : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+    }`}
   >
-    <Dot color={approved ? "#4ade80" : "#fbbf24"} />
+    <Dot color={approved ? "hsl(var(--success))" : "hsl(var(--accent))"} />
     {approved ? "Aprovado" : "Pendente"}
   </span>
 );
 
 /* ─── Score ring ─────────────────────────────────────────── */
 const ScorePill = ({ score }: { score: number }) => {
-  const color = score > 70 ? "#f87171" : score > 40 ? "#fbbf24" : "#4ade80";
+  const cls = score > 70
+    ? "bg-destructive/10 text-destructive"
+    : score > 40
+    ? "bg-amber-500/10 text-amber-500"
+    : "bg-emerald-500/10 text-emerald-500";
   return (
-    <span
-      className="font-black text-xs px-2 py-0.5 rounded-lg"
-      style={{ background: `${color}15`, color }}
-    >
+    <span className={`font-black text-xs px-2 py-0.5 rounded-lg ${cls}`}>
       {score}/100
     </span>
   );
@@ -293,14 +295,13 @@ const Admin = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl h-10 gap-2 border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 text-xs font-bold"
+                  className="rounded-xl h-10 gap-2 border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 text-xs font-bold"
                 >
                   <Download className="w-4 h-4" /> Exportar Logs
                 </Button>
                 <Button
                   size="sm"
-                  className="rounded-xl h-10 gap-2 text-black font-black text-xs uppercase tracking-widest"
-                  style={{ background: ACCENT }}
+                  className="rounded-xl h-10 gap-2 text-accent-foreground font-black text-xs uppercase tracking-widest bg-accent hover:bg-accent/90"
                 >
                   <Plus className="w-4 h-4" /> Novo Registo
                 </Button>
@@ -1062,13 +1063,15 @@ const Admin = () => {
       </div>
 
       {/* Tab active style override */}
+      <MobileBottomNav />
+
       <style>{`
         [role="tab"][data-state="active"] {
-          background: ${ACCENT} !important;
-          color: #000 !important;
+          background: hsl(var(--accent)) !important;
+          color: hsl(var(--accent-foreground)) !important;
         }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 8px; }
       `}</style>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -169,7 +170,7 @@ const Risk = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#fafafa] dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
       <Helmet>
         <title>Risk Intelligence | AlphaData</title>
       </Helmet>
@@ -488,6 +489,8 @@ const Risk = () => {
 
           </div>
         </main>
+
+        <MobileBottomNav />
       </div>
 
       {/* --- MODAL DO SIMULADOR --- */}
