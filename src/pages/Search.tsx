@@ -1728,7 +1728,7 @@ const Search = () => {
                         onChange={(e) => setHistorySearch(e.target.value)}
                         placeholder="Pesquisar conversas..."
                         className="w-full bg-transparent border rounded-lg pl-8 pr-3 py-2 text-[11px] focus:outline-none focus:border-[#dc2626]"
-                        style={{ borderColor: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontFamily: "'DM Sans', sans-serif" }}
+                        style={{ borderColor: "rgba(30,58,95,0.3)", color: "#5a8ab5", fontFamily: "'Outfit', sans-serif" }}
                       />
                     </div>
 
