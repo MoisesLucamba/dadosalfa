@@ -346,7 +346,7 @@ const Index = () => {
                   <button
                     onClick={() => navigate("/admin")}
                     style={{
-                      fontFamily: "'Epilogue',sans-serif", fontSize: 11, fontWeight: 700,
+                      fontFamily: "'Outfit',sans-serif", fontSize: 11, fontWeight: 700,
                       textTransform: "uppercase", letterSpacing: "0.08em",
                       color: "var(--accent-red)", background: "transparent",
                       border: "1px solid rgba(255,107,53,0.30)", borderRadius: 4,
