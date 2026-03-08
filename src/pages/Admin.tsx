@@ -44,7 +44,7 @@ import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
 
 /* ─── Design tokens ──────────────────────────────────────── */
-const ACCENT   = "#E8FF47";  // electric chartreuse
+const ACCENT   = "hsl(var(--accent))";
 const PANEL_BG = "hsl(var(--card))";
 const BORDER   = "hsl(var(--border))";
 
