@@ -192,7 +192,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
           {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {up ? "+" : ""}{change.toFixed(2)}%
         </span>
-        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
+        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
           USD/bbl
         </span>
       </div>
