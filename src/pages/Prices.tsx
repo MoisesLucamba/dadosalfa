@@ -371,7 +371,7 @@ const Prices = () => {
                         padding: "16px 24px",
                         borderRight: i === 0 ? "1px solid var(--border-subtle)" : "none",
                       }}>
-                        <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: s.color, marginBottom: 6 }}>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: s.color, marginBottom: 6 }}>
                           {s.label}
                         </div>
                         <div className="mono" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-primary)" }}>
