@@ -256,9 +256,8 @@ const Index = () => {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", overflow: "hidden" }}>
+    <div className="flex h-screen bg-background overflow-hidden">
       <Helmet><title>AlphaData | Intelligence Hub</title></Helmet>
-      <GlobalStyles />
 
       <Sidebar activeItem="/" />
 

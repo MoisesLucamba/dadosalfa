@@ -34,86 +34,20 @@ import {
 } from "recharts";
 
 /* ─────────────────────────────────────────
-   GLOBAL THEME TOKENS
+   THEME VARS (semantic)
 ───────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
-
-    :root {
-      --bg-primary:       #0A0E1A;
-      --bg-secondary:     #0D1117;
-      --bg-surface:       #141B2D;
-      --bg-surface-hover: #1A2235;
-      --border-subtle:    #1E2A45;
-      --accent-blue:      #00A3FF;
-      --accent-amber:     #F5A623;
-      --accent-green:     #00D4AA;
-      --accent-red:       #FF6B35;
-      --text-primary:     #E8EDF5;
-      --text-secondary:   #6B7A99;
-      --text-muted:       #3D4F6E;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono { font-family: 'IBM Plex Mono', monospace; }
-
-    /* ── table rows ── */
-    .data-row {
-      transition: background 180ms ease-out, border-left-color 180ms ease-out;
-      border-left: 2px solid transparent;
-    }
-    .data-row:hover {
-      background: var(--bg-surface-hover) !important;
-      border-left-color: var(--accent-amber);
-    }
-
-    /* ── card hover ── */
-    .surface-card {
-      transition: border-color 180ms ease-out, background 180ms ease-out,
-                  box-shadow 180ms ease-out;
-    }
-    .surface-card:hover {
-      border-color: rgba(0,163,255,0.30) !important;
-      background: var(--bg-surface-hover) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
-    }
-
-    /* ── mount animation ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0);   }
-    }
-    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity: 0; }
-    .d1 { animation-delay:  50ms; }
-    .d2 { animation-delay: 100ms; }
-    .d3 { animation-delay: 150ms; }
-    .d4 { animation-delay: 200ms; }
-    .d5 { animation-delay: 250ms; }
-    .d6 { animation-delay: 300ms; }
-
-    /* ── scrollbar ── */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-
-    /* ── badge pill ── */
-    .badge-pill {
-      font-family: 'Epilogue', sans-serif;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      padding: 2px 8px; border-radius: 4px;
-    }
-  `}</style>
-);
+const TV = {
+  bgSurface: "hsl(var(--card))",
+  bgPrimary: "hsl(var(--background))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  textSecondary: "hsl(var(--muted-foreground))",
+  textMuted: "hsl(var(--muted-foreground) / 0.6)",
+  accentBlue: "hsl(var(--primary))",
+  accentAmber: "hsl(var(--accent))",
+  accentGreen: "hsl(var(--success))",
+  accentRed: "hsl(var(--destructive))",
+};
 
 /* ─────────────────────────────────────────
    DATA  (unchanged)
