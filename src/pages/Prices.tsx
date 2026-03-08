@@ -431,7 +431,7 @@ const Prices = () => {
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Volatilidade</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Volatilidade</h3>
                     <Zap size={18} style={{ color: "var(--accent-amber)" }} />
                   </div>
 
