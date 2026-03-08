@@ -64,6 +64,14 @@ import {
   Pie,
   Cell,
   Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ComposedChart,
+  ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
