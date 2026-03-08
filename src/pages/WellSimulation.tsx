@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { loadLogoAsBase64 } from "@/utils/loadLogoForPDF";
+import { getWellSimTranslation, DocumentLanguageCode, DOCUMENT_LANGUAGES } from "@/i18n";
+import { LanguageDownloadDialog } from "@/components/reports/LanguageDownloadDialog";
 import {
   Eye, Plus, Download, Save, Upload, Cpu, Activity, Layers,
   BarChart3, TrendingDown, Shield, Crosshair, Droplets, Thermometer,
@@ -960,7 +962,9 @@ function captureCanvasAsBase64(canvasEl: HTMLCanvasElement | null): string | nul
 }
 
 /* ─── PROFESSIONAL PDF EXPORT ─────────────────────────────────── */
-async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HTMLCanvasElement | null) {
+async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HTMLCanvasElement | null, lang: DocumentLanguageCode = 'pt') {
+  const t = getWellSimTranslation(lang);
+  const locale = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'pt-AO';
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -988,8 +992,8 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
-  doc.text("Relatorio de Simulacao", 20, 78);
-  doc.text("de Poco", 20, 92);
+  doc.text(t.simulationReport, 20, 78);
+  doc.text(t.ofWell, 20, 92);
   doc.setFontSize(14);
   doc.setTextColor(220, 38, 38);
   doc.setFont("helvetica", "bold");
@@ -998,8 +1002,8 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
   doc.text(`${well.block}  |  ${well.op}  |  ${well.field} Field`, 20, 118);
-  doc.text(`Bacia: ${well.basin}  |  Tipo: ${well.type}`, 20, 126);
-  doc.text(`Coordenadas: ${well.lat.toFixed(4)}S, ${well.lng.toFixed(4)}E`, 20, 134);
+  doc.text(`${t.basin}: ${well.basin}  |  ${t.typeLabel}: ${well.type}`, 20, 126);
+  doc.text(`${t.coordinates}: ${well.lat.toFixed(4)}S, ${well.lng.toFixed(4)}E`, 20, 134);
   const boxY = 148;
   doc.setFillColor(243, 244, 246);
   doc.roundedRect(20, boxY, W - 40, 48, 3, 3, "F");
@@ -1008,17 +1012,17 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.roundedRect(20, boxY, W - 40, 48, 3, 3, "S");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text("INFORMACOES DO RELATORIO", 28, boxY + 10);
+  doc.text(t.reportInfo, 28, boxY + 10);
   doc.setDrawColor(203, 213, 225);
   doc.line(28, boxY + 13, W - 28, boxY + 13);
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Tipo: Simulacao de Poco`, 28, boxY + 22);
-  doc.text(`Periodo: Actual`, 28, boxY + 30);
-  doc.text(`Gerado: ${new Date().toLocaleDateString("pt-AO")} as ${new Date().toLocaleTimeString("pt-AO")}`, 28, boxY + 38);
-  doc.text(`Status: ${well.status}`, W / 2 + 10, boxY + 22);
-  doc.text(`Risco: ${well.risk}`, W / 2 + 10, boxY + 30);
-  doc.text(`Probabilidade: ${well.prob}%`, W / 2 + 10, boxY + 38);
+  doc.text(`${t.type}: ${t.wellSimulation}`, 28, boxY + 22);
+  doc.text(`${t.period}: ${t.current}`, 28, boxY + 30);
+  doc.text(`${t.generated}: ${new Date().toLocaleDateString(locale)} ${t.at} ${new Date().toLocaleTimeString(locale)}`, 28, boxY + 38);
+  doc.text(`${t.status}: ${well.status}`, W / 2 + 10, boxY + 22);
+  doc.text(`${t.risk}: ${well.risk}`, W / 2 + 10, boxY + 30);
+  doc.text(`${t.probability}: ${well.prob}%`, W / 2 + 10, boxY + 38);
   const dsY = boxY + 60;
   doc.setFillColor(243, 244, 246);
   doc.roundedRect(20, dsY, W - 40, 36, 3, 3, "F");
@@ -1026,23 +1030,22 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.roundedRect(20, dsY, W - 40, 36, 3, 3, "S");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text("FONTES DE DADOS", 28, dsY + 10);
+  doc.text(t.dataSources, 28, dsY + 10);
   doc.setDrawColor(203, 213, 225);
   doc.line(28, dsY + 13, W - 28, dsY + 13);
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  const sources = ["BPEP - Balanco Petroleiro", "ANP - Agencia Nacional Petroleo", "Modelo IA LSTM + Random Forest"];
-  sources.forEach((s, i) => doc.text(`• ${s}`, 28, dsY + 22 + i * 5));
+  t.sourcesList.forEach((s, i) => doc.text(`• ${s}`, 28, dsY + 22 + i * 5));
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text("CONFIDENCIAL — Este documento contem informacoes confidenciais. Distribuicao restrita a destinatarios autorizados.", 20, H - 20);
+  doc.text(t.confidentialNotice, 20, H - 20);
   doc.setDrawColor(220, 38, 38);
   doc.setLineWidth(1);
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text("AlphaData Analytics  |  www.alphadata.ao", 20, H - 7);
-  doc.text("Pag. 1", W - 35, H - 7);
+  doc.text(`${t.page} 1`, W - 35, H - 7);
 
   // ═══════════════════ PAGE 2: 3D VISUALIZATION ═══════════════════
   doc.addPage();
@@ -1052,16 +1055,16 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  Simulacao 3D`, 20, 12);
-  doc.text("Pag. 2", W - 35, 12);
+  doc.text(`AlphaData  |  ${well.name}  |  ${t.vis3d}`, 20, 12);
+  doc.text(`${t.page} 2`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Visualizacao 3D do Poco", 20, 36);
+  doc.text(t.vis3d, 20, 36);
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
-  doc.text("Captura da simulacao interactiva com camadas geologicas, FPSO, e trajectoria do poco.", 20, 44);
+  doc.text(t.vis3dDesc, 20, 44);
   const canvasImg = captureCanvasAsBase64(canvasEl);
   if (canvasImg) {
     const imgW = W - 40;
@@ -1075,36 +1078,32 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
     const legY = 50 + imgH + 8;
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text("LEGENDA DA VISUALIZACAO", 20, legY);
+    doc.text(t.visLegend, 20, legY);
     doc.setDrawColor(203, 213, 225);
     doc.line(20, legY + 2, W - 20, legY + 2);
-    const legends = [
-      { color: [0, 229, 160] as [number, number, number], label: "Zona do Reservatorio — Area de alta produtividade com saturacao de oleo" },
-      { color: [255, 67, 101] as [number, number, number], label: "Falha Geologica — Descontinuidade estrutural que pode afectar a integridade do poco" },
-      { color: [255, 184, 48] as [number, number, number], label: "GOC/OWC — Contactos Gas-Oleo e Oleo-Agua que definem os limites do reservatorio" },
-      { color: [0, 168, 255] as [number, number, number], label: "Perfuracoes — Intervalos completados para fluxo de hidrocarbonetos" },
-      { color: [74, 130, 184] as [number, number, number], label: "Coluna de Producao — Tubulacao principal para elevacao dos fluidos" },
-      { color: [37, 58, 86] as [number, number, number], label: "FPSO — Unidade flutuante de producao, armazenamento e descarga" },
-    ];
-    legends.forEach((leg, i) => {
+    const legendColors = [
+      [0, 229, 160], [255, 67, 101], [255, 184, 48],
+      [0, 168, 255], [74, 130, 184], [37, 58, 86],
+    ] as [number, number, number][];
+    t.legends.forEach((label, i) => {
       const ly = legY + 8 + i * 10;
-      doc.setFillColor(...leg.color);
+      doc.setFillColor(...legendColors[i]);
       doc.circle(24, ly - 1, 2, "F");
       doc.setFontSize(8);
       doc.setTextColor(51, 65, 85);
-      doc.text(leg.label, 30, ly);
+      doc.text(label, 30, ly);
     });
   } else {
     doc.setFontSize(10);
     doc.setTextColor(148, 163, 184);
-    doc.text("[Visualizacao 3D nao disponivel — abra a pagina no browser para capturar]", 20, 70);
+    doc.text(t.visNotAvailable, 20, 70);
   }
   doc.setDrawColor(220, 38, 38);
   doc.setLineWidth(0.5);
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 3: TECHNICAL DATA ═══════════════════
   doc.addPage();
@@ -1114,36 +1113,37 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  Ficha Tecnica`, 20, 12);
-  doc.text("Pag. 3", W - 35, 12);
+  doc.text(`AlphaData  |  ${well.name}  |  ${t.technicalSheet}`, 20, 12);
+  doc.text(`${t.page} 3`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Ficha Tecnica do Poco", 20, 36);
+  doc.text(t.technicalSheet, 20, 36);
+  const tr = t.techRows;
   const techData = [
-    ["Parametro", "Valor", "Unidade", "Descricao"],
-    ["Nome do Poco", well.name, "—", "Identificacao unica do poco"],
-    ["Campo / Bacia", `${well.field} / ${well.basin}`, "—", "Localizacao do campo na bacia sedimentar"],
-    ["Bloco / Operadora", `${well.block} / ${well.op}`, "—", "Concessao e operadora responsavel"],
-    ["Tipo de Poco", well.type, "—", "Classificacao operacional (Exploracao/Producao/Dev.)"],
-    ["Medida Total (MD)", well.md.toLocaleString(), "metros", "Comprimento total da trajectoria perfurada"],
-    ["Prof. Vertical (TVD)", well.tvd.toLocaleString(), "metros", "Profundidade vertical verdadeira"],
-    ["Lamina d'Agua (WD)", well.wd.toLocaleString(), "metros", "Prof. da coluna de agua acima do fundo marinho"],
-    ["Inclinacao Maxima", String(well.inc), "graus", "Angulo maximo de desvio do poco"],
-    ["API Gravity", String(well.api), "°API", "Densidade do oleo — quanto maior, mais leve"],
-    ["Pressao de Fundo (BHP)", well.bhp.toLocaleString(), "bar", "Pressao no fundo do poco durante operacao"],
-    ["Temperatura Reserv.", String(well.temp), "°C", "Temperatura medida no reservatorio"],
-    ["Producao Diaria", well.prod.toLocaleString(), "bbl/d", "Volume de producao diaria actual"],
-    ["GOR", String(well.gor), "scf/bbl", "Razao Gas-Oleo"],
-    ["Water Cut", String(well.wcut), "%", "Percentagem de agua na producao total"],
-    ["Prob. Sucesso", String(well.prob), "%", "Estimativa IA de probabilidade de sucesso"],
-    ["Nivel de Risco", well.risk, "—", "Avaliacao de risco operacional"],
-    ["Status", well.status, "—", "Estado actual da operacao"],
+    t.techHeaders,
+    [tr.wellName[0], well.name, t.noUnit, tr.wellName[1]],
+    [tr.fieldBasin[0], `${well.field} / ${well.basin}`, t.noUnit, tr.fieldBasin[1]],
+    [tr.blockOp[0], `${well.block} / ${well.op}`, t.noUnit, tr.blockOp[1]],
+    [tr.wellType[0], well.type, t.noUnit, tr.wellType[1]],
+    [tr.md[0], well.md.toLocaleString(), tr.md[1], tr.md[2]],
+    [tr.tvd[0], well.tvd.toLocaleString(), tr.tvd[1], tr.tvd[2]],
+    [tr.wd[0], well.wd.toLocaleString(), tr.wd[1], tr.wd[2]],
+    [tr.inc[0], String(well.inc), tr.inc[1], tr.inc[2]],
+    [tr.api[0], String(well.api), tr.api[1], tr.api[2]],
+    [tr.bhp[0], well.bhp.toLocaleString(), tr.bhp[1], tr.bhp[2]],
+    [tr.temp[0], String(well.temp), tr.temp[1], tr.temp[2]],
+    [tr.prod[0], well.prod.toLocaleString(), tr.prod[1], tr.prod[2]],
+    [tr.gor[0], String(well.gor), tr.gor[1], tr.gor[2]],
+    [tr.wcut[0], String(well.wcut), tr.wcut[1], tr.wcut[2]],
+    [tr.prob[0], String(well.prob), '%', tr.prob[1]],
+    [tr.riskLevel[0], well.risk, t.noUnit, tr.riskLevel[1]],
+    [tr.status[0], well.status, t.noUnit, tr.status[1]],
   ];
   autoTable(doc, {
     startY: 44,
-    head: [techData[0]],
-    body: techData.slice(1),
+    head: [[...t.techHeaders]],
+    body: techData.slice(1).map(r => [...r]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
     bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7.5 },
@@ -1156,7 +1156,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 4: PRODUCTION DATA ═══════════════════
   doc.addPage();
@@ -1166,20 +1166,20 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  Dados de Producao`, 20, 12);
-  doc.text("Pag. 4", W - 35, 12);
+  doc.text(`AlphaData  |  ${well.name}  |  ${t.productionData.split('—')[0].trim()}`, 20, 12);
+  doc.text(`${t.page} 4`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Dados de Producao — Historico e Previsao IA", 20, 36);
+  doc.text(t.productionData, 20, 36);
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
-  doc.text("Modelo: LSTM + Random Forest  |  Amostras: 12.847  |  Precisao: 94.7%", 20, 44);
+  doc.text(t.aiModel, 20, 44);
   autoTable(doc, {
     startY: 52,
-    head: [["Mes", "Prod. Real (bbl/d)", "Capacidade Inst.", "Previsao IA", "Injeccao de Agua"]],
-    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString("pt-AO"), d.cap.toLocaleString("pt-AO"), d.ai.toLocaleString("pt-AO"), d.inj.toLocaleString("pt-AO")]),
+    head: [[...t.prodHeaders]],
+    body: PROD_DATA.map(d => [d.m, d.real.toLocaleString(locale), d.cap.toLocaleString(locale), d.ai.toLocaleString(locale), d.inj.toLocaleString(locale)]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
     bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 8 },
@@ -1190,15 +1190,15 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.setFontSize(12);
   doc.setTextColor(10, 10, 10);
   doc.setFont("helvetica", "bold");
-  doc.text("Curva de Declinio de Producao", 20, decY2);
+  doc.text(t.declineCurve, 20, decY2);
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
-  doc.text("Modelo exponencial com previsao IA ate 2030", 20, decY2 + 7);
+  doc.text(t.declineDesc, 20, decY2 + 7);
   autoTable(doc, {
     startY: decY2 + 12,
-    head: [["Ano", "Prod. Real (bbl/d)", "Previsao IA (bbl/d)"]],
-    body: DECLINE.map(d => [d.y, d.r ? d.r.toLocaleString("pt-AO") : "—", d.p.toLocaleString("pt-AO")]),
+    head: [[...t.declineHeaders]],
+    body: DECLINE.map(d => [d.y, d.r ? d.r.toLocaleString(locale) : "—", d.p.toLocaleString(locale)]),
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
     bodyStyles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 8 },
@@ -1210,7 +1210,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  CONFIDENCIAL  |  ${new Date().toLocaleDateString("pt-AO")}`, 20, H - 7);
+  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 5: RISK MATRIX ═══════════════════
   doc.addPage();
@@ -1220,21 +1220,21 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  Matriz de Riscos`, 20, 12);
-  doc.text("Pag. 5", W - 35, 12);
+  doc.text(`AlphaData  |  ${well.name}  |  ${t.riskMatrix}`, 20, 12);
+  doc.text(`${t.page} 5`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Matriz de Riscos Operacionais", 20, 36);
+  doc.text(t.riskMatrix, 20, 36);
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
-  doc.text("Avaliacao de riscos com indicadores e limiares de alerta", 20, 44);
+  doc.text(t.riskDesc, 20, 44);
   autoTable(doc, {
     startY: 52,
-    head: [["Factor de Risco", "Score (%)", "Limiar (%)", "Status"]],
+    head: [[...t.riskHeaders]],
     body: RISK_DATA.map(r => {
-      const status = r.v >= r.t ? "CRITICO" : r.v >= r.t * 0.75 ? "ATENCAO" : "OK";
+      const status = r.v >= r.t ? t.critical : r.v >= r.t * 0.75 ? t.warning : t.ok;
       return [r.f, String(r.v), String(r.t), status];
     }),
     theme: "grid",
@@ -1245,8 +1245,8 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
     didParseCell: (data: any) => {
       if (data.column.index === 3 && data.section === "body") {
         const val = data.cell.raw as string;
-        if (val === "CRITICO") { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = "bold"; }
-        else if (val === "ATENCAO") { data.cell.styles.textColor = [217, 119, 6]; data.cell.styles.fontStyle = "bold"; }
+        if (val === t.critical) { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = "bold"; }
+        else if (val === t.warning) { data.cell.styles.textColor = [217, 119, 6]; data.cell.styles.fontStyle = "bold"; }
         else { data.cell.styles.textColor = [22, 163, 74]; }
       }
     },
@@ -1255,17 +1255,11 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.setFontSize(12);
   doc.setTextColor(10, 10, 10);
   doc.setFont("helvetica", "bold");
-  doc.text("Conclusao e Recomendacoes", 20, riskY);
+  doc.text(t.conclusions, 20, riskY);
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
   doc.setFont("helvetica", "normal");
-  const conclusions = [
-    `O poco ${well.name} apresenta um nivel de risco ${well.risk.toLowerCase()} com probabilidade de sucesso de ${well.prob}%.`,
-    `A producao actual de ${well.prod.toLocaleString()} bbl/d esta ${well.prod > 15000 ? "acima" : "abaixo"} da media do bloco.`,
-    `O Water Cut de ${well.wcut}% ${well.wcut > 20 ? "requer atencao e possivel intervencao" : "esta dentro dos parametros normais"}.`,
-    `Recomenda-se monitorizacao continua dos indicadores de pressao e integridade do poco.`,
-    `O modelo IA sugere uma curva de declinio moderada, com producao estimada de 18,000 bbl/d em 2030.`,
-  ];
+  const conclusions = t.conclusionLines(well);
   conclusions.forEach((c, i) => {
     doc.text(`${i + 1}. ${c}`, 24, riskY + 10 + i * 8);
   });
@@ -1274,14 +1268,14 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 20, W - 20, H - 20);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text("AVISO LEGAL — Este relatorio foi gerado automaticamente com base em modelos de inteligencia artificial.", 20, H - 14);
-  doc.text("Os resultados devem ser validados por especialistas antes de qualquer decisao operacional.", 20, H - 9);
+  const disclaimerLines = doc.splitTextToSize(t.disclaimer, W - 40);
+  doc.text(disclaimerLines, 20, H - 14);
   doc.setDrawColor(220, 38, 38);
   doc.setLineWidth(0.5);
   doc.line(20, H - 5, W - 20, H - 5);
 
   doc.save(`AlphaData_WellSim_${well.name.replace(/\s+/g, "_")}.pdf`);
-  toast.success("PDF exportado com sucesso — 5 páginas!");
+  toast.success(t.pdfSuccess);
 }
 
 /* ─── MAIN ───────────────────────────────────────────────────── */
@@ -1304,6 +1298,7 @@ export default function WellSimulation() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showPdfLangDialog, setShowPdfLangDialog] = useState(false);
 
   const riskCol = (r: string) => r === "Baixo" ? "#00e5a0" : r === "Médio" ? "#ffb830" : "#ff4365";
 
@@ -1372,9 +1367,10 @@ export default function WellSimulation() {
     else { toast.success("Simulação eliminada"); fetchSimulations(); }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (_format: 'pdf' | 'docx' | 'excel', language: DocumentLanguageCode) => {
+    setShowPdfLangDialog(false);
     const canvasEl = canvasContainerRef.current?.querySelector("canvas") || null;
-    await generateSimulationPDF(selected, canvasEl);
+    await generateSimulationPDF(selected, canvasEl, language);
   };
 
   const handleLoadSavedSim = (sim: any) => {
@@ -1439,7 +1435,7 @@ export default function WellSimulation() {
                 </Button>
                 <Button variant="outline" size="sm"
                   className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[11px] font-mono ${btnEffect}`}
-                  onClick={handleExportPDF}>
+                  onClick={() => setShowPdfLangDialog(true)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" /> Relatório PDF
                 </Button>
                 <Button size="sm"
@@ -1591,7 +1587,7 @@ export default function WellSimulation() {
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm"
                   className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[10px] font-mono w-full ${btnEffect}`}
-                  onClick={handleExportPDF}>
+                  onClick={() => setShowPdfLangDialog(true)}>
                   <FileText className="w-3 h-3 mr-1" /> PDF
                 </Button>
                 <Button variant="outline" size="sm"
@@ -1638,7 +1634,7 @@ export default function WellSimulation() {
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" size="sm"
                 className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[10px] font-mono w-full ${btnEffect}`}
-                onClick={handleExportPDF}>
+                onClick={() => setShowPdfLangDialog(true)}>
                 <FileText className="w-3 h-3 mr-1" /> PDF
               </Button>
               <Button variant="outline" size="sm"
@@ -1968,6 +1964,14 @@ export default function WellSimulation() {
       <TechnicalFileUploadModal
         open={showFileUpload}
         onOpenChange={setShowFileUpload}
+      />
+
+      {/* ── PDF LANGUAGE DIALOG ── */}
+      <LanguageDownloadDialog
+        open={showPdfLangDialog}
+        onOpenChange={setShowPdfLangDialog}
+        onDownload={handleExportPDF}
+        reportTitle={`Well Simulation — ${selected.name}`}
       />
     </div>
   );
