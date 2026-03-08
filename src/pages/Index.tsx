@@ -294,7 +294,7 @@ const Index = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "transparent", border: "1px solid var(--border-subtle)",
-                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    color: "var(--text-primary)", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: isSyncing ? "not-allowed" : "pointer",
                     opacity: isSyncing ? 0.6 : 1,
                     transition: "border-color 180ms ease-out",
