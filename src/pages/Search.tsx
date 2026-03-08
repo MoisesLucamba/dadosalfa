@@ -345,14 +345,15 @@ function generateChartsForQuery(query: string): ChartData[] {
   if (q.includes("brent") || q.includes("preço") && (q.includes("petróleo") || q.includes("crude") || q.includes("oil") || q.includes("wti"))) {
     return [
       {
-        type: "area",
+        type: "composed" as const,
         title: "Brent Crude — Evolução do Preço (USD/bbl)",
-        unit: "USD",
+        unit: "USD/bbl",
         xKey: "mes",
         dataKeys: [
-          { key: "brent", color: "#dc2626" },
-          { key: "wti", color: "#3b82f6" },
+          { key: "brent", color: "#F5A623", type: "area" as const },
+          { key: "wti", color: "#00A3FF", type: "line" as const },
         ],
+        referenceLines: [{ y: 80, label: "Equilíbrio fiscal Angola", color: "rgba(255,255,255,0.20)" }],
         data: [
           { mes: "Ago", brent: 84.2, wti: 81.1 },
           { mes: "Set", brent: 88.6, wti: 85.4 },
@@ -361,21 +362,6 @@ function generateChartsForQuery(query: string): ChartData[] {
           { mes: "Dez", brent: 79.4, wti: 76.2 },
           { mes: "Jan", brent: 82.1, wti: 78.9 },
           { mes: "Fev", brent: 85.5, wti: 82.3 },
-        ],
-      },
-      {
-        type: "bar",
-        title: "Variação Mensal do Brent (%)",
-        unit: "%",
-        xKey: "mes",
-        dataKeys: [{ key: "variacao", color: "#dc2626" }],
-        data: [
-          { mes: "Set", variacao: 5.2 },
-          { mes: "Out", variacao: 3.1 },
-          { mes: "Nov", variacao: -5.1 },
-          { mes: "Dez", variacao: -8.4 },
-          { mes: "Jan", variacao: 3.4 },
-          { mes: "Fev", variacao: 4.1 },
         ],
       },
     ];
