@@ -957,7 +957,7 @@ const WelcomeScreen = ({ onQuickAction }: { onQuickAction: (label: string) => vo
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <h1 style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
+          <h1 style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, lineHeight: 1.1 }}>
             <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 48px)", color: "#e2e8f0", letterSpacing: "-0.02em" }}>OIL & GAS</span>
             <span style={{ display: "block", fontSize: "clamp(28px, 5vw, 52px)", background: "linear-gradient(135deg, #dc2626 0%, #ef4444 40%, #60a5fa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "-0.02em" }}>AI ANALYST</span>
           </h1>
