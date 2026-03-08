@@ -539,7 +539,7 @@ export function Sidebar({
                 </div>
                 <p
                   style={{
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'Outfit', sans-serif",
                     fontSize: "10px",
                     color: "#3d5a7a",
                     lineHeight: "1.5",
