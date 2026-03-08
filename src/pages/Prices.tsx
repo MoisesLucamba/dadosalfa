@@ -321,8 +321,8 @@ const Prices = () => {
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{ width: 3, height: 20, borderRadius: 2, background: crude.color, opacity: 0.8 }} />
                           <div>
-                            <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
-                            <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
+                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
+                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
                           </div>
                         </div>
                         <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
