@@ -304,7 +304,7 @@ const Prices = () => {
                   {/* table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 0, padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)" }}>
                     {["Crude", "Spot (USD)", "24h"].map((h, i) => (
-                      <span key={i} style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", textAlign: i > 0 ? "right" : "left" }}>
+                      <span key={i} style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", textAlign: i > 0 ? "right" : "left" }}>
                         {h}
                       </span>
                     ))}
