@@ -1367,9 +1367,10 @@ export default function WellSimulation() {
     else { toast.success("Simulação eliminada"); fetchSimulations(); }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (_format: 'pdf' | 'docx' | 'excel', language: DocumentLanguageCode) => {
+    setShowPdfLangDialog(false);
     const canvasEl = canvasContainerRef.current?.querySelector("canvas") || null;
-    await generateSimulationPDF(selected, canvasEl);
+    await generateSimulationPDF(selected, canvasEl, language);
   };
 
   const handleLoadSavedSim = (sim: any) => {
