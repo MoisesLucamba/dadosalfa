@@ -634,6 +634,8 @@ function makeHeaderFn(
   logoBase64: string | undefined,
   pageWidth: number,
 ): () => void {
+  const t = getDocumentTranslation(data.language || 'pt');
+  const locale = data.language === 'en' ? 'en-US' : data.language === 'fr' ? 'fr-FR' : 'pt-AO';
   return function drawHeader() {
     doc.setFillColor(...C.dark);
     doc.rect(0, 0, pageWidth, L.HEADER_H, 'F');
@@ -657,14 +659,14 @@ function makeHeaderFn(
     }
 
     setFont(doc, 9, 'normal', C.mediumGray);
-    const titleStr = (data.title || 'Relatório').substring(0, 60);
+    const titleStr = (data.title || t.report).substring(0, 60);
     doc.text(titleStr, L.MARGIN, 32);
 
     // Date right-aligned
     const d = safeDate(data.generatedAt);
     setFont(doc, 7.5, 'normal', C.mediumGray);
     doc.text(
-      `Gerado em: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+      `${t.generatedAt}: ${d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       pageWidth - L.MARGIN - 85,
       20
     );
@@ -673,12 +675,13 @@ function makeHeaderFn(
       doc.setFillColor(...C.primary);
       doc.roundedRect(pageWidth - L.MARGIN - 40, 26, 36, 9, 2, 2, 'F');
       setFont(doc, 6.5, 'bold', C.white);
-      doc.text('Gerado com IA', pageWidth - L.MARGIN - 36, 32);
+      doc.text(t.aiGenerated, pageWidth - L.MARGIN - 36, 32);
     }
   };
 }
 
-function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
+function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number, lang: DocumentLanguageCode = 'pt') {
+  const t = getDocumentTranslation(lang);
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
@@ -689,9 +692,9 @@ function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
     doc.line(0, pageHeight - L.FOOTER_H, pageWidth, pageHeight - L.FOOTER_H);
 
     setFont(doc, 7, 'normal', C.muted);
-    doc.text('AlphaData - Inteligência de Mercado Petrolífero Angolano', L.MARGIN, pageHeight - 8);
-    doc.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-    doc.text('CONFIDENCIAL', pageWidth - L.MARGIN - 25, pageHeight - 8);
+    doc.text(t.footerText, L.MARGIN, pageHeight - 8);
+    doc.text(`${t.page} ${i} ${t.of} ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text(t.confidential, pageWidth - L.MARGIN - 30, pageHeight - 8);
   }
 }
 
@@ -710,15 +713,16 @@ function safeDate(d: any): Date {
 }
 
 function getTypeName(type: string, lang: DocumentLanguageCode = 'pt'): string {
+  const t = getDocumentTranslation(lang);
   const map: Record<string, string> = {
-    production: 'Produção',
-    market: 'Mercado',
-    exports: 'Exportações',
-    risk: 'Risco',
-    predictions: 'Previsões',
-    general: 'Geral',
+    production: t.typeProduction,
+    market: t.typeMarket,
+    exports: t.typeExports,
+    risk: t.typeRisk,
+    predictions: t.typePredictions,
+    general: t.typeGeneral,
   };
-  return map[type] || type || 'Relatório';
+  return map[type] || type || t.typeReport;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
