@@ -1435,7 +1435,7 @@ export default function WellSimulation() {
                 </Button>
                 <Button variant="outline" size="sm"
                   className={`border-[#0a2040] text-[#6a9ec4] hover:border-[#00a8ff]/40 hover:bg-[#001830] text-[11px] font-mono ${btnEffect}`}
-                  onClick={handleExportPDF}>
+                  onClick={() => setShowPdfLangDialog(true)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" /> Relatório PDF
                 </Button>
                 <Button size="sm"
