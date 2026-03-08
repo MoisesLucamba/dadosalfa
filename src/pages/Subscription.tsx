@@ -1014,7 +1014,7 @@ const Subscription = () => {
   const TD = "py-4 px-5 text-sm";
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans" style={{ background:BG_DEEP, color:WHITE }}>
+    <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground">
       <Sidebar activeItem="/subscription"/>
 
       <div className="flex-1 flex flex-col overflow-hidden">
