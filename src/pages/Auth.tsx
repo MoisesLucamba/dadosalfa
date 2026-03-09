@@ -16,21 +16,21 @@ import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm
 
 /* ─── Design tokens ─────────────────────────────────── */
 const T = {
-  bg:       "#04080f",
-  bg2:      "#070d1a",
-  panel:    "#060c18",
-  border:   "rgba(20,45,80,0.7)",
-  borderR:  "rgba(200,16,46,0.4)",
+  bg:       "#ffffff",
+  bg2:      "#ffffff",
+  panel:    "#f7f7f5",
+  border:   "rgba(0,0,0,0.09)",
+  borderR:  "rgba(200,16,46,0.25)",
   red:      "#C8102E",
   redGlow:  "rgba(200,16,46,0.25)",
   blue:     "#002855",
   blueMid:  "#1e3a5f",
-  textDim:  "#2d4d6e",
-  textMid:  "#4d7aa0",
-  textBrt:  "#c8dff0",
-  white:    "#e8f0f8",
+  textDim:  "#9a9a98",
+  textMid:  "#5a5a58",
+  textBrt:  "#0a0a0a",
+  white:    "#0a0a0a",
   mono:     "'IBM Plex Mono', monospace",
-  sans:     "'Outfit', sans-serif",
+  sans:     "'Plus Jakarta Sans', sans-serif",
 };
 
 /* ─── Validation ─────────────────────────────────────── */
@@ -120,7 +120,7 @@ const GhostBtn = ({ children, ...props }: any) => (
       fontFamily: T.mono, fontSize: 9, fontWeight: 700,
       letterSpacing: "0.2em", textTransform: "uppercase",
       padding: "12px 24px", borderRadius: 6,
-      background: "rgba(8,14,26,0.5)",
+      background: "rgba(0,0,0,0.02)",
       border: `1px solid ${T.border}`,
       color: T.textMid,
       cursor: "pointer",
@@ -258,8 +258,8 @@ export default function Auth() {
 
         .auth-root input::placeholder { color: ${T.textDim}; opacity: 1; }
         .auth-root input:-webkit-autofill {
-          -webkit-box-shadow: 0 0 0 100px #070d1a inset !important;
-          -webkit-text-fill-color: ${T.white} !important;
+          webkit-box-shadow: 0 0 0 100px #f7f7f5 inset !important;
+          -webkit-text-fill-color: #0a0a0a !important;
         }
 
         @keyframes scanline {
@@ -301,7 +301,7 @@ export default function Auth() {
             LEFT — Intelligence Panel
             ══════════════════════════════════════════════════ */}
         <aside className="lg:w-[42%] relative flex flex-col overflow-hidden flex-shrink-0"
-          style={{ background: `linear-gradient(160deg, #050d1e 0%, #04080f 60%, #08040a 100%)`, borderRight: `1px solid ${T.border}` }}>
+          style={{ background: '#002855', borderRight: `1px solid ${T.border}` }}>
 
           {/* Grid texture */}
           <div className="absolute inset-0 grid-bg opacity-100 pointer-events-none" />
@@ -386,7 +386,7 @@ export default function Auth() {
                   initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
                   className="flex items-center gap-4 rounded-lg px-4 py-3"
-                  style={{ background: "rgba(8,14,26,0.6)", border: `1px solid ${T.border}` }}
+                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
                 >
                   <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(200,16,46,0.1)", border: `1px solid ${T.borderR}` }}>
@@ -406,7 +406,7 @@ export default function Auth() {
 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-6 pt-8 mt-auto"
-              style={{ borderTop: `1px solid ${T.border}` }}>
+              style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}>
               <LiveStat value="25+" label="Países" />
               <LiveStat value="480+" label="Operadoras" />
               <LiveStat value="99.9%" label="Uptime" />
@@ -435,7 +435,7 @@ export default function Auth() {
 
           {/* Subtle vignette */}
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,8,15,0.6) 100%)"
+            background: "none"
           }} />
 
           <div className="relative z-10 w-full max-w-[420px]">
@@ -456,7 +456,7 @@ export default function Auth() {
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.25 }}
                   className="space-y-8 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: "#ffffff", border: `1px solid ${T.border}`, boxShadow: "0 8px 40px rgba(0,0,0,0.08)" }}
                 >
                   {/* Auth header */}
                   <div className="space-y-4">
@@ -540,7 +540,7 @@ export default function Auth() {
                   initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
                   transition={{ duration: 0.25 }}
                   className="space-y-7 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: "#ffffff", border: `1px solid ${T.border}`, boxShadow: "0 8px 40px rgba(0,0,0,0.08)" }}
                 >
                   <div className="space-y-3">
                     <button onClick={() => switchView("login")} className="flex items-center gap-1.5 transition-colors"
@@ -567,7 +567,7 @@ export default function Auth() {
                       <button key={opt.key} onClick={() => setAccountType(opt.key)}
                         className="p-4 rounded-xl text-left transition-all duration-200 flex flex-col gap-3"
                         style={{
-                          background: accountType === opt.key ? "rgba(200,16,46,0.08)" : "rgba(8,14,26,0.6)",
+                          background: accountType === opt.key ? "rgba(200,16,46,0.05)" : "#f7f7f5",
                           border: `1px solid ${accountType === opt.key ? T.borderR : T.border}`,
                           cursor: "pointer",
                         }}
@@ -600,7 +600,7 @@ export default function Auth() {
                   initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.22 }}
                   className="space-y-8 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: "#ffffff", border: `1px solid ${T.border}`, boxShadow: "0 8px 40px rgba(0,0,0,0.08)" }}
                 >
                   <div className="space-y-3">
                     <div style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
