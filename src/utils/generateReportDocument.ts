@@ -1,7 +1,7 @@
 /**
- * Report generation — DARK THEME + PORTUGUESE ONLY
+ * Report generation — DARK THEME + MULTI-LANGUAGE
  * All reports use dark backgrounds matching the platform design system.
- * All text is in European Portuguese.
+ * Supports PT, EN, FR via reportTranslations.
  */
 
 import jsPDF from 'jspdf';
@@ -27,6 +27,7 @@ import {
 } from './reportCoverPage';
 import { DocumentLanguageCode } from '@/i18n';
 import { loadLogoAsBase64 } from './loadLogoForPDF';
+import { getReportTranslation, formatDateForLang, type ReportLang } from './reportTranslations';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PUBLIC TYPES
@@ -63,19 +64,18 @@ interface Block {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const C = {
-  pageBg:      [10,  14,  26]  as RGB,  // #0A0E1A
-  surface:     [13,  17,  23]  as RGB,  // #0D1117
-  border:      [30,  42,  58]  as RGB,  // #1E2A3A
-  accentBlue:  [0,   163, 255] as RGB,  // #00A3FF
-  accentAmber: [245, 166, 35]  as RGB,  // #F5A623
-  accentGreen: [0,   212, 170] as RGB,  // #00D4AA
-  accentRed:   [255, 59,  48]  as RGB,  // #FF3B30
-  textPrimary: [232, 237, 245] as RGB,  // #E8EDF5
-  textSecondary:[107, 122, 153] as RGB, // #6B7A99
-  textMuted:   [61,  79,  107] as RGB,  // #3D4F6B
+  pageBg:      [10,  14,  26]  as RGB,
+  surface:     [13,  17,  23]  as RGB,
+  border:      [30,  42,  58]  as RGB,
+  accentBlue:  [0,   163, 255] as RGB,
+  accentAmber: [245, 166, 35]  as RGB,
+  accentGreen: [0,   212, 170] as RGB,
+  accentRed:   [255, 59,  48]  as RGB,
+  textPrimary: [232, 237, 245] as RGB,
+  textSecondary:[107, 122, 153] as RGB,
+  textMuted:   [61,  79,  107] as RGB,
   white:       [255, 255, 255] as RGB,
-  brand:       [220, 38,  38]  as RGB,  // #DC2626
-  // Chart palette
+  brand:       [220, 38,  38]  as RGB,
   c0: [0,   163, 255] as RGB,
   c1: [0,   212, 170] as RGB,
   c2: [245, 166, 35]  as RGB,
@@ -100,55 +100,6 @@ const L = {
   THIN:       0.3,
   THICK:      2,
 } as const;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PORTUGUESE-ONLY LABELS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-const PT = {
-  executiveSummary: 'Resumo Executivo',
-  mainHighlights: 'Pontos-Chave',
-  visualAnalysis: 'Analise Visual',
-  productionByOperator: 'Producao por Operador',
-  marketShareProduction: 'Quota de Mercado (Producao)',
-  priceEvolution: 'Evolucao de Precos (USD/bbl)',
-  pricesByType: 'Precos por Tipo de Crude (USD/bbl)',
-  exportsByDestination: 'Exportacoes por Destino',
-  productionData: 'Dados de Producao',
-  priceTable: 'Tabela de Precos',
-  exportTable: 'Tabela de Exportacoes',
-  operator: 'Operador',
-  block: 'Bloco',
-  field: 'Campo',
-  status: 'Status',
-  productionBpd: 'Producao (bpd)',
-  crudeType: 'Tipo de Crude',
-  priceUsd: 'Preco (USD)',
-  variation: 'Variacao',
-  date: 'Data',
-  destination: 'Destino',
-  volume: 'Volume',
-  tanker: 'Tanque',
-  price: 'Preco',
-  generatedAt: 'Gerado em',
-  aiGenerated: 'Gerado com IA',
-  report: 'Relatorio',
-  footerText: 'AlphaData - Inteligencia de Mercado Petrolifero Angolano',
-  confidential: 'CONFIDENCIAL',
-  page: 'Pagina',
-  of: 'de',
-  disclaimer: 'AVISO LEGAL: Este relatorio foi gerado pela AlphaData - Inteligencia de Mercado Petrolifero Angolano. As informacoes aqui contidas sao para fins informativos e nao constituem aconselhamento financeiro ou de investimento.',
-  notAvailable: 'N/D',
-  period: 'Periodo',
-  // Type names
-  typeProduction: 'Producao',
-  typeMarket: 'Mercado',
-  typeExports: 'Exportacoes',
-  typeRisk: 'Risco',
-  typePredictions: 'Previsoes',
-  typeGeneral: 'Geral',
-  typeReport: 'Relatorio',
-};
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MARKDOWN → PLAIN-TEXT BLOCK PARSER
@@ -240,7 +191,6 @@ function bottomLimit(ctx: PDFCtx) {
 function needsPage(ctx: PDFCtx, space: number) {
   if (ctx.y + space > bottomLimit(ctx)) {
     ctx.doc.addPage();
-    // Dark bg on new page
     ctx.doc.setFillColor(...C.pageBg);
     ctx.doc.rect(0, 0, ctx.W, ctx.H, 'F');
     ctx.y = ctx.margin;
@@ -363,7 +313,6 @@ function drawHBarChart(ctx: PDFCtx, title: string, items: { label: string; value
   ctx.doc.text(title, ctx.margin, ctx.y);
   ctx.y += 10;
 
-  // Dark surface panel
   ctx.doc.setFillColor(...C.surface);
   ctx.doc.roundedRect(ctx.margin, ctx.y - 2, ctx.W - 2 * ctx.margin, totalH, L.BOX_R, L.BOX_R, 'F');
 
@@ -423,7 +372,6 @@ function drawDonutChart(ctx: PDFCtx, title: string, items: { label: string; valu
     startAngle = endAngle;
   });
 
-  // Inner dark circle (donut)
   ctx.doc.setFillColor(...C.pageBg);
   ctx.doc.circle(cx, cy, r * 0.54, 'F');
 
@@ -462,7 +410,6 @@ function drawLineChart(ctx: PDFCtx, title: string, series: Array<{ name: string;
   ctx.doc.text(title, ctx.margin, ctx.y);
   ctx.y += 8;
 
-  // Dark surface
   ctx.doc.setFillColor(...C.surface);
   ctx.doc.roundedRect(ctx.margin, ctx.y, chartW, chartH, L.BOX_R, L.BOX_R, 'F');
 
@@ -557,13 +504,14 @@ function extractExports(content: any): { label: string; value: number }[] {
   }));
 }
 
-function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string) {
+function extractTimeSeries(content: any, valueKey: string, labelKey: string, dateKey: string, lang: ReportLang = 'pt') {
+  const localeMap: Record<string, string> = { pt: 'pt-AO', en: 'en-GB', fr: 'fr-FR' };
   const arr: any[] = content?.data?.[labelKey] || content?.[labelKey] || [];
   return arr
     .filter(r => r && r[dateKey] && r[valueKey] != null)
     .sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime())
     .map(r => ({
-      label: new Date(r[dateKey]).toLocaleDateString('pt-AO', { month: 'short', day: '2-digit' }),
+      label: new Date(r[dateKey]).toLocaleDateString(localeMap[lang] || 'pt-AO', { month: 'short', day: '2-digit' }),
       value: Number(r[valueKey]),
     }));
 }
@@ -572,9 +520,8 @@ function extractTimeSeries(content: any, valueKey: string, labelKey: string, dat
    DARK THEME HEADER / FOOTER
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function makeHeaderFn(doc: jsPDF, data: ReportData, logoBase64: string | undefined, pageWidth: number): () => void {
+function makeHeaderFn(doc: jsPDF, data: ReportData, logoBase64: string | undefined, pageWidth: number, t: ReturnType<typeof getReportTranslation>, lang: ReportLang): () => void {
   return function drawHeader() {
-    // Dark header bar
     doc.setFillColor(...C.surface);
     doc.rect(0, 0, pageWidth, L.HEADER_H, 'F');
     doc.setDrawColor(...C.border);
@@ -595,16 +542,15 @@ function makeHeaderFn(doc: jsPDF, data: ReportData, logoBase64: string | undefin
       doc.text('ALPHADATA', L.MARGIN, 16);
     }
 
-    // Report title center
     setFont(doc, 8, 'normal', C.textSecondary);
-    const titleStr = (data.title || PT.report).substring(0, 60);
+    const titleStr = (data.title || t.report).substring(0, 60);
     doc.text(titleStr, pageWidth / 2, 16, { align: 'center' });
 
-    // Date right
     const d = safeDate(data.generatedAt);
+    const localeMap: Record<string, string> = { pt: 'pt-AO', en: 'en-GB', fr: 'fr-FR' };
     setFont(doc, 7, 'normal', C.textMuted);
     doc.text(
-      `${PT.generatedAt}: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+      `${t.generatedOn}: ${d.toLocaleDateString(localeMap[lang], { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       pageWidth - L.MARGIN,
       16,
       { align: 'right' }
@@ -614,12 +560,12 @@ function makeHeaderFn(doc: jsPDF, data: ReportData, logoBase64: string | undefin
       doc.setFillColor(...C.accentBlue);
       doc.roundedRect(pageWidth - L.MARGIN - 36, 24, 32, 8, 2, 2, 'F');
       setFont(doc, 6, 'bold', C.white);
-      doc.text(PT.aiGenerated, pageWidth - L.MARGIN - 32, 29.5);
+      doc.text(t.generatedBy, pageWidth - L.MARGIN - 32, 29.5);
     }
   };
 }
 
-function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
+function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number, t: ReturnType<typeof getReportTranslation>) {
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
@@ -630,9 +576,9 @@ function addFooters(doc: jsPDF, pageWidth: number, pageHeight: number) {
     doc.line(0, pageHeight - L.FOOTER_H, pageWidth, pageHeight - L.FOOTER_H);
 
     setFont(doc, 7, 'normal', C.textMuted);
-    doc.text(PT.footerText, L.MARGIN, pageHeight - 8);
-    doc.text(`${PT.page} ${i} ${PT.of} ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-    doc.text(PT.confidential, pageWidth - L.MARGIN, pageHeight - 8, { align: 'right' });
+    doc.text(t.footerText, L.MARGIN, pageHeight - 8);
+    doc.text(t.pageOf(i, total), pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text(`${t.confidential} - ${t.internalUse}`, pageWidth - L.MARGIN, pageHeight - 8, { align: 'right' });
   }
 }
 
@@ -650,28 +596,28 @@ function safeDate(d: any): Date {
   return isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
-function getTypeName(type: string): string {
+function resolveTypeName(type: string, t: ReturnType<typeof getReportTranslation>): string {
   const map: Record<string, string> = {
-    production: PT.typeProduction,
-    market: PT.typeMarket,
-    exports: PT.typeExports,
-    risk: PT.typeRisk,
-    predictions: PT.typePredictions,
-    general: PT.typeGeneral,
+    production: t.typeProduction,
+    market: t.typeMarket,
+    exports: t.typeExports,
+    risk: t.typeRisk,
+    predictions: t.typePredictions,
+    general: t.typeGeneral,
   };
-  return map[type] || type || PT.typeReport;
+  return map[type] || type || t.typeReport;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN PDF GENERATOR — DARK THEME
+   MAIN PDF GENERATOR — DARK THEME + MULTI-LANGUAGE
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generatePDFReport = async (data: ReportData): Promise<void> => {
   let logoBase64: string | undefined;
   try { logoBase64 = await loadLogoAsBase64(); } catch { /* optional */ }
 
-  // Force Portuguese
-  const lang: DocumentLanguageCode = 'pt';
+  const lang: ReportLang = (data.language as ReportLang) || 'pt';
+  const t = getReportTranslation(lang);
 
   const doc = new jsPDF('p', 'mm', 'a4');
   const W = doc.internal.pageSize.getWidth();
@@ -682,9 +628,9 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || `${PT.report} AlphaData`,
-    reportType: getTypeName(data.type),
-    reportPeriod: data.period || 'Actual',
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: resolveTypeName(data.type, t),
+    reportPeriod: data.period || (lang === 'en' ? 'Current' : lang === 'fr' ? 'Actuel' : 'Actual'),
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
@@ -695,12 +641,10 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   addCoverPageToPDF(doc, coverData);
   doc.addPage();
 
-  // ── Dark background for content page ──
   doc.setFillColor(...C.pageBg);
   doc.rect(0, 0, W, H, 'F');
 
-  // ── Setup context ──
-  const drawHeader = makeHeaderFn(doc, data, logoBase64, W);
+  const drawHeader = makeHeaderFn(doc, data, logoBase64, W, t, lang);
   drawHeader();
 
   const ctx: PDFCtx = {
@@ -716,15 +660,15 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
   // ── Executive Summary ──
   if (data.summary) {
-    sectionTitle(ctx, PT.executiveSummary);
+    sectionTitle(ctx, t.execSummary);
     const blocks = parseMarkdown(data.summary);
     renderBlocks(ctx, blocks);
     ctx.y += L.SECTION_SP;
   }
 
-  // ── Highlights (dark card grid) ──
+  // ── Highlights ──
   if (data.highlights && data.highlights.length > 0) {
-    sectionTitle(ctx, PT.mainHighlights);
+    sectionTitle(ctx, t.keyMetrics);
     const cardW = (contentW - 8) / 2;
     const cardH = 30;
     data.highlights.forEach((h, idx) => {
@@ -733,27 +677,22 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       const cx = isLeft ? margin : margin + cardW + 8;
       const cy = isLeft ? ctx.y : ctx.y;
 
-      // Dark card
       ctx.doc.setFillColor(...C.surface);
       ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'F');
       ctx.doc.setDrawColor(...C.border);
       ctx.doc.setLineWidth(0.3);
       ctx.doc.roundedRect(cx, cy, cardW, cardH, L.BOX_R, L.BOX_R, 'S');
 
-      // Left accent bar
       const accentColor = h.trend === 'up' ? C.accentGreen : h.trend === 'down' ? C.accentRed : C.accentBlue;
       ctx.doc.setFillColor(...accentColor);
       ctx.doc.roundedRect(cx, cy, 2.5, cardH, 1, 1, 'F');
 
-      // Label
       setFont(ctx.doc, 7.5, 'normal', C.textSecondary);
       ctx.doc.text(h.title, cx + 8, cy + 10);
 
-      // Value
       setFont(ctx.doc, 14, 'bold', C.textPrimary);
       ctx.doc.text(h.value, cx + 8, cy + 22);
 
-      // Trend
       if (h.trend) {
         const tColor = h.trend === 'up' ? C.accentGreen : h.trend === 'down' ? C.accentRed : C.textMuted;
         const arrow = h.trend === 'up' ? '+' : h.trend === 'down' ? '-' : '=';
@@ -772,43 +711,43 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   const prodData = extractProduction(data.content);
   const priceData = extractPrices(data.content);
   const exportData = extractExports(data.content);
-  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date');
+  const priceSeries = extractTimeSeries(data.content, 'price', 'prices', 'data_date', lang);
 
   const hasCharts = prodData.length > 0 || priceData.length > 0 || exportData.length > 0 || priceSeries.length > 1;
 
   if (hasCharts) {
-    sectionTitle(ctx, PT.visualAnalysis);
+    sectionTitle(ctx, t.visualAnalysis);
 
     if (prodData.length > 0) {
-      drawHBarChart(ctx, PT.productionByOperator, prodData, 'bpd', 8);
+      drawHBarChart(ctx, t.productionByOperator, prodData, 'bpd', 8);
       ctx.y += 4;
       if (prodData.length >= 3) {
-        drawDonutChart(ctx, PT.marketShareProduction, prodData, 'bpd');
+        drawDonutChart(ctx, t.marketShareProduction, prodData, 'bpd');
         ctx.y += 4;
       }
     }
 
     if (priceSeries.length > 1) {
-      drawLineChart(ctx, PT.priceEvolution, [
-        { name: PT.price, points: priceSeries, color: C.accentBlue },
+      drawLineChart(ctx, t.priceEvolution, [
+        { name: t.price, points: priceSeries, color: C.accentBlue },
       ]);
     } else if (priceData.length > 0) {
-      drawHBarChart(ctx, PT.pricesByType, priceData, 'USD', 8);
+      drawHBarChart(ctx, t.pricesByType, priceData, 'USD', 8);
     }
 
     if (exportData.length > 0) {
-      drawHBarChart(ctx, PT.exportsByDestination, exportData, 'bbl', 8);
+      drawHBarChart(ctx, t.exportsByDestination, exportData, 'bbl', 8);
     }
 
     ctx.y += L.SECTION_SP;
   }
 
-  // ── Data Tables (dark themed) ──
+  // ── Data Tables ──
   if (data.content?.data) {
     const cd = data.content.data;
 
     if (Array.isArray(cd.production) && cd.production.length > 0) {
-      sectionTitle(ctx, PT.productionData);
+      sectionTitle(ctx, t.productionData);
       const rows = cd.production.slice(0, 20).map((r: any) => [
         r.operator || r.company || '-',
         r.block || '-',
@@ -818,7 +757,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [[PT.operator, PT.block, PT.field, PT.productionBpd, PT.status]],
+        head: [[t.operator, t.block, t.field, t.productionBpd, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.accentBlue as any, textColor: C.white as any, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
@@ -833,16 +772,17 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
     if (Array.isArray(cd.prices) && cd.prices.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, PT.priceTable);
+      sectionTitle(ctx, t.priceTable);
+      const localeMap: Record<string, string> = { pt: 'pt-AO', en: 'en-GB', fr: 'fr-FR' };
       const rows = cd.prices.slice(0, 12).map((r: any) => [
         r.crude_type || r.type || '-',
         r.price != null ? `$${Number(r.price).toFixed(2)}` : '-',
         r.change_percent != null ? `${r.change_percent >= 0 ? '+' : ''}${Number(r.change_percent).toFixed(2)}%` : '-',
-        r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-',
+        r.data_date ? new Date(r.data_date).toLocaleDateString(localeMap[lang]) : '-',
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [[PT.crudeType, PT.priceUsd, PT.variation, PT.date]],
+        head: [[t.crudeType, t.priceUsd, t.variation, t.date]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.accentBlue as any, textColor: C.white as any, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
@@ -857,7 +797,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
 
     if (Array.isArray(cd.exports) && cd.exports.length > 0) {
       needsPage(ctx, 50);
-      sectionTitle(ctx, PT.exportTable);
+      sectionTitle(ctx, t.exportTable);
       const rows = cd.exports.slice(0, 12).map((r: any) => [
         r.destination || r.country || '-',
         r.volume != null ? `${(Number(r.volume) / 1_000_000).toFixed(2)}M bbl` : '-',
@@ -866,7 +806,7 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
       ]);
       autoTable(doc, {
         startY: ctx.y,
-        head: [[PT.destination, PT.volume, PT.tanker, PT.status]],
+        head: [[t.destination, t.volume, t.tanker, t.status]],
         body: rows,
         margin: { left: margin, right: margin },
         headStyles: { fillColor: C.accentBlue as any, textColor: C.white as any, fontStyle: 'bold', fontSize: 8, cellPadding: 5 },
@@ -885,26 +825,30 @@ export const generatePDFReport = async (data: ReportData): Promise<void> => {
   ctx.doc.setFillColor(...C.surface);
   ctx.doc.roundedRect(margin, ctx.y, contentW, 32, L.BOX_R, L.BOX_R, 'F');
   setFont(ctx.doc, 6.5, 'italic', C.textMuted);
-  const dLines = ctx.doc.splitTextToSize(PT.disclaimer, contentW - 10);
+  const disclaimerText = `${t.legalNotice}: ${t.legalText}`;
+  const dLines = ctx.doc.splitTextToSize(disclaimerText, contentW - 10);
   ctx.doc.text(dLines, margin + 5, ctx.y + 8);
 
   // ── Footers (all pages) ──
-  addFooters(doc, W, H);
+  addFooters(doc, W, H, t);
 
-  const fileName = `AlphaData_${getTypeName(data.type)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
+  const fileName = `AlphaData_${resolveTypeName(data.type, t)}_${(data.period || new Date().toISOString().split('T')[0]).replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DOCX GENERATOR — Portuguese only
+   DOCX GENERATOR — Multi-language
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generateDOCXReport = async (data: ReportData): Promise<void> => {
+  const lang: ReportLang = (data.language as ReportLang) || 'pt';
+  const t = getReportTranslation(lang);
+  const localeMap: Record<string, string> = { pt: 'pt-AO', en: 'en-GB', fr: 'fr-FR' };
   const children: any[] = [];
 
   children.push(
     new Paragraph({
-      text: data.title || `${PT.report} AlphaData`,
+      text: data.title || `${t.report} AlphaData`,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
     })
@@ -913,8 +857,8 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   children.push(
     new Paragraph({
       children: [
-        new TextRun({ text: `${PT.period}: ${data.period || PT.notAvailable}   |   `, color: '64748B', size: 20 }),
-        new TextRun({ text: `${PT.generatedAt}: ${safeDate(data.generatedAt).toLocaleDateString('pt-AO')}`, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.period}: ${data.period || t.notAvailable}   |   `, color: '64748B', size: 20 }),
+        new TextRun({ text: `${t.generatedOn}: ${safeDate(data.generatedAt).toLocaleDateString(localeMap[lang])}`, color: '64748B', size: 20 }),
       ],
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 },
@@ -922,7 +866,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   );
 
   if (data.summary) {
-    children.push(new Paragraph({ text: PT.executiveSummary, heading: HeadingLevel.HEADING_1 }));
+    children.push(new Paragraph({ text: t.execSummary, heading: HeadingLevel.HEADING_1 }));
     const blocks = parseMarkdown(data.summary);
     for (const block of blocks) {
       if (block.kind === 'blank') continue;
@@ -937,9 +881,9 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
 
   const cd = data.content?.data;
   if (cd?.production && Array.isArray(cd.production) && cd.production.length > 0) {
-    children.push(new Paragraph({ text: PT.productionData, heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
+    children.push(new Paragraph({ text: t.productionData, heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
     const headerRow = new TableRow({
-      children: [PT.operator, PT.block, PT.field, PT.productionBpd, PT.status].map(h =>
+      children: [t.operator, t.block, t.field, t.productionBpd, t.status].map(h =>
         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: 'FFFFFF', size: 18 })] })], shading: { fill: '0A0E1A' } })
       ),
     });
@@ -958,7 +902,7 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.docx`;
+  a.download = `AlphaData_${resolveTypeName(data.type, t)}_${(data.period || 'report').replace(/\s+/g, '_')}.docx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -966,23 +910,26 @@ export const generateDOCXReport = async (data: ReportData): Promise<void> => {
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   EXCEL GENERATOR — Portuguese only
+   EXCEL GENERATOR — Multi-language
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const generateExcelReport = (data: ReportData): void => {
+  const lang: ReportLang = (data.language as ReportLang) || 'pt';
+  const t = getReportTranslation(lang);
+  const localeMap: Record<string, string> = { pt: 'pt-AO', en: 'en-GB', fr: 'fr-FR' };
   const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-  const defaultCover = getDefaultCoverPageData('pt');
+  const defaultCover = getDefaultCoverPageData(lang);
   const coverData: CoverPageData = {
     ...defaultCover,
-    reportTitle: data.title || `${PT.report} AlphaData`,
-    reportType: getTypeName(data.type),
-    reportPeriod: data.period || 'Actual',
+    reportTitle: data.title || `${t.report} AlphaData`,
+    reportType: resolveTypeName(data.type, t),
+    reportPeriod: data.period || (lang === 'en' ? 'Current' : lang === 'fr' ? 'Actuel' : 'Actual'),
     generatedAt: safeDate(data.generatedAt),
     isAiGenerated: data.aiGenerated || false,
     requestingCompany: data.requestingCompany,
     requestedBy: data.requestedBy,
-    language: 'pt',
+    language: lang,
   };
 
   const coverRows = getCoverPageExcelRows(coverData);
@@ -990,7 +937,7 @@ export const generateExcelReport = (data: ReportData): void => {
   const cd = data.content?.data;
 
   if (cd?.production && Array.isArray(cd.production)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.operator)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.block)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.field)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.productionBpd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.status)}</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.operator)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.block)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.field)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.productionBpd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.production.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.operator||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.block||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.field||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.daily_production||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
@@ -998,19 +945,22 @@ export const generateExcelReport = (data: ReportData): void => {
   }
 
   if (cd?.prices && Array.isArray(cd.prices)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.crudeType)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.priceUsd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.variation)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.date)}</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.crudeType)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.priceUsd)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.variation)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.date)}</Data></Cell></Row>`);
     cd.prices.forEach((r: any) => {
-      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString('pt-AO') : '-'}</Data></Cell></Row>`);
+      dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.crude_type||r.type||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.price||0}</Data></Cell><Cell><Data ss:Type="Number">${r.change_percent||0}</Data></Cell><Cell><Data ss:Type="String">${r.data_date ? new Date(r.data_date).toLocaleDateString(localeMap[lang]) : '-'}</Data></Cell></Row>`);
     });
     dataRows.push(`<Row></Row>`);
   }
 
   if (cd?.exports && Array.isArray(cd.exports)) {
-    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.destination)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.volume)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.tanker)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(PT.status)}</Data></Cell></Row>`);
+    dataRows.push(`<Row><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.destination)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.volume)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.tanker)}</Data></Cell><Cell ss:StyleID="tableHeader"><Data ss:Type="String">${esc(t.status)}</Data></Cell></Row>`);
     cd.exports.forEach((r: any) => {
       dataRows.push(`<Row><Cell><Data ss:Type="String">${esc(r.destination||r.country||'-')}</Data></Cell><Cell><Data ss:Type="Number">${r.volume||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.tanker_name||'-')}</Data></Cell><Cell><Data ss:Type="String">${esc(r.status||'-')}</Data></Cell></Row>`);
     });
   }
+
+  const infoSheetName = lang === 'en' ? 'Info' : lang === 'fr' ? 'Info' : 'Info';
+  const dataSheetName = lang === 'en' ? 'Data' : lang === 'fr' ? 'Donnees' : 'Dados';
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -1022,10 +972,10 @@ export const generateExcelReport = (data: ReportData): void => {
     <Style ss:ID="bold"><Font ss:Bold="1" ss:Color="#E8EDF5"/></Style>
     <Style ss:ID="footer"><Font ss:Italic="1" ss:Size="9" ss:Color="#3D4F6B"/></Style>
   </Styles>
-  <Worksheet ss:Name="Info">
+  <Worksheet ss:Name="${infoSheetName}">
     <Table>${coverRows.join('\n')}</Table>
   </Worksheet>
-  <Worksheet ss:Name="Dados">
+  <Worksheet ss:Name="${dataSheetName}">
     <Table>${dataRows.join('\n')}</Table>
   </Worksheet>
 </Workbook>`;
@@ -1034,7 +984,7 @@ export const generateExcelReport = (data: ReportData): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `AlphaData_${getTypeName(data.type)}_${(data.period || 'relatorio').replace(/\s+/g, '_')}.xls`;
+  a.download = `AlphaData_${resolveTypeName(data.type, t)}_${(data.period || 'report').replace(/\s+/g, '_')}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1050,8 +1000,8 @@ export const downloadReport = async (
   format: 'pdf' | 'docx' | 'excel',
   language: DocumentLanguageCode = 'pt'
 ): Promise<void> => {
-  // Force Portuguese for all reports regardless of language param
-  const d = { ...data, language: 'pt' as DocumentLanguageCode };
+  // Respect selected language
+  const d = { ...data, language };
   if (format === 'pdf') return generatePDFReport(d);
   if (format === 'docx') return generateDOCXReport(d);
   generateExcelReport(d);
