@@ -1,136 +1,204 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  ArrowLeft,
-  BarChart3,
-  Globe,
-  ShieldCheck,
-  Building2,
-  User,
-  ExternalLink
+import {
+  Eye, EyeOff, Mail, Lock, ArrowLeft,
+  Globe, ShieldCheck, User, ExternalLink,
+  Building2, Activity, ChevronRight,
+  Terminal, Fingerprint, AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
-
-// Integrations & UI
 import { supabase } from "@/integrations/supabase/client";
 import alphadataLogo from "@/assets/alphadata-logo.png";
-
-// Importação dos componentes de formulário solicitados
 import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
 import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
 
-// --- Institutional UI Components ---
-const Button = ({ children, className, variant, onClick, disabled, type, ...props }: any) => {
-  const baseStyles = "px-6 py-3 font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-xs";
-  const variants: any = {
-    primary: "bg-[#002855] hover:bg-black text-white shadow-lg hover:shadow-black/20",
-    secondary: "bg-[#C8102E] hover:bg-[#a30d25] text-white shadow-lg hover:shadow-[#C8102E]/20",
-    outline: "border-2 border-[#002855] text-[#002855] hover:bg-[#002855] hover:text-white",
-    ghost: "text-[#002855] hover:bg-gray-50",
-    link: "text-[#002855] hover:text-black p-0 h-auto font-bold underline-offset-4 hover:underline"
-  };
-  return (
-    <button 
-      type={type}
-      disabled={disabled}
-      onClick={onClick}
-      className={`${baseStyles} ${variants[variant || 'primary']} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+/* ─── Design tokens ─────────────────────────────────── */
+const T = {
+  bg:       "#04080f",
+  bg2:      "#070d1a",
+  panel:    "#060c18",
+  border:   "rgba(20,45,80,0.7)",
+  borderR:  "rgba(200,16,46,0.4)",
+  red:      "#C8102E",
+  redGlow:  "rgba(200,16,46,0.25)",
+  blue:     "#002855",
+  blueMid:  "#1e3a5f",
+  textDim:  "#2d4d6e",
+  textMid:  "#4d7aa0",
+  textBrt:  "#c8dff0",
+  white:    "#e8f0f8",
+  mono:     "'IBM Plex Mono', monospace",
+  sans:     "'Outfit', sans-serif",
 };
 
-const Input = ({ className, ...props }: any) => (
-  <input 
-    className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-[#002855] focus:bg-white outline-none transition-all font-medium text-black placeholder:text-gray-400 text-sm ${className}`}
-    {...props}
-  />
-);
+/* ─── Validation ─────────────────────────────────────── */
+const loginSchema = z.object({
+  email: z.string().trim().email({ message: "Email institucional inválido" }),
+  password: z.string().min(6, { message: "Senha deve ter no mínimo 6 caracteres" }),
+});
 
-const Label = ({ children, className, ...props }: any) => (
-  <label className={`text-[11px] font-bold uppercase tracking-widest text-black mb-2 block ${className}`} {...props}>
+/* ─── Reusable primitives ────────────────────────────── */
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <label style={{
+    fontFamily: T.mono, fontSize: 9, fontWeight: 700,
+    letterSpacing: "0.2em", textTransform: "uppercase",
+    color: T.textDim, marginBottom: 8, display: "block",
+  }}>
     {children}
   </label>
 );
 
-// --- Validation Schemas ---
-const loginSchema = z.object({
-  email: z.string().trim().email({ message: "Email institucional inválido" }),
-  password: z.string().min(6, { message: "A senha deve conter no mínimo 6 caracteres" }),
-});
+const TextInput = ({ icon: Icon, rightSlot, ...props }: any) => (
+  <div className="relative group">
+    {Icon && (
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200"
+        style={{ width: 14, height: 14, color: T.textDim }} />
+    )}
+    <input
+      {...props}
+      className="w-full outline-none transition-all duration-200"
+      style={{
+        fontFamily: T.sans, fontSize: 13, fontWeight: 500,
+        background: "rgba(8,14,26,0.8)",
+        border: `1px solid ${T.border}`,
+        borderRadius: 6,
+        padding: `11px ${rightSlot ? 44 : 14}px 11px ${Icon ? 40 : 14}px`,
+        color: T.white,
+        caretColor: T.red,
+      }}
+      onFocus={e => {
+        e.currentTarget.style.borderColor = "rgba(200,16,46,0.5)";
+        e.currentTarget.style.boxShadow = `0 0 0 3px rgba(200,16,46,0.08)`;
+        e.currentTarget.style.background = "rgba(10,18,32,0.9)";
+      }}
+      onBlur={e => {
+        e.currentTarget.style.borderColor = T.border;
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.background = "rgba(8,14,26,0.8)";
+      }}
+    />
+    {rightSlot && (
+      <div className="absolute right-3.5 top-1/2 -translate-y-1/2">{rightSlot}</div>
+    )}
+  </div>
+);
 
+const PrimaryBtn = ({ children, loading, ...props }: any) => (
+  <button
+    {...props}
+    className="w-full relative overflow-hidden group transition-all duration-200 active:scale-[0.99] disabled:opacity-50"
+    style={{
+      fontFamily: T.mono, fontSize: 10, fontWeight: 700,
+      letterSpacing: "0.2em", textTransform: "uppercase",
+      padding: "14px 24px",
+      background: `linear-gradient(135deg, ${T.red} 0%, #a00d24 100%)`,
+      border: `1px solid rgba(200,16,46,0.6)`,
+      borderRadius: 6,
+      color: "white",
+      boxShadow: `0 4px 24px rgba(200,16,46,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`,
+      cursor: props.disabled ? "not-allowed" : "pointer",
+    }}
+  >
+    <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%)" }} />
+    <span className="relative flex items-center justify-center gap-2">
+      {loading
+        ? <><span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>PROCESSANDO...</span></>
+        : children
+      }
+    </span>
+  </button>
+);
+
+const GhostBtn = ({ children, ...props }: any) => (
+  <button
+    {...props}
+    className="w-full transition-all duration-200 group"
+    style={{
+      fontFamily: T.mono, fontSize: 9, fontWeight: 700,
+      letterSpacing: "0.2em", textTransform: "uppercase",
+      padding: "12px 24px", borderRadius: 6,
+      background: "rgba(8,14,26,0.5)",
+      border: `1px solid ${T.border}`,
+      color: T.textMid,
+      cursor: "pointer",
+    }}
+    onMouseEnter={e => {
+      (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,58,95,0.9)";
+      (e.currentTarget as HTMLElement).style.color = T.textBrt;
+    }}
+    onMouseLeave={e => {
+      (e.currentTarget as HTMLElement).style.borderColor = T.border;
+      (e.currentTarget as HTMLElement).style.color = T.textMid;
+    }}
+  >
+    {children}
+  </button>
+);
+
+/* ─── Animated counter ───────────────────────────────── */
+const LiveStat = ({ value, label }: { value: string; label: string }) => (
+  <div className="flex flex-col gap-1">
+    <span style={{ fontFamily: T.mono, fontSize: 18, fontWeight: 700, color: T.white, letterSpacing: "-0.02em" }}>
+      {value}
+    </span>
+    <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 500, color: T.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+      {label}
+    </span>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════ */
 export default function Auth() {
   const navigate = useNavigate();
-  
-  // View States
   const [authView, setAuthView] = useState<"login" | "signup" | "forgot-password">("login");
   const [accountType, setAccountType] = useState<"personal" | "organization">("personal");
-  
-  // UI States
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  
-  // Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tick, setTick] = useState(0);
 
-  // Auth Session Management
+  // Live clock
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) navigate("/");
-    };
-    checkSession();
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  const timeStr = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const dateStr = new Date().toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) navigate("/");
     });
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (s?.user) navigate("/");
+    });
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validation = loginSchema.safeParse({ email, password });
-    
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
-    }
-
+    const v = loginSchema.safeParse({ email, password });
+    if (!v.success) { toast.error(v.error.errors[0].message); return; }
     setLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
+      const { data: authData, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
-
       if (authData.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_approved, account_type, organization_id")
-          .eq("id", authData.user.id)
-          .maybeSingle();
-
+        const { data: profile } = await supabase.from("profiles").select("is_approved").eq("id", authData.user.id).maybeSingle();
         if (profile && !profile.is_approved) {
           await supabase.auth.signOut();
-          toast.error("Acesso Pendente", {
-            description: "Sua conta está em processo de revisão pela nossa equipe de conformidade."
-          });
+          toast.error("Acesso Pendente", { description: "Conta em processo de revisão." });
           setLoading(false);
           return;
         }
@@ -144,433 +212,452 @@ export default function Auth() {
   };
 
   const handlePersonalSignup = async (data: any) => {
-    setSignupLoading(true);
-    setSignupError(null);
+    setSignupLoading(true); setSignupError(null);
     try {
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
-      
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email: data.email, password: data.password });
       if (authError) throw authError;
-      
       if (authData.user) {
-        // Create profile — derive company_type from selected company's sector
-        const sectorToCompanyType: Record<string, string> = {
-          oil_gas: 'operadora',
-          bank: 'banco',
-          trader: 'trader',
-          consultant: 'consultora',
-          regulator: 'governo',
-          other: 'prestadora_servicos',
-        };
-        // Look up the company sector from predefined_companies
-        const { data: companyData } = await supabase
-          .from('predefined_companies')
-          .select('sector')
-          .eq('id', data.companyId)
-          .maybeSingle();
-        
-        const derivedType = companyData?.sector 
-          ? (sectorToCompanyType[companyData.sector] || 'consultora')
-          : 'consultora';
-
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            company_name: data.companyName,
-            company_type: derivedType as any,
-            contact_name: data.contactName,
-            contact_role: data.jobTitle,
-            contact_phone: data.phone,
-            job_title: data.jobTitle,
-            nif: 'N/A',
-            account_type: 'personal',
-            accepted_terms: data.acceptTerms,
-            accepted_nda: data.acceptNda,
-          });
-          
-        if (profileError) throw profileError;
-        
-        toast.success("Conta criada com sucesso!", { 
-          description: "Por favor, verifique o seu email para confirmar o registo." 
-        });
+        const sectorMap: Record<string, string> = { oil_gas:"operadora", bank:"banco", trader:"trader", consultant:"consultora", regulator:"governo", other:"prestadora_servicos" };
+        const { data: co } = await supabase.from("predefined_companies").select("sector").eq("id", data.companyId).maybeSingle();
+        const type = co?.sector ? (sectorMap[co.sector] || "consultora") : "consultora";
+        const { error: pErr } = await supabase.from("profiles").insert({ id: authData.user.id, company_name: data.companyName, company_type: type as any, contact_name: data.contactName, contact_role: data.jobTitle, contact_phone: data.phone, job_title: data.jobTitle, nif: "N/A", account_type: "personal", accepted_terms: data.acceptTerms, accepted_nda: data.acceptNda });
+        if (pErr) throw pErr;
+        toast.success("Conta criada!", { description: "Verifique o seu email para confirmar." });
         setAuthView("login");
       }
-    } catch (err: any) {
-      setSignupError(err.message || "Erro ao criar conta");
-      toast.error("Erro no registo", { description: err.message });
-    } finally {
-      setSignupLoading(false);
-    }
+    } catch (err: any) { setSignupError(err.message); toast.error("Erro no registo", { description: err.message }); }
+    finally { setSignupLoading(false); }
   };
 
   const handleOrganizationSignup = async (data: any) => {
-    setSignupLoading(true);
-    setSignupError(null);
+    setSignupLoading(true); setSignupError(null);
     try {
-      // Derive company_type from sector
-      const sectorToCompanyType: Record<string, string> = {
-        oil_gas: 'operadora',
-        bank: 'banco',
-        trader: 'trader',
-        consultant: 'consultora',
-        regulator: 'governo',
-        other: 'prestadora_servicos',
-      };
-      const derivedType = sectorToCompanyType[data.sector] || 'operadora';
-
-      // Create user first so we are authenticated
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.contactEmail,
-        password: data.password,
-      });
-      
+      const sectorMap: Record<string, string> = { oil_gas:"operadora", bank:"banco", trader:"trader", consultant:"consultora", regulator:"governo", other:"prestadora_servicos" };
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email: data.contactEmail, password: data.password });
       if (authError) throw authError;
-      
       if (authData.user) {
-        // Now create organization as authenticated user
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: data.companyName,
-            nif: data.nif,
-            sector: data.sector,
-            email_domain: data.emailDomain,
-            country: data.country,
-            contact_email: data.contactEmail,
-            contact_phone: data.contactPhone,
-          })
-          .select()
-          .single();
-          
-        if (orgError) throw orgError;
-
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            company_name: data.companyName,
-            company_type: derivedType as any,
-            contact_name: data.contactName,
-            contact_role: data.contactRole,
-            contact_phone: data.contactPhone,
-            nif: data.nif,
-            organization_id: orgData.id,
-            account_type: 'organization',
-            accepted_terms: data.acceptTerms,
-            accepted_nda: data.acceptNda,
-          });
-          
-        if (profileError) throw profileError;
-        
-        toast.success("Organização registada!", { 
-          description: "O registo será analisado pela nossa equipa." 
-        });
+        const { data: orgData, error: orgErr } = await supabase.from("organizations").insert({ name: data.companyName, nif: data.nif, sector: data.sector, email_domain: data.emailDomain, country: data.country, contact_email: data.contactEmail, contact_phone: data.contactPhone }).select().single();
+        if (orgErr) throw orgErr;
+        const { error: pErr } = await supabase.from("profiles").insert({ id: authData.user.id, company_name: data.companyName, company_type: (sectorMap[data.sector] || "operadora") as any, contact_name: data.contactName, contact_role: data.contactRole, contact_phone: data.contactPhone, nif: data.nif, organization_id: orgData.id, account_type: "organization", accepted_terms: data.acceptTerms, accepted_nda: data.acceptNda });
+        if (pErr) throw pErr;
+        toast.success("Organização registada!", { description: "O registo será analisado pela nossa equipa." });
         setAuthView("login");
       }
-    } catch (err: any) {
-      setSignupError(err.message || "Erro ao registar organização");
-      toast.error("Erro no registo", { description: err.message });
-    } finally {
-      setSignupLoading(false);
-    }
+    } catch (err: any) { setSignupError(err.message); toast.error("Erro no registo", { description: err.message }); }
+    finally { setSignupLoading(false); }
   };
 
-  const switchView = (view: typeof authView) => {
-    setEmail("");
-    setPassword("");
-    setAuthView(view);
-  };
+  const switchView = (v: typeof authView) => { setEmail(""); setPassword(""); setAuthView(v); };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans selection:bg-[#002855]/10">
-      
-      {/* LEFT PANEL: Institutional Branding */}
-      <section className="lg:w-[45%] bg-[#002855] flex flex-col justify-between p-12 lg:p-20 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]" 
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} 
-        />
-        
-        <div className="relative z-10">
-          {/* Logo and Back to Landing */}
-          <div className="flex items-center justify-between mb-16">
-            <Link to="/" className="inline-block">
-              <img 
-                src={alphadataLogo} 
-                alt="AlphaData" 
-                className="h-12 w-auto"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-            </Link>
-            <Link 
-              to="/landing"
-              className="flex items-center gap-2 px-4 py-2 border border-white/30 text-white/80 hover:bg-white/10 hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Página Inicial
-            </Link>
-          </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-8"
-          >
-            <div className="h-1.5 w-16 bg-[#C8102E]" />
-            <h1 className="text-4xl xl:text-6xl font-black text-white leading-tight tracking-tight uppercase">
-              Inteligência <br />
-              <span className="text-[#C8102E]">Auditável</span>
-            </h1>
-            <p className="text-blue-100/60 text-xl leading-relaxed max-w-md font-light">
-              Plataforma institucional de monitorização e análise regulatória para o setor energético africano.
-            </p>
-          </motion.div>
-        </div>
+        .auth-root { font-family: '${T.sans}'; }
 
-        <div className="relative z-10 grid grid-cols-1 gap-8 mt-12">
-          {[
-            { icon: Globe, title: "Cobertura Continental", desc: "Dados de 25+ jurisdições africanas." },
-            { icon: ShieldCheck, title: "Conformidade Total", desc: "Segurança de nível governamental." }
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-5">
-              <div className="w-12 h-12 border border-white/20 flex items-center justify-center text-[#C8102E] bg-white/5">
-                <item.icon className="h-5 w-5" />
+        .auth-root input::placeholder { color: ${T.textDim}; opacity: 1; }
+        .auth-root input:-webkit-autofill {
+          -webkit-box-shadow: 0 0 0 100px #070d1a inset !important;
+          -webkit-text-fill-color: ${T.white} !important;
+        }
+
+        @keyframes scanline {
+          0%   { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        .scanline {
+          position: absolute; left: 0; right: 0; height: 120px; pointer-events: none;
+          background: linear-gradient(transparent 0%, rgba(200,16,46,0.015) 50%, transparent 100%);
+          animation: scanline 8s linear infinite;
+          z-index: 1;
+        }
+
+        @keyframes cursor-blink {
+          0%, 100% { opacity: 1; } 50% { opacity: 0; }
+        }
+        .blink { animation: cursor-blink 1s step-start infinite; }
+
+        @keyframes pulse-red {
+          0%, 100% { box-shadow: 0 0 4px 1px rgba(200,16,46,0.5); }
+          50%       { box-shadow: 0 0 12px 4px rgba(200,16,46,0.25); }
+        }
+        .pulse-r { animation: pulse-red 2.5s ease-in-out infinite; }
+
+        .grid-bg {
+          background-image:
+            repeating-linear-gradient(0deg, rgba(20,45,80,0.18) 0px, transparent 1px, transparent 40px, rgba(20,45,80,0.18) 41px),
+            repeating-linear-gradient(90deg, rgba(20,45,80,0.18) 0px, transparent 1px, transparent 40px, rgba(20,45,80,0.18) 41px);
+          background-size: 41px 41px;
+        }
+
+        .form-scroll::-webkit-scrollbar { width: 3px; }
+        .form-scroll::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 99px; }
+      `}</style>
+
+      <div className="auth-root min-h-screen flex flex-col lg:flex-row overflow-hidden" style={{ background: T.bg }}>
+
+        {/* ══════════════════════════════════════════════════
+            LEFT — Intelligence Panel
+            ══════════════════════════════════════════════════ */}
+        <aside className="lg:w-[42%] relative flex flex-col overflow-hidden flex-shrink-0"
+          style={{ background: `linear-gradient(160deg, #050d1e 0%, #04080f 60%, #08040a 100%)`, borderRight: `1px solid ${T.border}` }}>
+
+          {/* Grid texture */}
+          <div className="absolute inset-0 grid-bg opacity-100 pointer-events-none" />
+
+          {/* Scanline */}
+          <div className="scanline" />
+
+          {/* Corner glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none" style={{
+            background: "radial-gradient(circle at top right, rgba(0,40,85,0.35) 0%, transparent 70%)"
+          }} />
+          <div className="absolute bottom-0 left-0 w-48 h-48 pointer-events-none" style={{
+            background: "radial-gradient(circle at bottom left, rgba(200,16,46,0.08) 0%, transparent 70%)"
+          }} />
+
+          {/* Top accent */}
+          <div className="absolute top-0 left-0 right-0 h-px" style={{
+            background: `linear-gradient(90deg, transparent 0%, ${T.red} 40%, ${T.blueMid} 70%, transparent 100%)`
+          }} />
+
+          <div className="relative z-10 flex flex-col h-full p-10 lg:p-14">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-14">
+              <Link to="/" className="flex items-center gap-3">
+                <div className="relative w-9 h-9 rounded-lg flex items-center justify-center pulse-r"
+                  style={{ background: "linear-gradient(135deg, #0d1b30 0%, #1a0508 100%)", border: `1px solid ${T.borderR}` }}>
+                  <Activity style={{ width: 15, height: 15, color: T.red }} />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full pulse-r" style={{ background: T.red }} />
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", color: T.white }}>ALPHA</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", color: T.red }}>DATA</span>
+                    <span className="blink" style={{ fontFamily: T.mono, fontSize: 12, color: T.red }}>_</span>
+                  </div>
+                  <div style={{ fontFamily: T.mono, fontSize: 7, letterSpacing: "0.25em", color: T.textDim, textTransform: "uppercase" }}>
+                    intelligence platform
+                  </div>
+                </div>
+              </Link>
+
+              <Link to="/landing" className="flex items-center gap-1.5 transition-colors"
+                style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 600, letterSpacing: "0.16em", color: T.textDim, textTransform: "uppercase" }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.textMid}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
+              >
+                Página Inicial <ExternalLink style={{ width: 10, height: 10 }} />
+              </Link>
+            </div>
+
+            {/* Hero text */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="space-y-6 mb-14">
+              {/* Red rule */}
+              <div className="flex items-center gap-3">
+                <div className="h-px w-8" style={{ background: T.red }} />
+                <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.red, letterSpacing: "0.25em", textTransform: "uppercase" }}>
+                  Terminal de Acesso Seguro
+                </span>
               </div>
-              <div>
-                <h3 className="text-white font-bold text-xs uppercase tracking-widest">{item.title}</h3>
-                <p className="text-blue-200/40 text-[11px] mt-1">{item.desc}</p>
+
+              <h1 style={{ fontFamily: T.sans, fontSize: "clamp(28px, 3.5vw, 44px)", fontWeight: 900, lineHeight: 1.05, color: T.white, letterSpacing: "-0.02em" }}>
+                Inteligência<br />
+                <span style={{ color: T.red }}>Auditável</span>{" "}
+                <span style={{ color: T.textDim }}>para o</span><br />
+                Setor Energético
+              </h1>
+
+              <p style={{ fontFamily: T.sans, fontSize: 13.5, fontWeight: 400, color: T.textMid, lineHeight: 1.7, maxWidth: 340 }}>
+                Plataforma institucional de monitorização regulatória para operadores, traders e governos do sector energético africano.
+              </p>
+            </motion.div>
+
+            {/* Feature pills */}
+            <div className="space-y-3 mb-14">
+              {[
+                { icon: Globe, label: "Cobertura Continental", desc: "25+ jurisdições africanas em tempo real" },
+                { icon: ShieldCheck, label: "Conformidade Total", desc: "Segurança nível governamental · ISO 27001" },
+                { icon: Terminal, label: "API Institucional", desc: "Integração direta com sistemas ERP" },
+              ].map((item, i) => (
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
+                  className="flex items-center gap-4 rounded-lg px-4 py-3"
+                  style={{ background: "rgba(8,14,26,0.6)", border: `1px solid ${T.border}` }}
+                >
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(200,16,46,0.1)", border: `1px solid ${T.borderR}` }}>
+                    <item.icon style={{ width: 13, height: 13, color: T.red }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: T.textBrt, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontFamily: T.sans, fontSize: 10.5, color: T.textDim, marginTop: 2 }}>
+                      {item.desc}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-6 pt-8 mt-auto"
+              style={{ borderTop: `1px solid ${T.border}` }}>
+              <LiveStat value="25+" label="Países" />
+              <LiveStat value="480+" label="Operadoras" />
+              <LiveStat value="99.9%" label="Uptime" />
+            </div>
+
+            {/* Live clock */}
+            <div className="mt-6 flex items-center justify-between">
+              <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.14em" }}>
+                © 2026 ALPHADATA · CONFIDENCIAL
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" style={{ boxShadow: "0 0 6px rgba(34,197,94,0.8)" }} />
+                <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.1em" }}>
+                  {timeStr} · {dateStr}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-
-        <footer className="relative z-10 pt-12 flex items-center justify-between text-[10px] text-blue-300/30 font-bold uppercase tracking-[0.3em]">
-          <span>© 2026 ALPHADATA</span>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">Termos</a>
           </div>
-        </footer>
-      </section>
+        </aside>
 
-      {/* RIGHT PANEL: Authentication Form */}
-      <section className="flex-1 flex items-center justify-center p-8 lg:p-24 bg-white">
-        <div className="w-full max-w-[440px]">
-          <AnimatePresence mode="wait">
-            {authView === "login" ? (
-              <motion.div
-                key="login"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-10"
-              >
-                <header className="space-y-4">
-                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Portal do Cliente</h2>
-                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
-                    Insira suas credenciais corporativas para aceder ao terminal de inteligência.
-                  </p>
-                </header>
+        {/* ══════════════════════════════════════════════════
+            RIGHT — Auth Form
+            ══════════════════════════════════════════════════ */}
+        <main className="flex-1 flex items-center justify-center p-6 lg:p-16 relative overflow-y-auto form-scroll"
+          style={{ background: T.bg2 }}>
 
-                <form onSubmit={handleLogin} className="space-y-8">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail Profissional</Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-[#002855] transition-colors" />
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="exemplo@empresa.com"
-                          value={email}
-                          onChange={(e: any) => setEmail(e.target.value)}
-                          className="pl-12 border-gray-100"
-                          required
-                        />
-                      </div>
+          {/* Subtle vignette */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,8,15,0.6) 100%)"
+          }} />
+
+          <div className="relative z-10 w-full max-w-[420px]">
+
+            {/* Corner decorations */}
+            <div className="absolute -top-3 -left-3 w-6 h-6 pointer-events-none" style={{
+              borderTop: `2px solid ${T.red}`, borderLeft: `2px solid ${T.red}`
+            }} />
+            <div className="absolute -bottom-3 -right-3 w-6 h-6 pointer-events-none" style={{
+              borderBottom: `2px solid ${T.blueMid}`, borderRight: `2px solid ${T.blueMid}`
+            }} />
+
+            <AnimatePresence mode="wait">
+
+              {/* ── LOGIN ─────────────────────────────────── */}
+              {authView === "login" && (
+                <motion.div key="login"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-8 p-8 rounded-2xl"
+                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                >
+                  {/* Auth header */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Fingerprint style={{ width: 14, height: 14, color: T.red }} />
+                      <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                        Autenticação Segura · TLS 1.3
+                      </span>
                     </div>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 26, fontWeight: 900, color: T.white, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                      Portal do Cliente
+                    </h2>
+                    <div className="flex items-start gap-3 p-3 rounded-lg"
+                      style={{ background: "rgba(200,16,46,0.05)", border: `1px solid rgba(200,16,46,0.15)` }}>
+                      <AlertCircle style={{ width: 13, height: 13, color: T.red, flexShrink: 0, marginTop: 1 }} />
+                      <p style={{ fontFamily: T.sans, fontSize: 11, color: T.textMid, lineHeight: 1.55 }}>
+                        Acesso restrito a utilizadores autorizados. Todas as sessões são registadas e auditadas.
+                      </p>
+                    </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="password">Senha de Acesso</Label>
-                        <button 
-                          type="button" 
-                          onClick={() => switchView("forgot-password")}
-                          className="text-[10px] font-bold text-[#C8102E] hover:text-black uppercase tracking-widest transition-colors"
+                  {/* Form */}
+                  <form onSubmit={handleLogin} className="space-y-5">
+                    <div>
+                      <FieldLabel>E-mail Institucional</FieldLabel>
+                      <TextInput icon={Mail} type="email" placeholder="utilizador@empresa.com" value={email} onChange={(e: any) => setEmail(e.target.value)} required />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <FieldLabel>Senha de Acesso</FieldLabel>
+                        <button type="button" onClick={() => switchView("forgot-password")}
+                          style={{ fontFamily: T.mono, fontSize: 8, color: T.red, letterSpacing: "0.14em", textTransform: "uppercase", background: "none", border: "none", cursor: "pointer" }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.white}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.red}
                         >
-                          Esqueceu a senha?
+                          Esqueceu?
                         </button>
                       </div>
-                      <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-[#002855] transition-colors" />
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e: any) => setPassword(e.target.value)}
-                          className="pl-12 pr-12 border-gray-100"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
+                      <TextInput icon={Lock} type={showPassword ? "text" : "password"}
+                        placeholder="••••••••••••" value={password} onChange={(e: any) => setPassword(e.target.value)}
+                        required
+                        rightSlot={
+                          <button type="button" onClick={() => setShowPassword(p => !p)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: T.textDim, display: "flex" }}>
+                            {showPassword ? <EyeOff style={{ width: 14, height: 14 }} /> : <Eye style={{ width: 14, height: 14 }} />}
+                          </button>
+                        }
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <PrimaryBtn type="submit" loading={loading} disabled={loading}>
+                        <ShieldCheck style={{ width: 13, height: 13 }} />
+                        Entrar no Terminal
+                        <ChevronRight style={{ width: 13, height: 13 }} />
+                      </PrimaryBtn>
+                    </div>
+                  </form>
+
+                  {/* Divider */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.border}, transparent)` }} />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", background: T.bg2, padding: "0 12px", textTransform: "uppercase" }}>
+                        Sem Acesso?
+                      </span>
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full py-4 text-sm"
-                    disabled={loading}
-                  >
-                    {loading ? "VERIFICANDO..." : "ENTRAR NO SISTEMA"}
-                  </Button>
-                </form>
+                  <GhostBtn onClick={() => switchView("signup")}>
+                    Solicitar Acesso Institucional →
+                  </GhostBtn>
+                </motion.div>
+              )}
 
-                <div className="pt-8 border-t border-gray-100">
-                  <div className="relative mb-8">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100" /></div>
-                    <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em] font-black">
-                      <span className="bg-white px-6 text-gray-400">Novo Utilizador?</span>
+              {/* ── SIGNUP ────────────────────────────────── */}
+              {authView === "signup" && (
+                <motion.div key="signup"
+                  initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-7 p-8 rounded-2xl"
+                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                >
+                  <div className="space-y-3">
+                    <button onClick={() => switchView("login")} className="flex items-center gap-1.5 transition-colors"
+                      style={{ fontFamily: T.mono, fontSize: 8, color: T.red, letterSpacing: "0.16em", textTransform: "uppercase", background: "none", border: "none", cursor: "pointer" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.white}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.red}
+                    >
+                      <ArrowLeft style={{ width: 11, height: 11 }} /> Voltar ao Login
+                    </button>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.white, letterSpacing: "-0.02em" }}>
+                      Solicitar Acesso
+                    </h2>
+                    <p style={{ fontFamily: T.sans, fontSize: 12, color: T.textMid, lineHeight: 1.6 }}>
+                      Selecione o perfil institucional para iniciar o processo de revisão de conformidade.
+                    </p>
+                  </div>
+
+                  {/* Type selector */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { key: "personal", icon: User, label: "Individual", desc: "Consultores e analistas" },
+                      { key: "organization", icon: Building2, label: "Corporativo", desc: "Empresas e governos" },
+                    ] as const).map(opt => (
+                      <button key={opt.key} onClick={() => setAccountType(opt.key)}
+                        className="p-4 rounded-xl text-left transition-all duration-200 flex flex-col gap-3"
+                        style={{
+                          background: accountType === opt.key ? "rgba(200,16,46,0.08)" : "rgba(8,14,26,0.6)",
+                          border: `1px solid ${accountType === opt.key ? T.borderR : T.border}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <opt.icon style={{ width: 14, height: 14, color: accountType === opt.key ? T.red : T.textDim }} />
+                        <div>
+                          <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: accountType === opt.key ? T.white : T.textMid, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                            {opt.label}
+                          </div>
+                          <div style={{ fontFamily: T.sans, fontSize: 10, color: T.textDim, marginTop: 3 }}>
+                            {opt.desc}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    {accountType === "personal"
+                      ? <PersonalSignupForm onSubmit={handlePersonalSignup} isLoading={signupLoading} error={signupError} />
+                      : <OrganizationSignupForm onSubmit={handleOrganizationSignup} isLoading={signupLoading} error={signupError} />
+                    }
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── FORGOT PASSWORD ───────────────────────── */}
+              {authView === "forgot-password" && (
+                <motion.div key="forgot"
+                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.22 }}
+                  className="space-y-8 p-8 rounded-2xl"
+                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                >
+                  <div className="space-y-3">
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                      Recuperação de Credencial
                     </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full py-4"
-                    onClick={() => switchView("signup")}
-                  >
-                    SOLICITAR ACESSO INSTITUCIONAL
-                  </Button>
-                </div>
-              </motion.div>
-            ) : authView === "signup" ? (
-              <motion.div
-                key="signup"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-10"
-              >
-                <header className="space-y-4">
-                  <button 
-                    onClick={() => switchView("login")}
-                    className="flex items-center gap-2 text-[10px] font-bold text-[#C8102E] uppercase tracking-widest hover:text-black transition-all"
-                  >
-                    <ArrowLeft className="h-3 w-3" /> Voltar ao Login
-                  </button>
-                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Solicitar Acesso</h2>
-                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
-                    Selecione o perfil institucional para iniciar o processo de revisão.
-                  </p>
-                </header>
-
-                <div className="space-y-8">
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                      onClick={() => setAccountType("personal")}
-                      className={`p-6 border text-left transition-all flex flex-col gap-4 ${accountType === "personal" ? "border-[#002855] bg-[#002855]/5" : "border-gray-100 hover:border-gray-200"}`}
-                    >
-                      <User className={`h-5 w-5 ${accountType === "personal" ? "text-[#002855]" : "text-gray-300"}`} />
-                      <div>
-                        <span className="block text-[10px] font-black text-black uppercase tracking-widest">Individual</span>
-                        <span className="text-[9px] text-gray-400 font-medium leading-tight mt-1 block">Consultores independentes.</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => setAccountType("organization")}
-                      className={`p-6 border text-left transition-all flex flex-col gap-4 ${accountType === "organization" ? "border-[#002855] bg-[#002855]/5" : "border-gray-100 hover:border-gray-200"}`}
-                    >
-                      <Building2 className={`h-5 w-5 ${accountType === "organization" ? "text-[#002855]" : "text-gray-300"}`} />
-                      <div>
-                        <span className="block text-[10px] font-black text-black uppercase tracking-widest">Corporativo</span>
-                        <span className="text-[9px] text-gray-400 font-medium leading-tight mt-1 block">Empresas e governos.</span>
-                      </div>
-                    </button>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.white, letterSpacing: "-0.02em" }}>
+                      Redefinir Senha
+                    </h2>
+                    <p style={{ fontFamily: T.sans, fontSize: 12, color: T.textMid, lineHeight: 1.6 }}>
+                      Enviaremos um link de redefinição para o seu e-mail institucional cadastrado.
+                    </p>
                   </div>
 
-                  {/* Renderização condicional dos componentes solicitados */}
-                  <div className="pt-4">
-                    {accountType === "personal" ? (
-                      <PersonalSignupForm onSubmit={handlePersonalSignup} isLoading={signupLoading} error={signupError} />
-                    ) : (
-                      <OrganizationSignupForm onSubmit={handleOrganizationSignup} isLoading={signupLoading} error={signupError} />
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="forgot"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="space-y-10"
-              >
-                <header className="space-y-4">
-                  <h2 className="text-4xl font-black text-black tracking-tighter uppercase">Recuperar Senha</h2>
-                  <p className="text-gray-400 text-sm font-medium border-l-4 border-[#C8102E] pl-4">
-                    Enviaremos instruções de redefinição para o seu e-mail institucional cadastrado.
-                  </p>
-                </header>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!forgotEmail) { toast.error("Insira o seu email"); return; }
+                    setForgotLoading(true);
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, { redirectTo: `${window.location.origin}/auth` });
+                      if (error) throw error;
+                      toast.success("Email enviado!", { description: "Verifique a sua caixa de entrada." });
+                      switchView("login");
+                    } catch (err: any) {
+                      toast.error("Erro ao enviar email", { description: err.message });
+                    } finally {
+                      setForgotLoading(false); }
+                  }} className="space-y-5">
+                    <div>
+                      <FieldLabel>E-mail de Recuperação</FieldLabel>
+                      <TextInput icon={Mail} type="email" placeholder="seu@email.com" value={forgotEmail} onChange={(e: any) => setForgotEmail(e.target.value)} required />
+                    </div>
+                    <PrimaryBtn type="submit" loading={forgotLoading} disabled={forgotLoading}>
+                      Enviar Link de Redefinição
+                    </PrimaryBtn>
+                    <GhostBtn onClick={() => switchView("login")}>
+                      Cancelar e Voltar
+                    </GhostBtn>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!forgotEmail) { toast.error("Insira o seu email"); return; }
-                  setForgotLoading(true);
-                  try {
-                    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-                      redirectTo: `${window.location.origin}/auth`,
-                    });
-                    if (error) throw error;
-                    toast.success("Email enviado!", { description: "Verifique a sua caixa de entrada para redefinir a senha." });
-                    switchView("login");
-                  } catch (err: any) {
-                    toast.error("Erro ao enviar email", { description: err.message });
-                  } finally {
-                    setForgotLoading(false);
-                  }
-                }} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>E-mail de Recuperação</Label>
-                    <Input
-                      placeholder="seu@email.com"
-                      className="border-gray-100"
-                      value={forgotEmail}
-                      onChange={(e: any) => setForgotEmail(e.target.value)}
-                      type="email"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full py-4" disabled={forgotLoading}>
-                    {forgotLoading ? "ENVIANDO..." : "ENVIAR LINK DE REDEFINIÇÃO"}
-                  </Button>
-                  <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest" onClick={() => switchView("login")}>Cancelar e Voltar</Button>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Support Links */}
-          <div className="mt-16 flex justify-center gap-10 border-t border-gray-50 pt-8">
-            <a href="#" className="flex items-center gap-2 text-[10px] font-bold text-gray-300 hover:text-black transition-colors uppercase tracking-widest">
-              Suporte <ExternalLink className="h-3 w-3" />
-            </a>
-            <a href="#" className="flex items-center gap-2 text-[10px] font-bold text-gray-300 hover:text-black transition-colors uppercase tracking-widest">
-              Documentação <ExternalLink className="h-3 w-3" />
-            </a>
+            {/* Footer links */}
+            <div className="mt-6 flex items-center justify-center gap-8">
+              {["Suporte", "Documentação", "Privacidade"].map(l => (
+                <a key={l} href="#" className="flex items-center gap-1 transition-colors"
+                  style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.14em", textTransform: "uppercase" }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.textMid}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
+                >
+                  {l} <ExternalLink style={{ width: 9, height: 9 }} />
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }
