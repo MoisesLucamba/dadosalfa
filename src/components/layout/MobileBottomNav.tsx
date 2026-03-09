@@ -14,6 +14,7 @@ import {
   Search,
   Users,
   Building2,
+  Zap,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

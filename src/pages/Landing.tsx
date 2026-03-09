@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import alphadataLogo from "@/assets/alphadata-logo.png";
+import heroDashboard from "@/assets/hero-dashboard.png";
 import { 
   BarChart3, Globe, Shield, TrendingUp, Database,
   ArrowRight, CheckCircle2, ChevronRight, Building2,
