@@ -14,6 +14,7 @@ import {
   Search,
   Users,
   Building2,
+  Zap,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,13 @@ const moreMenuItems: MoreMenuItem[] = [
     href: "/search",
     description: "Pesquisa inteligente de dados",
     color: "text-cyan-500",
+  },
+  {
+    icon: Zap,
+    label: "Visão Computacional",
+    href: "/well-simulation",
+    description: "Simulação e visualização de poços",
+    color: "text-orange-500",
   },
   {
     icon: Bell,

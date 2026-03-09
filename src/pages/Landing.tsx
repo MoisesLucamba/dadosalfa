@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import alphadataLogo from "@/assets/alphadata-logo.png";
+import heroDashboard from "@/assets/hero-dashboard.png";
 import { 
   BarChart3, Globe, Shield, TrendingUp, Database,
   ArrowRight, CheckCircle2, ChevronRight, Building2,
@@ -252,34 +253,8 @@ export default function InstitutionalLanding() {
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-lg shadow-2xl p-2 border border-gray-200">
-              <div className="bg-[#f8f9fa] rounded p-6">
-                <div className="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#002855] rounded flex items-center justify-center">
-                      <BarChart3 className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="font-bold text-[#002855] text-sm">MONITOR DE PRODUÇÃO NACIONAL</span>
-                  </div>
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live: Angola Blocks</div>
-                </div>
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  {[
-                    { label: "BRENT SPOT", val: "$78.45", change: "+1.2%" },
-                    { label: "PROD. DIÁRIA", val: "1.08M", change: "-0.5%" },
-                    { label: "EXPORTAÇÕES", val: "942K", change: "+2.1%" }
-                  ].map((d, i) => (
-                    <div key={i} className="bg-white p-4 border border-gray-100 shadow-sm">
-                      <div className="text-[10px] font-bold text-gray-500 mb-1">{d.label}</div>
-                      <div className="text-xl font-black text-[#002855]">{d.val}</div>
-                      <div className={`text-[10px] font-bold ${d.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>{d.change}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="h-40 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center">
-                  <TrendingUp className="w-12 h-12 text-gray-200" />
-                </div>
-              </div>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-lg shadow-2xl overflow-hidden border border-white/10">
+              <img src={heroDashboard} alt="AlphaData Dashboard - Monitorização em tempo real do ecossistema petrolífero de Angola" className="w-full h-auto rounded-lg" />
             </motion.div>
           </div>
         </div>
