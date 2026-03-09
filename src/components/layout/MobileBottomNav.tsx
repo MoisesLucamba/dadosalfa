@@ -84,6 +84,13 @@ const moreMenuItems: MoreMenuItem[] = [
     color: "text-cyan-500",
   },
   {
+    icon: Zap,
+    label: "Visão Computacional",
+    href: "/well-simulation",
+    description: "Simulação e visualização de poços",
+    color: "text-orange-500",
+  },
+  {
     icon: Bell,
     label: "Alertas",
     href: "/alerts",
