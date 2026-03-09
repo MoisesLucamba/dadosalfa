@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Search, ChevronDown, LogOut, Sun, Moon,
   Settings, UserCircle, X, Check, AlertTriangle,
-  Info, CreditCard, ChevronRight, Radio
+  Info, CreditCard, ChevronRight, Radio, HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -51,9 +51,9 @@ const QUICK_SUGGESTIONS = [
   { label: "Relatório mensal",           path: "/reports",    tag: "Relatórios" },
 ];
 
-interface HeaderProps { activeItem?: string; }
+interface HeaderProps { activeItem?: string; onHelpClick?: () => void; }
 
-export function Header({ activeItem = "/" }: HeaderProps) {
+export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -201,6 +201,20 @@ export function Header({ activeItem = "/" }: HeaderProps) {
             <Radio className="w-2.5 h-2.5 animate-pulse" style={{ color: RED }} />
             <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: RED }}>Live</span>
           </div>
+
+          {/* Help / Tour button */}
+          {onHelpClick && (
+            <button
+              onClick={onHelpClick}
+              title="Tour Guiado"
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+              style={{ color: W30 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = WHITE; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W30; }}
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Theme toggle */}
           <button

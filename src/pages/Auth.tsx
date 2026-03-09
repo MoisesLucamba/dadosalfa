@@ -79,6 +79,8 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   
   // Form States
   const [email, setEmail] = useState("");
@@ -154,13 +156,32 @@ export default function Auth() {
       if (authError) throw authError;
       
       if (authData.user) {
-        // Create profile
+        // Create profile — derive company_type from selected company's sector
+        const sectorToCompanyType: Record<string, string> = {
+          oil_gas: 'operadora',
+          bank: 'banco',
+          trader: 'trader',
+          consultant: 'consultora',
+          regulator: 'governo',
+          other: 'prestadora_servicos',
+        };
+        // Look up the company sector from predefined_companies
+        const { data: companyData } = await supabase
+          .from('predefined_companies')
+          .select('sector')
+          .eq('id', data.companyId)
+          .maybeSingle();
+        
+        const derivedType = companyData?.sector 
+          ? (sectorToCompanyType[companyData.sector] || 'consultora')
+          : 'consultora';
+
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: authData.user.id,
             company_name: data.companyName,
-            company_type: 'consultora',
+            company_type: derivedType as any,
             contact_name: data.contactName,
             contact_role: data.jobTitle,
             contact_phone: data.phone,
@@ -490,14 +511,39 @@ export default function Auth() {
                   </p>
                 </header>
 
-                <div className="space-y-6">
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!forgotEmail) { toast.error("Insira o seu email"); return; }
+                  setForgotLoading(true);
+                  try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                      redirectTo: `${window.location.origin}/auth`,
+                    });
+                    if (error) throw error;
+                    toast.success("Email enviado!", { description: "Verifique a sua caixa de entrada para redefinir a senha." });
+                    switchView("login");
+                  } catch (err: any) {
+                    toast.error("Erro ao enviar email", { description: err.message });
+                  } finally {
+                    setForgotLoading(false);
+                  }
+                }} className="space-y-6">
                   <div className="space-y-2">
                     <Label>E-mail de Recuperação</Label>
-                    <Input placeholder="seu@email.com" className="border-gray-100" />
+                    <Input
+                      placeholder="seu@email.com"
+                      className="border-gray-100"
+                      value={forgotEmail}
+                      onChange={(e: any) => setForgotEmail(e.target.value)}
+                      type="email"
+                      required
+                    />
                   </div>
-                  <Button className="w-full py-4">ENVIAR LINK DE REDEFINIÇÃO</Button>
+                  <Button type="submit" className="w-full py-4" disabled={forgotLoading}>
+                    {forgotLoading ? "ENVIANDO..." : "ENVIAR LINK DE REDEFINIÇÃO"}
+                  </Button>
                   <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest" onClick={() => switchView("login")}>Cancelar e Voltar</Button>
-                </div>
+                </form>
               </motion.div>
             )}
           </AnimatePresence>

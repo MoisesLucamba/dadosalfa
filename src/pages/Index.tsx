@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { OnboardingTour, useOnboardingTour } from "@/components/OnboardingTour";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import {
@@ -36,80 +37,20 @@ import { useIsAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ─────────────────────────────────────────
-   GLOBAL THEME TOKENS
+   THEME VARS (semantic, for inline styles only)
 ───────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
-
-    :root {
-      --bg-primary:       #0A0E1A;
-      --bg-secondary:     #0D1117;
-      --bg-surface:       #141B2D;
-      --bg-surface-hover: #1A2235;
-      --border-subtle:    #1E2A45;
-      --accent-blue:      #00A3FF;
-      --accent-amber:     #F5A623;
-      --accent-green:     #00D4AA;
-      --accent-red:       #FF6B35;
-      --text-primary:     #E8EDF5;
-      --text-secondary:   #6B7A99;
-      --text-muted:       #3D4F6E;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
-    body {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono { font-family: 'IBM Plex Mono', monospace; }
-
-    /* card hover */
-    .surface-card {
-      transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
-    }
-    .surface-card:hover {
-      border-color: rgba(0,163,255,0.30) !important;
-      background: var(--bg-surface-hover) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
-    }
-
-    /* mount animations */
-    @keyframes fadeUp {
-      from { opacity:0; transform:translateY(8px); }
-      to   { opacity:1; transform:translateY(0);   }
-    }
-    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity:0; }
-    .d1{animation-delay: 50ms;} .d2{animation-delay:100ms;}
-    .d3{animation-delay:150ms;} .d4{animation-delay:200ms;}
-    .d5{animation-delay:250ms;} .d6{animation-delay:300ms;}
-
-    /* live pulse */
-    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-    .pulse { animation: pulse 2s ease-in-out infinite; }
-
-    /* skeleton shimmer */
-    @keyframes shimmer {
-      0%   { background-position: -600px 0; }
-      100% { background-position:  600px 0; }
-    }
-    .skeleton-dark {
-      background: linear-gradient(90deg, #141B2D 25%, #1E2A45 50%, #141B2D 75%);
-      background-size: 1200px 100%;
-      animation: shimmer 1.6s infinite linear;
-      border-radius: 8px;
-    }
-
-    /* scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-  `}</style>
-);
+const TV = {
+  bgSurface: "hsl(var(--card))",
+  bgPrimary: "hsl(var(--background))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  textSecondary: "hsl(var(--muted-foreground))",
+  textMuted: "hsl(var(--muted-foreground) / 0.6)",
+  accentBlue: "hsl(var(--primary))",
+  accentAmber: "hsl(var(--accent))",
+  accentGreen: "hsl(var(--success))",
+  accentRed: "hsl(var(--destructive))",
+};
 
 /* ─────────────────────────────────────────
    UTILITIES  (unchanged logic)
@@ -174,7 +115,7 @@ const useDashboardKPIs = (productionData: any[], priceData: any[], exportData: a
    HELPERS
 ───────────────────────────────────────── */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
     {children}
   </span>
 );
@@ -213,7 +154,7 @@ const KPIBlock = ({
         {value}
       </div>
       <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
           {label}
         </span>
         <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{unit}</span>
@@ -251,7 +192,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
           {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {up ? "+" : ""}{change.toFixed(2)}%
         </span>
-        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
+        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
           USD/bbl
         </span>
       </div>
@@ -265,6 +206,7 @@ const PriceTicker = ({ name, price, change }: { name: string; price: number; cha
 const Index = () => {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
+  const { showTour, trigger: triggerTour, reset: resetTour } = useOnboardingTour();
 
   const { data: prodData,   isLoading: loadProd,   refetch: refetchProd  } = useProductionData();
   const { data: priceData,  isLoading: loadPrice,  refetch: refetchPrice } = usePriceData();
@@ -314,9 +256,8 @@ const Index = () => {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", overflow: "hidden" }}>
+    <div className="flex h-screen bg-background overflow-hidden">
       <Helmet><title>AlphaData | Intelligence Hub</title></Helmet>
-      <GlobalStyles />
 
       <Sidebar activeItem="/" />
 
@@ -324,7 +265,7 @@ const Index = () => {
         {/* mesh glow */}
         <div style={{ position: "absolute", top: 0, right: 0, width: 500, height: 500, background: "radial-gradient(circle, rgba(0,163,255,0.03) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
-        <Header activeItem="/" />
+        <Header activeItem="/" onHelpClick={triggerTour} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 88, position: "relative", zIndex: 1 }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -336,10 +277,10 @@ const Index = () => {
                   <LayoutDashboard size={12} style={{ color: "var(--accent-blue)" }} />
                   <SectionLabel>Visão Geral</SectionLabel>
                 </div>
-                <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                   Dashboard Principal
                 </h1>
-                <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
+                <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                   Monitoramento em tempo real do ecossistema petrolífero de Angola.
                 </p>
               </div>
@@ -353,7 +294,7 @@ const Index = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "transparent", border: "1px solid var(--border-subtle)",
-                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    color: "var(--text-primary)", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: isSyncing ? "not-allowed" : "pointer",
                     opacity: isSyncing ? 0.6 : 1,
                     transition: "border-color 180ms ease-out",
@@ -373,7 +314,7 @@ const Index = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "var(--accent-blue)", border: "none",
-                    color: "#0A0E1A", fontFamily: "'Epilogue',sans-serif",
+                    color: "#0A0E1A", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: isLoading ? "not-allowed" : "pointer",
                     opacity: isLoading ? 0.6 : 1,
                     transition: "filter 180ms ease-out",
@@ -397,7 +338,7 @@ const Index = () => {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <AlertTriangle size={16} style={{ color: "var(--accent-red)", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
+                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-primary)" }}>
                     Nenhum dado encontrado para o período atual.
                   </span>
                 </div>
@@ -405,7 +346,7 @@ const Index = () => {
                   <button
                     onClick={() => navigate("/admin")}
                     style={{
-                      fontFamily: "'Epilogue',sans-serif", fontSize: 11, fontWeight: 700,
+                      fontFamily: "'Outfit',sans-serif", fontSize: 11, fontWeight: 700,
                       textTransform: "uppercase", letterSpacing: "0.08em",
                       color: "var(--accent-red)", background: "transparent",
                       border: "1px solid rgba(255,107,53,0.30)", borderRadius: 4,
@@ -419,7 +360,7 @@ const Index = () => {
             )}
 
             {/* ── KPI GRID ── */}
-            <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+            <div className="fade-up d2" data-tour="kpi-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
               {isLoading
                 ? [...Array(4)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 128 }} />)
                 : kpiDefs.map((def, i) => {
@@ -454,7 +395,7 @@ const Index = () => {
 
               {/* left column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
+                <div data-tour="production-chart" style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
@@ -470,7 +411,7 @@ const Index = () => {
 
               {/* right column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
+                <div data-tour="export-btn" style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
@@ -501,6 +442,9 @@ const Index = () => {
       </div>
 
       <MobileBottomNav />
+
+      {/* Onboarding Tour */}
+      <OnboardingTour forceShow={showTour} onComplete={resetTour} />
     </div>
   );
 };

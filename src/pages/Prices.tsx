@@ -34,86 +34,20 @@ import {
 } from "recharts";
 
 /* ─────────────────────────────────────────
-   GLOBAL THEME TOKENS
+   THEME VARS (semantic)
 ───────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
-
-    :root {
-      --bg-primary:       #0A0E1A;
-      --bg-secondary:     #0D1117;
-      --bg-surface:       #141B2D;
-      --bg-surface-hover: #1A2235;
-      --border-subtle:    #1E2A45;
-      --accent-blue:      #00A3FF;
-      --accent-amber:     #F5A623;
-      --accent-green:     #00D4AA;
-      --accent-red:       #FF6B35;
-      --text-primary:     #E8EDF5;
-      --text-secondary:   #6B7A99;
-      --text-muted:       #3D4F6E;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono { font-family: 'IBM Plex Mono', monospace; }
-
-    /* ── table rows ── */
-    .data-row {
-      transition: background 180ms ease-out, border-left-color 180ms ease-out;
-      border-left: 2px solid transparent;
-    }
-    .data-row:hover {
-      background: var(--bg-surface-hover) !important;
-      border-left-color: var(--accent-amber);
-    }
-
-    /* ── card hover ── */
-    .surface-card {
-      transition: border-color 180ms ease-out, background 180ms ease-out,
-                  box-shadow 180ms ease-out;
-    }
-    .surface-card:hover {
-      border-color: rgba(0,163,255,0.30) !important;
-      background: var(--bg-surface-hover) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
-    }
-
-    /* ── mount animation ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0);   }
-    }
-    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity: 0; }
-    .d1 { animation-delay:  50ms; }
-    .d2 { animation-delay: 100ms; }
-    .d3 { animation-delay: 150ms; }
-    .d4 { animation-delay: 200ms; }
-    .d5 { animation-delay: 250ms; }
-    .d6 { animation-delay: 300ms; }
-
-    /* ── scrollbar ── */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-
-    /* ── badge pill ── */
-    .badge-pill {
-      font-family: 'Epilogue', sans-serif;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      padding: 2px 8px; border-radius: 4px;
-    }
-  `}</style>
-);
+const TV = {
+  bgSurface: "hsl(var(--card))",
+  bgPrimary: "hsl(var(--background))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  textSecondary: "hsl(var(--muted-foreground))",
+  textMuted: "hsl(var(--muted-foreground) / 0.6)",
+  accentBlue: "hsl(var(--primary))",
+  accentAmber: "hsl(var(--accent))",
+  accentGreen: "hsl(var(--success))",
+  accentRed: "hsl(var(--destructive))",
+};
 
 /* ─────────────────────────────────────────
    DATA  (unchanged)
@@ -174,7 +108,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       background: "#1E2A45", border: "1px solid var(--border-subtle)",
       borderRadius: 6, padding: "10px 14px", fontSize: 11,
     }}>
-      <p style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
+      <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
         {label}
       </p>
       {payload.map((e: any, i: number) => (
@@ -202,11 +136,9 @@ const volatColor = (v: number) =>
    SECTION LABEL
 ───────────────────────────────────────── */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <span style={{
-    fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700,
-    textTransform: "uppercase", letterSpacing: "0.12em",
-    color: "var(--text-muted)",
-  }}>{children}</span>
+  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
+    {children}
+  </span>
 );
 
 /* ─────────────────────────────────────────
@@ -225,9 +157,8 @@ const Prices = () => {
       <Helmet>
         <title>Preços & Mercado | AlphaData</title>
       </Helmet>
-      <GlobalStyles />
 
-      <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", color: "var(--text-primary)", overflow: "hidden" }}>
+      <div className="flex h-screen bg-background text-foreground overflow-hidden">
         <Sidebar activeItem="/prices" />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -243,10 +174,10 @@ const Prices = () => {
                     <Globe size={12} style={{ color: "var(--accent-blue)" }} />
                     <SectionLabel>Global Market Intelligence</SectionLabel>
                   </div>
-                  <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                  <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                     Preços &amp; Mercado
                   </h1>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                  <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
                     Benchmarks globais e análise de spreads para o crude angolano.
                   </p>
                 </div>
@@ -293,7 +224,7 @@ const Prices = () => {
                       </div>
                       {/* label */}
                       <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
                           {kpi.label}
                         </span>
                         <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--text-muted)" }}>
@@ -316,10 +247,10 @@ const Prices = () => {
                 {/* header bar */}
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                       Histórico Brent Crude
                     </h3>
-                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                    <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                       Análise de preço vs liquidez de mercado
                     </p>
                   </div>
@@ -328,7 +259,7 @@ const Prices = () => {
                     {[{ color: "var(--accent-blue)", label: "Preço" }, { color: "var(--text-muted)", label: "Volume" }].map((l, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: l.color }} />
-                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>{l.label}</span>
+                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>{l.label}</span>
                       </div>
                     ))}
                   </div>
@@ -344,7 +275,7 @@ const Prices = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} dy={8} />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
                       <YAxis yAxisId="price" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[70, 90]} />
                       <Tooltip content={<ChartTooltip />} />
                       <Area yAxisId="price" type="monotone" dataKey="price" name="Brent" stroke="var(--accent-blue)" fill="url(#gBrent)" strokeWidth={2} animationDuration={800} />
@@ -364,7 +295,7 @@ const Prices = () => {
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Benchmarks</h3>
+                      <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Benchmarks</h3>
                       <SectionLabel>Comparativo em Tempo Real</SectionLabel>
                     </div>
                     <BarChart3 size={18} style={{ color: "var(--text-muted)" }} />
@@ -373,7 +304,7 @@ const Prices = () => {
                   {/* table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 0, padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)" }}>
                     {["Crude", "Spot (USD)", "24h"].map((h, i) => (
-                      <span key={i} style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", textAlign: i > 0 ? "right" : "left" }}>
+                      <span key={i} style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", textAlign: i > 0 ? "right" : "left" }}>
                         {h}
                       </span>
                     ))}
@@ -390,8 +321,8 @@ const Prices = () => {
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{ width: 3, height: 20, borderRadius: 2, background: crude.color, opacity: 0.8 }} />
                           <div>
-                            <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
-                            <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
+                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
+                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
                           </div>
                         </div>
                         <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
@@ -413,7 +344,7 @@ const Prices = () => {
                   display: "flex", flexDirection: "column",
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)" }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Spreads de Referência</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Spreads de Referência</h3>
                     <SectionLabel>Diferenciais de Mercado</SectionLabel>
                   </div>
 
@@ -421,7 +352,7 @@ const Prices = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={spreadData}>
                         <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="3 3" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "DM Sans" }} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "Outfit" }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "IBM Plex Mono" }} domain={[-3, 6]} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="stepAfter" dataKey="brentWti"     name="Brent-WTI"     stroke="var(--accent-blue)"  strokeWidth={2} dot={false} />
@@ -440,7 +371,7 @@ const Prices = () => {
                         padding: "16px 24px",
                         borderRight: i === 0 ? "1px solid var(--border-subtle)" : "none",
                       }}>
-                        <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: s.color, marginBottom: 6 }}>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: s.color, marginBottom: 6 }}>
                           {s.label}
                         </div>
                         <div className="mono" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-primary)" }}>
@@ -458,7 +389,7 @@ const Prices = () => {
                 {/* OPEC news */}
                 <div className="fade-up d5">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Impacto OPEP+</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Impacto OPEP+</h3>
                     <SectionLabel>Latest Updates</SectionLabel>
                   </div>
 
@@ -480,10 +411,10 @@ const Prices = () => {
                               {news.impact}
                             </span>
                           </div>
-                          <h4 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px", lineHeight: 1.4 }}>
+                          <h4 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px", lineHeight: 1.4 }}>
                             {news.title}
                           </h4>
-                          <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                          <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
                             {news.description}
                           </p>
                           {/* left accent border on read */}
@@ -500,7 +431,7 @@ const Prices = () => {
                   borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", overflow: "hidden",
                 }}>
                   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Volatilidade</h3>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Volatilidade</h3>
                     <Zap size={18} style={{ color: "var(--accent-amber)" }} />
                   </div>
 
@@ -508,7 +439,7 @@ const Prices = () => {
                     {volatilityData.map((item, i) => (
                       <div key={item.period} style={{ marginBottom: i < volatilityData.length - 1 ? 20 : 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                          <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
+                          <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
                             {item.period}
                           </span>
                           <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: volatColor(item.value) }}>
@@ -534,7 +465,7 @@ const Prices = () => {
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
                       <div>
-                        <div style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-muted)", marginBottom: 4 }}>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-muted)", marginBottom: 4 }}>
                           Média do Sector
                         </div>
                         <span className="mono" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-primary)" }}>21.4%</span>

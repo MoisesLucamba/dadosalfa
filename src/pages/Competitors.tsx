@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -265,7 +266,7 @@ const Operators = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-zinc-100 selection:bg-primary/30">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       <Helmet>
         <title>Operadoras | AlphaData</title>
       </Helmet>
@@ -671,6 +672,8 @@ const Operators = () => {
               </div>
             </div>
           </main>
+
+          <MobileBottomNav />
         </div>
       </div>
     </div>

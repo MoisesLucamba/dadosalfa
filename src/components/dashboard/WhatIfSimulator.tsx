@@ -38,6 +38,7 @@ import {
   Legend,
 } from "recharts";
 import { toast } from "sonner";
+import { AngolaVariables } from "./AngolaVariables";
 
 /**
  * Simulador What-If Modernizado (Fixed Deep Dark):
@@ -353,6 +354,13 @@ export const WhatIfSimulator = () => {
               </div>
             ))}
           </div>
+
+          {/* Angola Local Variables */}
+          <AngolaVariables
+            brentPrice={currentScenario.brentPrice}
+            operatingCost={currentScenario.operatingCost}
+            production={currentScenario.production}
+          />
         </TabsContent>
 
         <TabsContent value="results" className="space-y-8">

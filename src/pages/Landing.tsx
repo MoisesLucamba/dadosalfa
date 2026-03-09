@@ -218,7 +218,7 @@ export default function InstitutionalLanding() {
           </div>
         </div>
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-          <div>© 2024 ALPHADATA INTELLIGENCE. TODOS OS DIREITOS RESERVADOS.</div>
+          <div>© 2026 ALPHADATA INTELLIGENCE. TODOS OS DIREITOS RESERVADOS.</div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-white transition-colors flex items-center gap-1"><Linkedin className="w-3 h-3"/> LinkedIn</a>
             <a href="#" className="hover:text-white transition-colors flex items-center gap-1"><Twitter className="w-3 h-3"/> Twitter</a>

@@ -33,91 +33,20 @@ import {
 } from "recharts";
 
 /* ─────────────────────────────────────────
-   GLOBAL THEME TOKENS
+   THEME VARS (semantic)
 ───────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Epilogue:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
-
-    :root {
-      --bg-primary:       #0A0E1A;
-      --bg-secondary:     #0D1117;
-      --bg-surface:       #141B2D;
-      --bg-surface-hover: #1A2235;
-      --border-subtle:    #1E2A45;
-      --accent-blue:      #00A3FF;
-      --accent-amber:     #F5A623;
-      --accent-green:     #00D4AA;
-      --accent-red:       #FF6B35;
-      --text-primary:     #E8EDF5;
-      --text-secondary:   #6B7A99;
-      --text-muted:       #3D4F6E;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
-    body {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono { font-family: 'IBM Plex Mono', monospace; }
-
-    .surface-card {
-      transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
-    }
-    .surface-card:hover {
-      border-color: rgba(0,163,255,0.30) !important;
-      background: var(--bg-surface-hover) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6) !important;
-    }
-
-    /* table rows */
-    .data-row {
-      border-left: 2px solid transparent;
-      transition: background 180ms ease-out, border-left-color 180ms ease-out;
-    }
-    .data-row:hover {
-      background: var(--bg-surface-hover) !important;
-      border-left-color: var(--accent-amber) !important;
-    }
-    .data-row:hover .row-name { color: var(--accent-blue) !important; }
-    .data-row:hover .row-icon {
-      background: rgba(0,163,255,0.15) !important;
-      color: var(--accent-blue) !important;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0);   }
-    }
-    .fade-up { animation: fadeUp 300ms ease-out forwards; opacity: 0; }
-    .d1 { animation-delay:  50ms; }
-    .d2 { animation-delay: 100ms; }
-    .d3 { animation-delay: 150ms; }
-    .d4 { animation-delay: 200ms; }
-    .d5 { animation-delay: 250ms; }
-    .d6 { animation-delay: 300ms; }
-
-    /* live pulse */
-    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-    .pulse { animation: pulse 2s ease-in-out infinite; }
-
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-
-    .badge-pill {
-      font-family: 'Epilogue', sans-serif;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      padding: 2px 8px; border-radius: 4px;
-      display: inline-flex; align-items: center; gap: 4px;
-    }
-  `}</style>
-);
+const TV = {
+  bgSurface: "hsl(var(--card))",
+  bgPrimary: "hsl(var(--background))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  textSecondary: "hsl(var(--muted-foreground))",
+  textMuted: "hsl(var(--muted-foreground) / 0.6)",
+  accentBlue: "hsl(var(--primary))",
+  accentAmber: "hsl(var(--accent))",
+  accentGreen: "hsl(var(--success))",
+  accentRed: "hsl(var(--destructive))",
+};
 
 /* ─────────────────────────────────────────
    DATA  (unchanged)
@@ -172,7 +101,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       background: "#1E2A45", border: "1px solid var(--border-subtle)",
       borderRadius: 6, padding: "10px 14px", fontSize: 11,
     }}>
-      <p style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
+      <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 6 }}>
         {label}
       </p>
       {payload.map((e: any, i: number) => (
@@ -188,7 +117,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
    HELPERS
 ───────────────────────────────────────── */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
     {children}
   </span>
 );
@@ -196,7 +125,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 const CardHeader = ({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) => (
   <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
     <div>
-      <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
+      <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h3>
       {sub && <div style={{ marginTop: 3 }}><SectionLabel>{sub}</SectionLabel></div>}
     </div>
     {right}
@@ -220,9 +149,8 @@ const Production = () => {
         <title>Produção Petrolífera | AlphaData</title>
         <meta name="description" content="Dados de produção petrolífera de Angola por bloco, operadora e campo." />
       </Helmet>
-      <GlobalStyles />
 
-      <div style={{ display: "flex", height: "100vh", background: "var(--bg-secondary)", color: "var(--text-primary)", overflow: "hidden" }}>
+      <div className="flex h-screen bg-background text-foreground overflow-hidden">
         <Sidebar activeItem="/production" />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -238,10 +166,10 @@ const Production = () => {
                     <div className="pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-green)" }} />
                     <SectionLabel>Live Analytics</SectionLabel>
                   </div>
-                  <h1 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                  <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                     Produção Petrolífera
                   </h1>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
+                  <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)", marginTop: 4, maxWidth: 440 }}>
                     Monitorização em tempo real da extração por bloco e operadora em Angola.
                   </p>
                 </div>
@@ -250,7 +178,7 @@ const Production = () => {
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 16px", borderRadius: 6,
                     background: "transparent", border: "1px solid var(--border-subtle)",
-                    color: "var(--text-primary)", fontFamily: "'Epilogue',sans-serif",
+                    color: "var(--text-primary)", fontFamily: "'Outfit',sans-serif",
                     fontSize: 13, fontWeight: 600, cursor: "pointer",
                     transition: "border-color 180ms ease-out",
                   }}
@@ -302,7 +230,7 @@ const Production = () => {
                         {kpi.value}
                       </div>
                       <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
                           {kpi.label}
                         </span>
                         <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{kpi.unit}</span>
@@ -324,10 +252,10 @@ const Production = () => {
 
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                       Tendência de Produção
                     </h3>
-                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                    <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                       Comparativo entre extração real e limite operacional
                     </p>
                   </div>
@@ -355,7 +283,7 @@ const Production = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} dy={8} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[900, 1400]} />
                       <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1 }} />
                       <Area type="monotone" dataKey="production" name="Produção"  stroke="var(--accent-blue)" fill="url(#gProd)" strokeWidth={2} animationDuration={800} />
@@ -380,7 +308,7 @@ const Production = () => {
                         <XAxis type="number" hide />
                         <YAxis
                           dataKey="name" type="category" axisLine={false} tickLine={false}
-                          tick={{ fill: "var(--text-secondary)", fontSize: 12, fontFamily: "DM Sans", fontWeight: 500 }}
+                          tick={{ fill: "var(--text-secondary)", fontSize: 12, fontFamily: "Outfit", fontWeight: 500 }}
                           width={110}
                         />
                         <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,163,255,0.04)" }} />
@@ -446,10 +374,10 @@ const Production = () => {
                 {/* table header */}
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                       Produção por Bloco
                     </h3>
-                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                    <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                       Detalhamento técnico por unidade de exploração
                     </p>
                   </div>
@@ -459,7 +387,7 @@ const Production = () => {
                     background: "rgba(0,163,255,0.08)", border: "1px solid rgba(0,163,255,0.20)",
                   }}>
                     <MapPin size={14} style={{ color: "var(--accent-blue)" }} />
-                    <span style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent-blue)" }}>
+                    <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent-blue)" }}>
                       6 Blocos Activos
                     </span>
                   </div>
@@ -469,7 +397,7 @@ const Production = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px", padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-primary)" }}>
                   {["Bloco", "Operadora", "Produção (kbpd)", "Tendência", ""].map((h, i) => (
                     <span key={i} style={{
-                      fontFamily: "'Epilogue',sans-serif", fontSize: 10, fontWeight: 700,
+                      fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700,
                       textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)",
                       textAlign: i >= 2 && i < 4 ? "right" : i === 4 ? "center" : "left",
                     }}>{h}</span>
@@ -500,13 +428,13 @@ const Production = () => {
                         }}>
                           {blockNum}
                         </div>
-                        <span className="row-name" style={{ fontFamily: "'Epilogue',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
+                        <span className="row-name" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
                           {block.block}
                         </span>
                       </div>
 
                       {/* operator */}
-                      <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
+                      <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
                         {block.operator}
                       </span>
 

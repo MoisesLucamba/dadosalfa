@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -146,7 +147,7 @@ const Workspace = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#fafafa] dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
       <Sidebar activeItem="/workspace" />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Header activeItem="/workspace" />
@@ -591,11 +592,7 @@ const Workspace = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
-      `}</style>
+      <MobileBottomNav />
     </div>
   );
 };

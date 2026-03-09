@@ -165,7 +165,7 @@ const NavItemComponent = ({
             "text-[13px] font-semibold tracking-tight truncate transition-colors",
             isActive ? "text-white" : "text-[#5a7090] group-hover:text-[#9bb5d6]"
           )}
-          style={{ fontFamily: "'DM Sans', sans-serif" }}
+          style={{ fontFamily: "'Outfit', sans-serif" }}
         >
           {item.label}
         </span>
@@ -222,17 +222,14 @@ export function Sidebar({
 
   return (
     <>
-      {/* Google Fonts */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap');
-
         .sidebar-scrollbar::-webkit-scrollbar { width: 3px; }
         .sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .sidebar-scrollbar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
         .sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: #dc2626; }
 
         .group-label {
-          font-family: 'Space Mono', monospace;
+          font-family: 'IBM Plex Mono', monospace;
           font-size: 9px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -240,7 +237,7 @@ export function Sidebar({
         }
 
         .logo-text-primary {
-          font-family: 'Space Mono', monospace;
+          font-family: 'IBM Plex Mono', monospace;
           font-size: 15px;
           font-weight: 700;
           letter-spacing: 0.12em;
@@ -248,7 +245,7 @@ export function Sidebar({
         }
 
         .logo-text-sub {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Outfit', sans-serif;
           font-size: 9px;
           font-weight: 700;
           letter-spacing: 0.3em;
@@ -262,7 +259,7 @@ export function Sidebar({
         }
 
         .bottom-item {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Outfit', sans-serif;
           font-size: 12.5px;
           font-weight: 600;
         }
@@ -531,7 +528,7 @@ export function Sidebar({
                   </div>
                   <span
                     style={{
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "'Outfit', sans-serif",
                       fontSize: "12px",
                       fontWeight: 700,
                       color: "#e2e8f0",
@@ -542,7 +539,7 @@ export function Sidebar({
                 </div>
                 <p
                   style={{
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'Outfit', sans-serif",
                     fontSize: "10px",
                     color: "#3d5a7a",
                     lineHeight: "1.5",
@@ -556,7 +553,7 @@ export function Sidebar({
                   style={{
                     background: "rgba(30,58,95,0.4)",
                     border: "1px solid rgba(30,58,95,0.6)",
-                    fontFamily: "'Space Mono', monospace",
+                    fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: "9px",
                     fontWeight: 700,
                     letterSpacing: "0.15em",
@@ -610,7 +607,7 @@ export function Sidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -8 }}
                   style={{
-                    fontFamily: "'Space Mono', monospace",
+                    fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: "9px",
                     fontWeight: 700,
                     letterSpacing: "0.15em",
