@@ -211,24 +211,18 @@ export default function Auth() {
     setSignupLoading(true);
     setSignupError(null);
     try {
-      // Create organization first
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: data.companyName,
-          nif: data.nif,
-          sector: data.sector,
-          email_domain: data.emailDomain,
-          country: data.country,
-          contact_email: data.contactEmail,
-          contact_phone: data.contactPhone,
-        })
-        .select()
-        .single();
-        
-      if (orgError) throw orgError;
-      
-      // Create user
+      // Derive company_type from sector
+      const sectorToCompanyType: Record<string, string> = {
+        oil_gas: 'operadora',
+        bank: 'banco',
+        trader: 'trader',
+        consultant: 'consultora',
+        regulator: 'governo',
+        other: 'prestadora_servicos',
+      };
+      const derivedType = sectorToCompanyType[data.sector] || 'operadora';
+
+      // Create user first so we are authenticated
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.contactEmail,
         password: data.password,
@@ -237,12 +231,30 @@ export default function Auth() {
       if (authError) throw authError;
       
       if (authData.user) {
+        // Now create organization as authenticated user
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name: data.companyName,
+            nif: data.nif,
+            sector: data.sector,
+            email_domain: data.emailDomain,
+            country: data.country,
+            contact_email: data.contactEmail,
+            contact_phone: data.contactPhone,
+          })
+          .select()
+          .single();
+          
+        if (orgError) throw orgError;
+
+        // Create profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: authData.user.id,
             company_name: data.companyName,
-            company_type: data.sector || 'operadora',
+            company_type: derivedType as any,
             contact_name: data.contactName,
             contact_role: data.contactRole,
             contact_phone: data.contactPhone,
