@@ -32,11 +32,13 @@ const T = {
 };
 
 /* ─── Data ───────────────────────────────────────────── */
+
+// Stats técnicos reais — sem métricas comerciais falsas
 const corporateStats = [
-  { value: "25+",   label: "Jurisdições Africanas", icon: Globe },
-  { value: "500+",  label: "Entidades Corporativas", icon: Building2 },
-  { value: "98.5%", label: "Precisão Regulatória",   icon: Scale },
-  { value: "24/7",  label: "Monitorização Crítica",  icon: Shield },
+  { value: "25+",   label: "Jurisdições Africanas Cobertas", icon: Globe },
+  { value: "6",     label: "Módulos de Análise Integrados",  icon: BarChart3 },
+  { value: "AI",    label: "Motor de IA Proprietário",       icon: Zap },
+  { value: "2026",  label: "Fundada em Luanda",              icon: Activity },
 ];
 
 const pricingPlans = [
@@ -44,33 +46,92 @@ const pricingPlans = [
     name: "Starter", tier: "01",
     price: "USD $14,000", period: "/ano",
     users: "Até 6 utilizadores",
-    features: ["Dashboard em tempo real","Dados de produção por bloco","Preços Brent e crudes angolanos","Exportações e logística","Previsões IA 30/60/90 dias","Relatórios mensais","Suporte por email"],
+    features: [
+      "Dashboard em tempo real",
+      "Dados de produção por bloco",
+      "Preços Brent e crudes angolanos",
+      "Exportações e logística",
+      "Previsões IA 30/60/90 dias",
+      "Relatórios mensais",
+      "Suporte por email",
+    ],
     cta: "Contactar Vendas",
   },
   {
     name: "Professional", tier: "02",
     price: "USD $39,999", period: "/ano",
     users: "Até 16 utilizadores",
-    features: ["Tudo do plano Starter","Workspaces ilimitados","API de integração básica","Relatórios personalizados","Dados históricos completos","Análise de competidores","Suporte prioritário"],
-    cta: "Plano Atual",
+    features: [
+      "Tudo do plano Starter",
+      "Workspaces ilimitados",
+      "API de integração básica",
+      "Relatórios personalizados",
+      "Dados históricos completos",
+      "Análise de competidores",
+      "Suporte prioritário",
+    ],
+    cta: "Solicitar Demo",
     featured: true,
   },
   {
     name: "Enterprise", tier: "03",
     price: "USD $250,000", period: "/ano",
     users: "Utilizadores ilimitados",
-    features: ["Tudo do Professional","API de integração completa","White-label customizado","Domínio personalizado","Suporte 24/7 dedicado","Gerente de conta exclusivo"],
+    features: [
+      "Tudo do Professional",
+      "API de integração completa",
+      "White-label customizado",
+      "Domínio personalizado",
+      "Suporte 24/7 dedicado",
+      "Gerente de conta exclusivo",
+    ],
     cta: "Solicitar Proposta",
   },
 ];
 
 const intelligencePilars = [
-  { id: "mercado",     title: "Inteligência de Mercado",    desc: "Dados consolidados de produção, exportação e preços spot de todos os crudes africanos.", content: "Nossa plataforma oferece uma visão granular do mercado energético africano. Monitoramos mais de 150 campos de petróleo e gás, fornecendo dados de produção diária, cronogramas de carregamento e análises de diferencial de preço.", icon: BarChart3 },
-  { id: "geopolitica", title: "Análise Geopolítica",        desc: "Relatórios de risco país e monitorização de estabilidade política em regiões estratégicas.", content: "Analisamos o cenário político e social em 25 jurisdições. Nossos relatórios incluem avaliações de risco de expropriação, estabilidade contratual e impacto de eleições locais nas políticas energéticas.", icon: Globe },
-  { id: "logistica",   title: "Logística e Supply Chain",   desc: "Rastreamento de navios, inventários em terminais e optimização de rotas de exportação.", content: "Integramos dados de satélite AIS para rastrear cada navio-tanque que opera na costa africana, optimizando timing de exportação e identificando gargalos de infraestrutura.", icon: Database },
-  { id: "fiscalidade", title: "Fiscalidade e Taxas",        desc: "Calculadoras avançadas para impostos petrolíferos e taxas de superfície.", content: "Oferecemos calculadoras parametrizadas para contratos PSA, Concessão e Serviços. Simule o impacto de mudanças no IRP e Taxa de Produção com precisão auditável.", icon: PieChart },
-  { id: "historico",   title: "Base de Dados Histórica",    desc: "Acesso a mais de 30 anos de dados históricos do setor energético africano.", content: "Nossa biblioteca digital contém décadas de estatísticas de produção, relatórios de ministérios e séries temporais de preços. Essencial para modelagem financeira de longo prazo.", icon: FileText },
-  { id: "seguranca",   title: "Segurança de Dados",         desc: "Infraestrutura de nível governamental com encriptação AES-256 e redundância global.", content: "Utilizamos protocolos de segurança bancária, autenticação multifator e auditorias trimestrais. Soberania de dados garantida.", icon: Lock },
+  {
+    id: "mercado",
+    title: "Inteligência de Mercado",
+    desc: "Dados consolidados de produção, exportação e preços spot de crudes africanos, actualizados diariamente.",
+    content: "A nossa plataforma oferece uma visão granular do mercado energético africano. Cobrimos blocos petrolíferos angolanos, cronogramas de carregamento e análises de diferencial de preço com base em fontes oficiais e feeds de mercado.",
+    icon: BarChart3,
+  },
+  {
+    id: "geopolitica",
+    title: "Análise Geopolítica",
+    desc: "Relatórios de risco país e monitorização de estabilidade política em regiões estratégicas de África.",
+    content: "Analisamos o cenário político e regulatório em jurisdições africanas prioritárias. Os nossos relatórios incluem avaliações de risco operacional, estabilidade contratual e impacto de alterações legislativas nas políticas energéticas.",
+    icon: Globe,
+  },
+  {
+    id: "logistica",
+    title: "Logística e Supply Chain",
+    desc: "Rastreamento de navios, inventários em terminais e análise de rotas de exportação.",
+    content: "Integramos dados públicos AIS e informação portuária para mapear o fluxo de exportação de crude angolano, identificando padrões logísticos e oportunidades de optimização.",
+    icon: Database,
+  },
+  {
+    id: "fiscalidade",
+    title: "Fiscalidade e Taxas",
+    desc: "Calculadoras para impostos petrolíferos angolanos e análise comparativa de regimes fiscais.",
+    content: "Disponibilizamos calculadoras para contratos PSA e Concessão, permitindo simular o impacto de variações no IRP, taxa de produção e royalties com base na legislação angolana vigente.",
+    icon: PieChart,
+  },
+  {
+    id: "historico",
+    title: "Base de Dados Histórica",
+    desc: "Séries temporais de produção, preços e exportação do sector energético angolano e africano.",
+    content: "A nossa biblioteca de dados cobre décadas de estatísticas de produção e exportação angolanas, com fontes auditáveis provenientes de relatórios ministeriais e organismos oficiais.",
+    icon: FileText,
+  },
+  {
+    id: "seguranca",
+    title: "Segurança de Dados",
+    desc: "Infraestrutura cloud com encriptação AES-256, autenticação multifactor e backups redundantes.",
+    content: "A plataforma está construída sobre infraestrutura cloud segura, com encriptação de ponta a ponta, controlos de acesso por perfil e políticas de privacidade conformes com as melhores práticas internacionais.",
+    icon: Lock,
+  },
 ];
 
 /* ─── Animated number ────────────────────────────────── */
@@ -217,7 +278,7 @@ export default function InstitutionalLanding() {
               </div>
             </div>
             <p style={{ fontFamily: T.sans, fontSize: 12.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 280 }}>
-              Líder em Market Intelligence para o setor energético africano. Sediada em Luanda, com presença global.
+              Plataforma angolana de Market Intelligence para o sector energético. Fundada em Luanda em 2026.
             </p>
             <div className="flex items-center gap-4 mt-8">
               {[{icon: Linkedin, l:"LinkedIn"},{icon: Twitter, l:"Twitter"},{icon: ExternalLink, l:"Bloomberg"}].map(s => (
@@ -234,7 +295,7 @@ export default function InstitutionalLanding() {
 
           {[
             { title: "Soluções", links: [{l:"Inteligência de Mercado",p:"solucoes"},{l:"Análise Regulatória",p:"regulacao"},{l:"Logística de Crudes",p:"dados"},{l:"Consultoria Técnica",p:"solucoes"}] },
-            { title: "Empresa",  links: [{l:"Sobre a AlphaData",p:"sobre"},{l:"Equipa Executiva",p:"sobre"},{l:"Carreiras",p:"carreiras"},{l:"Contacto",p:"contacto"}] },
+            { title: "Empresa",  links: [{l:"Sobre a AlphaData",p:"sobre"},{l:"Carreiras",p:"carreiras"},{l:"Contacto",p:"contacto"}] },
             { title: "Legal",    links: [{l:"Termos e Condições",p:"termos"},{l:"Política de Privacidade",p:"privacidade"},{l:"Conformidade Anti-Corrupção",p:"compliance"}] },
           ].map(col => (
             <div key={col.title}>
@@ -263,7 +324,7 @@ export default function InstitutionalLanding() {
             © 2026 AlphaData Intelligence · Todos os direitos reservados
           </span>
           <span style={{ fontFamily: T.mono, fontSize: 8, color: "rgba(255,255,255,0.15)", letterSpacing: "0.1em" }}>
-            LUANDA · NAIROBI · LONDON · DUBAI
+            LUANDA · ANGOLA
           </span>
         </div>
       </div>
@@ -293,7 +354,7 @@ export default function InstitutionalLanding() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 relative z-10">
           {/* Running ticker */}
           <div className="mb-12 flex items-center gap-4 overflow-hidden" style={{ borderBottom: `1px solid ${T.gray100}`, paddingBottom: 16 }}>
-            <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.red, letterSpacing: "0.2em", flexShrink: 0, background: T.red, color: T.white, padding: "3px 8px" }}>
+            <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", flexShrink: 0, background: T.red, color: T.white, padding: "3px 8px" }}>
               LIVE
             </span>
             <div className="overflow-hidden flex-1">
@@ -303,8 +364,8 @@ export default function InstitutionalLanding() {
                 className="flex gap-12 whitespace-nowrap"
                 style={{ fontFamily: T.mono, fontSize: 9, color: T.gray400, letterSpacing: "0.1em" }}
               >
-                {["BRENT CRUDE: $82.14 ▲+0.43%", "ANGOLA LNG: $9.82/MMBtu ▼-0.12%", "GIRASSOL: $81.90 ▲+0.31%", "CABINDA CRUDE: $80.45 ▼-0.08%", "NEMBA: $83.20 ▲+0.55%", "NATURAL GAS: $2.84 ▲+1.2%",
-                  "BRENT CRUDE: $82.14 ▲+0.43%", "ANGOLA LNG: $9.82/MMBtu ▼-0.12%", "GIRASSOL: $81.90 ▲+0.31%", "CABINDA CRUDE: $80.45 ▼-0.08%", "NEMBA: $83.20 ▲+0.55%", "NATURAL GAS: $2.84 ▲+1.2%"
+                {["BRENT CRUDE: $82.14 +0.43%", "ANGOLA LNG: $9.82/MMBtu -0.12%", "GIRASSOL: $81.90 +0.31%", "CABINDA CRUDE: $80.45 -0.08%", "NEMBA: $83.20 +0.55%", "NATURAL GAS: $2.84 +1.2%",
+                  "BRENT CRUDE: $82.14 +0.43%", "ANGOLA LNG: $9.82/MMBtu -0.12%", "GIRASSOL: $81.90 +0.31%", "CABINDA CRUDE: $80.45 -0.08%", "NEMBA: $83.20 +0.55%", "NATURAL GAS: $2.84 +1.2%"
                 ].map((t, i) => (
                   <span key={i} className="flex items-center gap-2">
                     <span className="w-1 h-1 rounded-full" style={{ background: T.red, flexShrink: 0 }} />{t}
@@ -327,17 +388,17 @@ export default function InstitutionalLanding() {
               </h1>
 
               <p style={{ fontFamily: T.sans, fontSize: 16, color: T.gray600, lineHeight: 1.75, maxWidth: 480, marginBottom: 36 }}>
-                Dados críticos, análise regulatória e monitorização de mercado para governos, operadoras e investidores institucionais.
+                Dados críticos, análise regulatória e monitorização de mercado para governos, operadoras e investidores que actuam no sector petrolífero angolano e africano.
               </p>
 
               <div className="flex flex-wrap gap-3">
-                <PrimaryBtn>Demonstração Técnica <ArrowRight style={{ width: 13, height: 13 }} /></PrimaryBtn>
-                <OutlineBtn>Relatório Anual 2024</OutlineBtn>
+                <PrimaryBtn>Agendar Demonstração <ArrowRight style={{ width: 13, height: 13 }} /></PrimaryBtn>
+                <OutlineBtn onClick={() => setCurrentPage("sobre")}>Conhecer a AlphaData</OutlineBtn>
               </div>
 
-              {/* Trust strip */}
+              {/* Technology strip — apenas credenciais técnicas */}
               <div className="mt-12 flex items-center gap-6 flex-wrap" style={{ paddingTop: 20, borderTop: `1px solid ${T.gray100}` }}>
-                {["SOC2 Certified", "ISO 27001", "GDPR Compliant", "TLS 1.3"].map(badge => (
+                {["AES-256 Encryption", "REST API", "Real-time Data", "Cloud Infrastructure"].map(badge => (
                   <div key={badge} className="flex items-center gap-1.5">
                     <CheckCircle2 style={{ width: 11, height: 11, color: T.red, flexShrink: 0 }} />
                     <span style={{ fontFamily: T.mono, fontSize: 8, color: T.gray400, letterSpacing: "0.12em", textTransform: "uppercase" }}>{badge}</span>
@@ -362,7 +423,7 @@ export default function InstitutionalLanding() {
                 <div className="flex items-center gap-2 px-4 py-3" style={{ background: T.gray50, borderBottom: `1px solid ${T.gray200}` }}>
                   {["#ff5f57","#febc2e","#28c840"].map(c => <span key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />)}
                   <div className="flex-1 mx-3 px-3 py-1 rounded" style={{ background: T.gray100 }}>
-                    <span style={{ fontFamily: T.mono, fontSize: 9, color: T.gray400 }}>app.alphadata.ai/dashboard</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 9, color: T.gray400 }}>app.alphadata.ao/dashboard</span>
                   </div>
                 </div>
                 <img src={heroDashboard} alt="AlphaData Dashboard" className="w-full h-auto block" />
@@ -379,7 +440,7 @@ export default function InstitutionalLanding() {
           </div>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats bar — apenas factos técnicos/institucionais, sem métricas comerciais */}
         <div className="mt-20" style={{ background: T.black, borderTop: `3px solid ${T.red}` }}>
           <div className="max-w-7xl mx-auto px-6 lg:px-10 py-12">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -415,7 +476,7 @@ export default function InstitutionalLanding() {
             </div>
             <div className="flex items-end">
               <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, lineHeight: 1.75, maxWidth: 500 }}>
-                Combinamos fontes de dados proprietárias, análise especializada e tecnologia de IA para entregar inteligência acionável em cada dimensão do mercado petrolífero africano.
+                Combinámos fontes de dados oficiais, análise especializada e tecnologia de IA para entregar inteligência accionável em cada dimensão do mercado petrolífero angolano e africano.
               </p>
             </div>
           </div>
@@ -502,6 +563,10 @@ export default function InstitutionalLanding() {
             <h2 style={{ fontFamily: T.display, fontSize: 42, fontWeight: 800, color: T.black, letterSpacing: "-0.025em" }}>
               Escolha o nível de acesso adequado à sua organização.
             </h2>
+            {/* Honest launch note */}
+            <p style={{ fontFamily: T.mono, fontSize: 9, color: T.gray400, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 16 }}>
+              Preços de lançamento · Acesso antecipado disponível
+            </p>
           </div>
 
           {/* Plan tabs */}
@@ -585,7 +650,7 @@ export default function InstitutionalLanding() {
             Ecossistema de Inteligência Energética
           </h1>
           <p style={{ fontFamily: T.sans, fontSize: 16, color: T.gray600, lineHeight: 1.75 }}>
-            Um conjunto integrado de ferramentas projetado para mitigar riscos e maximizar oportunidades no sector de óleo e gás em África.
+            Um conjunto integrado de ferramentas desenhado para mitigar riscos e identificar oportunidades no sector de óleo e gás em Angola e África.
           </p>
         </div>
 
@@ -628,13 +693,18 @@ export default function InstitutionalLanding() {
           <div>
             <SectionLabel>Compliance & Regulação</SectionLabel>
             <h1 style={{ fontFamily: T.display, fontSize: "clamp(30px,3.8vw,50px)", fontWeight: 800, color: T.black, letterSpacing: "-0.025em", lineHeight: 1.1, marginBottom: 20 }}>
-              Navegue na complexidade com segurança jurídica.
+              Navegue na complexidade regulatória com clareza.
             </h1>
             <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, lineHeight: 1.75, marginBottom: 28 }}>
-              Monitoramos em tempo real as alterações legislativas em 25 jurisdições africanas, com análises de impacto imediato para a sua operação.
+              A nossa plataforma agrega alterações legislativas do sector petrolífero angolano e de jurisdições africanas estratégicas, com análise de impacto operacional imediato.
             </p>
             <ul className="space-y-3">
-              {["Monitorização de Diários da República","Análise de Risco de Compliance (AML/KYC)","Modelagem de Acordos PSA","Relatórios de Sustentabilidade e ESG"].map((item, i) => (
+              {[
+                "Monitorização do Diário da República de Angola",
+                "Análise de Risco Regulatório e Fiscal",
+                "Modelagem de Acordos PSA e Concessão",
+                "Acompanhamento de Directivas OPEP+",
+              ].map((item, i) => (
                 <li key={i} className="flex items-center gap-3">
                   <CheckCircle2 style={{ width: 14, height: 14, color: T.red, flexShrink: 0 }} />
                   <span style={{ fontFamily: T.sans, fontSize: 14, color: T.black, fontWeight: 600 }}>{item}</span>
@@ -652,8 +722,8 @@ export default function InstitutionalLanding() {
               </span>
             </div>
             {[
-              { label: "Lei das Receitas Petrolíferas", sub: "Impacto em Royalties", val: "+2.5%", pct: 65, color: T.red },
-              { label: "Compliance de Conteúdo Local", sub: "Requisito Mínimo", val: "40%", pct: 40, color: "#60a5fa" },
+              { label: "Lei das Receitas Petrolíferas", sub: "Impacto Estimado em Royalties", val: "+2.5%", pct: 65, color: T.red },
+              { label: "Compliance de Conteúdo Local", sub: "Requisito Mínimo ANPG", val: "40%", pct: 40, color: "#60a5fa" },
             ].map((item, i) => (
               <div key={i} className="p-5 mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <span style={{ fontFamily: T.mono, fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.16em", textTransform: "uppercase" }}>{item.label}</span>
@@ -681,18 +751,27 @@ export default function InstitutionalLanding() {
         <div className="text-center mb-20">
           <SectionLabel>Data Intelligence</SectionLabel>
           <h1 style={{ fontFamily: T.display, fontSize: "clamp(32px,4vw,56px)", fontWeight: 800, color: T.black, letterSpacing: "-0.025em", marginBottom: 16 }}>
-            A maior base de dados energética de África.
+            Dados estruturados para o sector energético africano.
           </h1>
+          <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, maxWidth: 540, margin: "0 auto" }}>
+            Construída desde a fundação com rigor técnico e fontes verificáveis.
+          </p>
         </div>
 
+        {/* Métricas técnicas verificáveis — sem números de clientes/receita */}
         <div className="grid md:grid-cols-4 gap-px mb-20" style={{ background: T.gray200, border: `1px solid ${T.gray200}` }}>
-          {[{l:"Data Points Diários",v:2500000,s:"M+",icon:Database},{l:"Campos Monitorizados",v:150,s:"+",icon:MapPin},{l:"Anos de Histórico",v:30,s:"+",icon:FileText},{l:"Precisão de Dados",v:99,s:".9%",icon:Shield}].map((item, i) => (
+          {[
+            { l: "Jurisdições Cobertas",    v: 25,  s: "+",  icon: Globe    },
+            { l: "Fontes de Dados Activas",  v: 40,  s: "+",  icon: Database },
+            { l: "Módulos da Plataforma",    v: 6,   s: "",   icon: FileText },
+            { l: "Uptime da Infraestrutura", v: 99,  s: ".9%",icon: Shield   },
+          ].map((item, i) => (
             <div key={i} style={{ background: T.white, padding: "36px 28px", textAlign: "center" }}>
               <div className="w-10 h-10 flex items-center justify-center mx-auto mb-5" style={{ background: T.gray50, border: `1px solid ${T.gray200}` }}>
                 <item.icon style={{ width: 16, height: 16, color: T.red }} />
               </div>
               <div style={{ fontFamily: T.mono, fontSize: 32, fontWeight: 700, color: T.black, lineHeight: 1 }}>
-                <CountUp to={item.v > 1000 ? Math.round(item.v / 1000000 * 10) / 10 : item.v} suffix={item.s} />
+                <CountUp to={item.v} suffix={item.s} />
               </div>
               <div style={{ fontFamily: T.mono, fontSize: 8, color: T.gray400, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 8 }}>{item.l}</div>
             </div>
@@ -707,10 +786,10 @@ export default function InstitutionalLanding() {
                 Construída para escala e segurança.
               </h2>
               <p style={{ fontFamily: T.sans, fontSize: 14, color: T.gray600, lineHeight: 1.75, marginBottom: 24 }}>
-                Redundância geográfica e encriptação de ponta a ponta garantem que a informação crítica esteja sempre disponível.
+                Redundância geográfica e encriptação de ponta a ponta garantem que a informação crítica esteja sempre disponível e protegida.
               </p>
               <div className="grid grid-cols-2 gap-4">
-                {[{icon:Lock,l:"AES-256"},{icon:Globe,l:"Global CDN"},{icon:Shield,l:"SOC2"},{icon:TrendingUp,l:"Real-time Sync"}].map((b,i) => (
+                {[{icon:Lock,l:"AES-256"},{icon:Globe,l:"Cloud CDN"},{icon:Shield,l:"Backups Diários"},{icon:TrendingUp,l:"Real-time Sync"}].map((b,i) => (
                   <div key={i} className="flex items-center gap-2">
                     <b.icon style={{ width: 13, height: 13, color: T.red }} />
                     <span style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: T.black, letterSpacing: "0.1em" }}>{b.l}</span>
@@ -720,10 +799,10 @@ export default function InstitutionalLanding() {
             </div>
             <div style={{ background: T.black, padding: 24, fontFamily: T.mono, fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 2 }}>
               <span style={{ color: T.red }}>{'>'}</span> STATUS: <span style={{ color: "#22c55e" }}>OPERATIONAL</span><br />
-              <span style={{ color: T.red }}>{'>'}</span> NODES: <span style={{ color: "#60a5fa" }}>12 ACTIVE</span><br />
+              <span style={{ color: T.red }}>{'>'}</span> NODES: <span style={{ color: "#60a5fa" }}>ACTIVE</span><br />
               <span style={{ color: T.red }}>{'>'}</span> LATENCY: <span style={{ color: "#f59e0b" }}>14ms</span><br />
-              <span style={{ color: T.red }}>{'>'}</span> DATA_POINTS: <span style={{ color: "rgba(255,255,255,0.7)" }}>2,481,903</span><br />
-              <span style={{ color: T.red }}>{'>'}</span> SYNC: <span style={{ color: "#22c55e" }}>REALTIME</span><span style={{ animation: "none" }} className="blink">_</span>
+              <span style={{ color: T.red }}>{'>'}</span> ENCRYPTION: <span style={{ color: "rgba(255,255,255,0.7)" }}>AES-256</span><br />
+              <span style={{ color: T.red }}>{'>'}</span> SYNC: <span style={{ color: "#22c55e" }}>REALTIME</span><span className="blink">_</span>
             </div>
           </div>
         </div>
@@ -739,16 +818,21 @@ export default function InstitutionalLanding() {
           <div>
             <SectionLabel>Sobre a AlphaData</SectionLabel>
             <h1 style={{ fontFamily: T.display, fontSize: "clamp(30px,3.8vw,50px)", fontWeight: 800, color: T.black, letterSpacing: "-0.025em", lineHeight: 1.1, marginBottom: 20 }}>
-              Liderando a revolução de dados em África.
+              Uma empresa angolana a construir o futuro da inteligência energética.
             </h1>
             <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, lineHeight: 1.75, marginBottom: 16 }}>
-              Fundada com a missão de trazer transparência ao setor energético africano, a AlphaData tornou-se a parceira de confiança para as maiores organizações do continente.
+              Fundada em Luanda em 2026, a AlphaData nasceu da convicção de que o sector energético africano precisa de ferramentas de análise à altura da sua complexidade e importância estratégica.
             </p>
             <p style={{ fontFamily: T.sans, fontSize: 14, color: T.gray400, lineHeight: 1.75, marginBottom: 32 }}>
-              Nossa equipe combina engenharia de petróleo, ciência de dados, direito e geopolítica para entregar uma visão clara de um mercado frequentemente opaco.
+              A nossa equipa combina experiência em engenharia de petróleo, ciência de dados e regulação para construir uma plataforma de referência para o mercado angolano e africano.
             </p>
+            {/* Apenas factos verificáveis */}
             <div className="flex items-center gap-10">
-              {[{v:"2015",l:"Fundação"},{v:"Luanda",l:"Sede Central"},{v:"85+",l:"Especialistas"}].map((item,i) => (
+              {[
+                { v: "2026", l: "Fundação"    },
+                { v: "Luanda", l: "Sede"      },
+                { v: "Angola", l: "Mercado"   },
+              ].map((item, i) => (
                 <div key={i} style={{ borderLeft: i > 0 ? `1px solid ${T.gray200}` : "none", paddingLeft: i > 0 ? 28 : 0 }}>
                   <div style={{ fontFamily: T.mono, fontSize: 22, fontWeight: 700, color: T.black }}>{item.v}</div>
                   <div style={{ fontFamily: T.mono, fontSize: 8, color: T.gray400, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 4 }}>{item.l}</div>
@@ -767,6 +851,25 @@ export default function InstitutionalLanding() {
             </div>
           </div>
         </div>
+
+        {/* Missão + Visão */}
+        <div className="grid md:grid-cols-2 gap-px" style={{ background: T.gray200, border: `1px solid ${T.gray200}` }}>
+          {[
+            {
+              label: "Missão",
+              text: "Democratizar o acesso a dados e análises de qualidade institucional para todos os participantes do mercado energético angolano e africano.",
+            },
+            {
+              label: "Visão",
+              text: "Tornar-nos a plataforma de referência de Market Intelligence para o sector petrolífero de África, reconhecida pela rigor, independência e utilidade das nossas análises.",
+            },
+          ].map((item, i) => (
+            <div key={i} style={{ background: T.white, padding: "48px 40px" }}>
+              <SectionLabel>{item.label}</SectionLabel>
+              <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, lineHeight: 1.8 }}>{item.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -783,9 +886,9 @@ export default function InstitutionalLanding() {
         </div>
         <div className="grid md:grid-cols-3 gap-px" style={{ background: T.gray200, border: `1px solid ${T.gray200}` }}>
           {[
-            { icon: Mail, title: "E-mail", desc: "Para consultas gerais e suporte técnico:", val: "info@alphadata.ai" },
-            { icon: Phone, title: "Telefone", desc: "Fale com o nosso escritório central:", val: "+244 900 000 000" },
-            { icon: MapPin, title: "Escritório", desc: "Edifício Sky Center, Piso 12", val: "Luanda, Angola" },
+            { icon: Mail,   title: "E-mail",    desc: "Para consultas e demonstrações:",  val: "info@alphadata.ao"  },
+            { icon: Phone,  title: "Telefone",  desc: "Escritório central em Luanda:",    val: "+244 900 000 000"  },
+            { icon: MapPin, title: "Morada",    desc: "Luanda, República de Angola",      val: "Luanda, Angola"    },
           ].map((item, i) => (
             <div key={i} style={{ background: T.white, padding: "48px 36px" }}>
               <div className="w-10 h-10 flex items-center justify-center mb-6" style={{ background: "rgba(200,16,46,0.06)", border: `1px solid rgba(200,16,46,0.15)` }}>
@@ -828,10 +931,10 @@ export default function InstitutionalLanding() {
       case "dados":      return <DadosPage />;
       case "sobre":      return <SobrePage />;
       case "contacto":   return <ContactoPage />;
-      case "carreiras":  return <SimpleContentPage title="Carreiras" content={["Junte-se à equipe que está moldando o futuro da inteligência de dados em África.","Estamos à procura de talentos em engenharia de dados, análise de mercado e especialistas do sector energético.","Envie o seu CV para careers@alphadata.ai"]} />;
-      case "termos":     return <SimpleContentPage title="Termos e Condições" content={["Estes termos regem o uso da plataforma AlphaData Intelligence.","O acesso aos dados é restrito a utilizadores autorizados sob contrato de licença corporativa.","A redistribuição de dados sem autorização prévia é estritamente proibida."]} />;
-      case "privacidade":return <SimpleContentPage title="Política de Privacidade" content={["A AlphaData está comprometida com a proteção dos seus dados corporativos e pessoais.","Utilizamos os mais altos padrões de encriptação para garantir a integridade da informação.","Não partilhamos dados de clientes com terceiros sem consentimento explícito."]} />;
-      case "compliance": return <SimpleContentPage title="Conformidade Anti-Corrupção" content={["A AlphaData opera sob os mais rigorosos padrões éticos e de conformidade.","Mantemos políticas estritas contra suborno e corrupção, em linha com FCPA e UK Bribery Act.","Todos os colaboradores e parceiros passam por processos regulares de due diligence."]} />;
+      case "carreiras":  return <SimpleContentPage title="Carreiras" content={["A AlphaData é uma empresa recém-fundada em Luanda e está a recrutar os primeiros membros da sua equipa.","Procuramos perfis com experiência ou forte interesse em dados, sector energético e tecnologia.","Envie a sua candidatura para careers@alphadata.ao"]} />;
+      case "termos":     return <SimpleContentPage title="Termos e Condições" content={["Estes termos regulam o acesso e utilização da plataforma AlphaData Intelligence.","O acesso é restrito a utilizadores autorizados ao abrigo de contrato de licença corporativa.","É proibida a redistribuição de dados sem autorização prévia e por escrito."]} />;
+      case "privacidade":return <SimpleContentPage title="Política de Privacidade" content={["A AlphaData está comprometida com a protecção dos dados corporativos e pessoais dos seus utilizadores.","Utilizamos encriptação de ponta a ponta e não partilhamos dados de clientes com terceiros sem consentimento explícito.","Esta política está em conformidade com a legislação angolana de protecção de dados."]} />;
+      case "compliance": return <SimpleContentPage title="Conformidade Anti-Corrupção" content={["A AlphaData opera segundo rigorosos padrões éticos e de conformidade.","Mantemos políticas contra suborno e corrupção alinhadas com as melhores práticas internacionais.","Todos os colaboradores e parceiros estão sujeitos a processos de due diligence."]} />;
       default: return <HomePage />;
     }
   };
@@ -868,11 +971,11 @@ export default function InstitutionalLanding() {
                 Pronto para elevar o nível da sua análise?
               </h2>
               <p style={{ fontFamily: T.sans, fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 40, maxWidth: 480, margin: "0 auto 40px" }}>
-                Agende uma reunião com os nossos especialistas para uma demonstração personalizada das nossas capacidades.
+                Agende uma demonstração com a nossa equipa e conheça as capacidades da plataforma em detalhe.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link to="/auth">
-                  <PrimaryBtn>Falar com um Especialista <ArrowRight style={{ width: 13, height: 13 }} /></PrimaryBtn>
+                  <PrimaryBtn>Agendar Demonstração <ArrowRight style={{ width: 13, height: 13 }} /></PrimaryBtn>
                 </Link>
                 <OutlineBtn dark onClick={() => setCurrentPage("solucoes")}>Ver Planos Corporativos</OutlineBtn>
               </div>

@@ -1,16 +1,27 @@
 /**
- * PDF Report Generator for Geopolitical and Risk Analysis - IMPROVED VERSION
- * Professional formatting, proper markdown parsing, page overflow prevention
+ * AlphaData - Geopolitical & Risk Intelligence Report Generator
+ * ─────────────────────────────────────────────────────────────
+ * COVER        : dark institutional (addCoverPageToPDF)
+ * INTERNAL     : white background, palette P - unified with reportGenerator
+ * ENHANCEMENTS : semi-circular risk gauge, inline score bars, KPI strip,
+ *                alert severity cards, side-by-side simulation layout,
+ *                key-indicator chips, colour-coded trend deltas, risk bands
  */
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  addCoverPageToPDF,
+  getDefaultCoverPageData,
+  CoverPageData,
+} from './reportCoverPage';
+import { loadLogoAsBase64 } from './loadLogoForPDF';
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
+   PUBLIC TYPES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-type RGBColor = [number, number, number];
+type RGB = [number, number, number];
 
 export interface RiskScore {
   category: string;
@@ -61,7 +72,9 @@ export interface SimulationResults {
   breakEvenPrice: number;
 }
 
-export interface PDFData {
+export interface RiskReportData {
+  title?: string;
+  period?: string;
   riskScores: RiskScore[];
   alerts: RiskAlert[];
   countryRisks: CountryRisk[];
@@ -69,984 +82,1198 @@ export interface PDFData {
   globalRiskIndex: number;
   simulationParams?: SimulationParams;
   simulationResults?: SimulationResults;
-  lastUpdated?: string;
+  generatedAt?: Date;
+  aiGenerated?: boolean;
+  requestingCompany?: { name: string; nif?: string; sector?: string; country?: string };
+  requestedBy?: { name: string; role?: string; email?: string };
 }
 
-interface PDFContext {
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS - unified with reportGenerator palette P
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const P = {
+  bg:               [255, 255, 255] as RGB,
+  surface:          [247, 248, 250] as RGB,
+  surfaceAlt:       [240, 243, 248] as RGB,
+  surfaceDark:      [228, 232, 240] as RGB,
+  border:           [210, 218, 230] as RGB,
+  accentBlue:       [0,   110, 200] as RGB,
+  accentBluePale:   [230, 242, 255] as RGB,
+  accentGreen:      [0,   150, 115] as RGB,
+  accentGreenPale:  [220, 245, 240] as RGB,
+  accentRed:        [200, 30,  30]  as RGB,
+  accentRedPale:    [255, 235, 235] as RGB,
+  accentOrange:     [190, 120, 20]  as RGB,
+  accentOrangePale: [255, 243, 220] as RGB,
+  textPrimary:      [18,  24,  38]  as RGB,
+  textSecondary:    [55,  70,  95]  as RGB,
+  textMuted:        [120, 135, 160] as RGB,
+  brand:            [220, 38,  38]  as RGB,
+  white:            [255, 255, 255] as RGB,
+  scoreHigh:        [200, 30,  30]  as RGB,
+  scoreMed:         [190, 120, 20]  as RGB,
+  scoreLow:         [0,   150, 115] as RGB,
+} as const;
+
+const L = {
+  MARGIN:      20,
+  HEADER_H:    38,
+  FOOTER_H:    20,
+  SECTION_SP:  16,
+  SUBSEC_SP:   10,
+  LINE_SP:     6,
+  BOX_R:       3,
+  SMALL_R:     2,
+  THIN:        0.25,
+  SCORE_BAR_H: 5,
+} as const;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRANSLATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const T = {
+  reportTitle:           'Analise Geopolitica e de Riscos',
+  reportSubtitle:        'Inteligencia Estrategica | Sector Petrolifero Angolano',
+  generatedOn:           'Gerado em',
+  generatedBy:           'IA AlphaData',
+  pageOf:                (i: number, t: number) => `Pagina ${i} / ${t}`,
+  globalRiskIndex:       'Indice de Risco Global Consolidado',
+  riskGaugeLabel:        'IRG',
+  kpiAlerts:             'Alertas Activos',
+  kpiCritical:           'Criticos',
+  kpiRegions:            'Regioes Monitorizadas',
+  kpiCategories:         'Categorias de Risco',
+  riskProfile:           'Perfil de Risco Detalhado por Categoria',
+  geopoliticalForecasts: 'Previsoes Geopoliticas e Analise de Cenarios',
+  activeAlerts:          'Alertas Operacionais Activos',
+  countryComparison:     'Comparativo de Risco entre Paises',
+  simulationImpact:      'Simulacao de Impacto Regulatorio e Fiscal',
+  simulationParams:      'Parametros de Entrada da Simulacao',
+  simulationResults:     'Resultados Projectados',
+  simulationNote:        'Nota: Valores percentuais representam variacao face ao cenario base. Simulacao gerada por modelo AlphaData v2.',
+  category:              'Categoria de Risco',
+  score:                 'Score',
+  scoreBar:              'Distribuicao Visual',
+  trend:                 'Tendencia',
+  description:           'Analise Sumaria',
+  alertSeverity:         'Severidade',
+  alertTitle:            'Descricao do Alerta',
+  region:                'Regiao Afectada',
+  impact:                'Nivel de Impacto',
+  country:               'Pais / Jurisdicao',
+  scoreCol:              'Score IRG',
+  trendCol:              'Variacao',
+  riskBand:              'Banda de Risco',
+  horizon:               'Horizonte',
+  forecast:              'Previsao Estrategica',
+  situation:             'Situacao Actual',
+  oilImpact:             'Impacto no Sector Petrolifero',
+  riskLevel:             'Nivel de Risco',
+  keyIndicators:         'Indicadores-Chave',
+  parameter:             'Parametro',
+  inputValue:            'Valor de Entrada',
+  indicator:             'Indicador de Resultado',
+  delta:                 'Impacto Projectado',
+  legalNotice:           'AVISO LEGAL',
+  legalText:             'Este relatorio foi gerado pela plataforma AlphaData - Inteligencia de Mercado Petrolifero Angolano. As informacoes aqui contidas sao de caracter estritamente informativo e analitico, nao constituindo aconselhamento financeiro, juridico ou de investimento. A AlphaData nao se responsabiliza por quaisquer decisoes tomadas com base neste documento. Dados provenientes de fontes oficiais, APIs de mercado em tempo real e modelos proprietarios AlphaData.',
+  critical:   'CRITICO',
+  high:       'ELEVADO',
+  medium:     'MODERADO',
+  low:        'CONTROLADO',
+  warning:    'ALERTA',
+  info:       'INFO',
+  royaltyChange:       'Variacao de Royalties (%)',
+  taxChange:           'Variacao Fiscal - ISP (%)',
+  environmentalCosts:  'Conformidade Ambiental (%)',
+  opecQuota:           'Ajuste Quota OPEP+ (%)',
+  brentPrice:          'Cenario Preco Brent (USD/bbl)',
+  currencyDevaluation: 'Desvalorizacao Cambial AOA (%)',
+  revenueImpact:       'Impacto na Receita Bruta',
+  costImpact:          'Impacto nos Custos de Producao',
+  netProfitImpact:     'Impacto no Resultado Liquido',
+  exportImpact:        'Impacto no Volume de Exportacao',
+  govTakeChange:       'Variacao Government Take (pp)',
+  breakEvenPrice:      'Preco de Equilibrio (Break-Even)',
+} as const;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PDF CONTEXT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface PDFCtx {
   doc: jsPDF;
-  yPos: number;
-  pageWidth: number;
-  pageHeight: number;
+  y: number;
+  W: number;
+  H: number;
   margin: number;
+  onNewPage: () => void;
 }
 
-// ============================================================================
-// IMPROVED COLORS & LAYOUT
-// ============================================================================
-
-const COLORS = {
-  primary: [30, 64, 175] as RGBColor,
-  success: [34, 197, 94] as RGBColor,
-  warning: [234, 179, 8] as RGBColor,
-  danger: [239, 68, 68] as RGBColor,
-  dark: [15, 23, 42] as RGBColor,
-  darkGray: [51, 65, 85] as RGBColor,
-  muted: [100, 116, 139] as RGBColor,
-  mediumGray: [148, 163, 184] as RGBColor,
-  lightGray: [203, 213, 225] as RGBColor,
-  light: [241, 245, 249] as RGBColor,
-  ultraLight: [248, 250, 252] as RGBColor,
-  white: [255, 255, 255] as RGBColor,
-  brand: [220, 38, 38] as RGBColor,
-} as const;
-
-const LAYOUT = {
-  MARGIN: 20,
-  HEADER_HEIGHT: 45,
-  FOOTER_HEIGHT: 22,
-  SECTION_SPACING: 16,
-  CARD_SPACING: 12,
-  SUBSECTION_SPACING: 10,
-  LINE_SPACING: 6,
-  
-  // Typography
-  ALPHA_SYMBOL_SIZE: 32,
-  TITLE_SIZE: 22,
-  SUBTITLE_SIZE: 11,
-  DATE_SIZE: 9,
-  SECTION_TITLE_SIZE: 13,
-  BODY_LARGE: 11,
-  BODY_NORMAL: 10,
-  BODY_SMALL: 9,
-  CAPTION: 8,
-  TINY: 7,
-  DISCLAIMER_SIZE: 7,
-  
-  // Components
-  RISK_CARD_HEIGHT: 28,
-  DISCLAIMER_BOX_HEIGHT: 32,
-  BOX_RADIUS: 6,
-  SMALL_RADIUS: 3,
-  SECTION_BAR_WIDTH: 5,
-  SECTION_BAR_HEIGHT: 14,
-  LINE_WIDTH_THICK: 2,
-  LINE_WIDTH_THIN: 0.5,
-} as const;
-
-const TRANSLATIONS = {
-  REPORT_TITLE: 'Relatorio de Analise Geopolitica e Riscos',
-  GENERATED_AT: 'Gerado em:',
-  PAGE: 'Pagina',
-  OF: 'de',
-  CONFIDENTIAL: 'CONFIDENCIAL - USO INTERNO',
-  FOOTER_TEXT: 'AlphaData - Inteligencia de Mercado Petrolifero Angolano',
-  
-  EXECUTIVE_SUMMARY: 'Sumario Executivo',
-  GLOBAL_RISK_INDEX: 'INDICE DE RISCO GLOBAL',
-  RISK_PROFILE: 'Perfil de Risco por Categoria',
-  GEOPOLITICAL_FORECASTS: 'Previsoes Geopoliticas',
-  ACTIVE_ALERTS: 'Alertas Activos',
-  COUNTRY_COMPARISON: 'Comparativo de Risco por Pais',
-  SIMULATION_IMPACT: 'Simulacao de Impacto Regulatorio',
-  SIMULATION_PARAMS: 'Parametros da Simulacao:',
-  SIMULATION_RESULTS: 'Resultados da Simulacao:',
-  
-  CATEGORY: 'Categoria',
-  SCORE: 'Score',
-  TREND: 'Tendencia',
-  DESCRIPTION: 'Descricao',
-  TYPE: 'Tipo',
-  ALERT: 'Alerta',
-  REGION: 'Regiao',
-  IMPACT: 'Impacto',
-  COUNTRY: 'Pais',
-  CLASSIFICATION: 'Classificacao',
-  HORIZON: 'Horizonte',
-  PREDICTION: 'Previsao',
-  
-  CRITICAL: 'CRITICO',
-  HIGH: 'ALTO',
-  MEDIUM: 'MEDIO',
-  LOW: 'BAIXO',
-  ELEVATED: 'ELEVADO',
-  MODERATE: 'MODERADO',
-  
-  WARNING: 'ALERTA',
-  INFO: 'INFO',
-  
-  CURRENT_SITUATION: 'Situacao Actual:',
-  OIL_IMPACT: 'Impacto no Petroleo:',
-  RISK_LABEL: 'Risco:',
-  
-  ROYALTY_CHANGE: 'Alteracao Royalties',
-  TAX_CHANGE: 'Alteracao Impostos',
-  ENVIRONMENTAL_COSTS: 'Custos Ambientais',
-  OPEC_QUOTA: 'Quota OPEP+',
-  BRENT_PRICE: 'Preco Brent',
-  CURRENCY_DEVALUATION: 'Desvalorizacao Cambial',
-  
-  REVENUE_IMPACT: 'Impacto na Receita',
-  COST_IMPACT: 'Impacto nos Custos',
-  NET_PROFIT_IMPACT: 'Impacto no Lucro Liquido',
-  EXPORT_IMPACT: 'Impacto nas Exportacoes',
-  GOVERNMENT_TAKE_CHANGE: 'Alteracao Government Take',
-  BREAK_EVEN_PRICE: 'Break-Even Price',
-  
-  DISCLAIMER: 'AVISO LEGAL: Este relatorio foi gerado pela AlphaData - Inteligencia de Mercado Petrolifero Angolano. As informacoes aqui contidas sao para fins informativos e nao constituem aconselhamento financeiro ou de investimento. A AlphaData nao se responsabiliza por decisoes tomadas com base neste documento. Todos os dados sao provenientes de fontes oficiais e APIs de mercado em tempo real.',
-} as const;
-
-// ============================================================================
-// TEXT FORMATTING UTILITIES (Same as reportUtils)
-// ============================================================================
-
-interface FormattedText {
-  text: string;
-  bold: boolean;
-  italic: boolean;
-  isHeading: boolean;
-  headingLevel: number;
-  isBullet: boolean;
-  isNumbered: boolean;
-  indent: number;
+function bottomLimit(ctx: PDFCtx) {
+  return ctx.H - L.FOOTER_H - ctx.margin - 8;
 }
 
-const parseMarkdownText = (text: string): FormattedText[] => {
-  if (!text) return [];
-  
-  const lines = text.split('\n');
-  const formatted: FormattedText[] = [];
-  
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) continue;
-    
-    const heading2Match = line.match(/^##\s+(.+)$/);
-    const heading3Match = line.match(/^###\s+(.+)$/);
-    const boldHeadingMatch = line.match(/^\*\*(\d+)\.\s+([^:]+):\*\*$/);
-    
-    if (heading2Match) {
-      formatted.push({
-        text: heading2Match[1],
-        bold: true,
-        italic: false,
-        isHeading: true,
-        headingLevel: 2,
-        isBullet: false,
-        isNumbered: false,
-        indent: 0,
-      });
-      continue;
-    }
-    
-    if (heading3Match) {
-      formatted.push({
-        text: heading3Match[1],
-        bold: true,
-        italic: false,
-        isHeading: true,
-        headingLevel: 3,
-        isBullet: false,
-        isNumbered: false,
-        indent: 0,
-      });
-      continue;
-    }
-    
-    if (boldHeadingMatch) {
-      formatted.push({
-        text: `${boldHeadingMatch[1]}. ${boldHeadingMatch[2]}:`,
-        bold: true,
-        italic: false,
-        isHeading: true,
-        headingLevel: 3,
-        isBullet: false,
-        isNumbered: true,
-        indent: 0,
-      });
-      continue;
-    }
-    
-    const bulletMatch = line.match(/^\*\s+(.+)$/);
-    if (bulletMatch) {
-      formatted.push({
-        text: bulletMatch[1],
-        bold: false,
-        italic: false,
-        isHeading: false,
-        headingLevel: 0,
-        isBullet: true,
-        isNumbered: false,
-        indent: 1,
-      });
-      continue;
-    }
-    
-    const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/);
-    if (numberedMatch) {
-      formatted.push({
-        text: `${numberedMatch[1]}. ${numberedMatch[2]}`,
-        bold: false,
-        italic: false,
-        isHeading: false,
-        headingLevel: 0,
-        isBullet: false,
-        isNumbered: true,
-        indent: 1,
-      });
-      continue;
-    }
-    
-    formatted.push(...parseInlineFormatting(line));
-  }
-  
-  return formatted;
-};
-
-const parseInlineFormatting = (text: string): FormattedText[] => {
-  const segments: FormattedText[] = [];
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  
-  for (const part of parts) {
-    if (!part) continue;
-    
-    const boldMatch = part.match(/^\*\*(.+)\*\*$/);
-    if (boldMatch) {
-      segments.push({
-        text: boldMatch[1],
-        bold: true,
-        italic: false,
-        isHeading: false,
-        headingLevel: 0,
-        isBullet: false,
-        isNumbered: false,
-        indent: 0,
-      });
-      continue;
-    }
-    
-    const italicMatch = part.match(/^\*(.+)\*$/);
-    if (italicMatch) {
-      segments.push({
-        text: italicMatch[1],
-        bold: false,
-        italic: true,
-        isHeading: false,
-        headingLevel: 0,
-        isBullet: false,
-        isNumbered: false,
-        indent: 0,
-      });
-      continue;
-    }
-    
-    if (part.trim()) {
-      segments.push({
-        text: part,
-        bold: false,
-        italic: false,
-        isHeading: false,
-        headingLevel: 0,
-        isBullet: false,
-        isNumbered: false,
-        indent: 0,
-      });
-    }
-  }
-  
-  return segments;
-};
-
-const renderFormattedText = (
-  ctx: PDFContext,
-  segments: FormattedText[],
-  maxWidth: number
-): void => {
-  let currentLine: { text: string; bold: boolean; italic: boolean; x: number }[] = [];
-  let currentX = ctx.margin;
-  
-  const checkNewPage = (requiredSpace: number) => {
-    if (ctx.yPos + requiredSpace > ctx.pageHeight - ctx.margin - LAYOUT.FOOTER_HEIGHT - 5) {
-      ctx.doc.addPage();
-      ctx.yPos = ctx.margin;
-      addHeader(ctx);
-    }
-  };
-  
-  const flushLine = () => {
-    if (currentLine.length === 0) return;
-    
-    checkNewPage(LAYOUT.LINE_SPACING + 2);
-    
-    currentLine.forEach(segment => {
-      ctx.doc.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal');
-      ctx.doc.text(segment.text, segment.x, ctx.yPos);
-    });
-    
-    currentLine = [];
-    currentX = ctx.margin;
-    ctx.yPos += LAYOUT.LINE_SPACING;
-  };
-  
-  for (const segment of segments) {
-    if (segment.isHeading) {
-      flushLine();
-      checkNewPage(LAYOUT.SUBSECTION_SPACING + 15);
-      ctx.yPos += LAYOUT.SUBSECTION_SPACING;
-      
-      const headingSize = segment.headingLevel === 2 ? LAYOUT.TITLE_SIZE : LAYOUT.SECTION_TITLE_SIZE;
-      ctx.doc.setFontSize(headingSize);
-      ctx.doc.setFont('helvetica', 'bold');
-      ctx.doc.setTextColor(...COLORS.dark);
-      
-      const headingLines = ctx.doc.splitTextToSize(segment.text, maxWidth);
-      ctx.doc.text(headingLines, ctx.margin, ctx.yPos);
-      ctx.yPos += headingLines.length * (LAYOUT.LINE_SPACING + 1) + LAYOUT.SUBSECTION_SPACING;
-      
-      ctx.doc.setFontSize(LAYOUT.BODY_NORMAL);
-      continue;
-    }
-    
-    if (segment.isBullet) {
-      flushLine();
-      checkNewPage(LAYOUT.LINE_SPACING + 2);
-      
-      ctx.doc.setFont('helvetica', 'normal');
-      ctx.doc.setTextColor(...COLORS.dark);
-      ctx.doc.setFontSize(LAYOUT.BODY_NORMAL);
-      
-      const bulletX = ctx.margin + (segment.indent * 8);
-      ctx.doc.text('•', bulletX, ctx.yPos);
-      
-      const textLines = ctx.doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8) - 5);
-      ctx.doc.text(textLines, bulletX + 5, ctx.yPos);
-      ctx.yPos += textLines.length * LAYOUT.LINE_SPACING;
-      continue;
-    }
-    
-    if (segment.isNumbered) {
-      flushLine();
-      checkNewPage(LAYOUT.LINE_SPACING + 2);
-      
-      ctx.doc.setFont('helvetica', segment.bold ? 'bold' : 'normal');
-      ctx.doc.setTextColor(...COLORS.dark);
-      ctx.doc.setFontSize(LAYOUT.BODY_NORMAL);
-      
-      const numberedX = ctx.margin + (segment.indent * 8);
-      const textLines = ctx.doc.splitTextToSize(segment.text, maxWidth - (segment.indent * 8));
-      ctx.doc.text(textLines, numberedX, ctx.yPos);
-      ctx.yPos += textLines.length * LAYOUT.LINE_SPACING;
-      continue;
-    }
-    
-    ctx.doc.setFontSize(LAYOUT.BODY_NORMAL);
-    ctx.doc.setTextColor(...COLORS.darkGray);
-    ctx.doc.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal');
-    
-    const words = segment.text.split(' ');
-    for (const word of words) {
-      const wordWidth = ctx.doc.getTextWidth(word + ' ');
-      
-      if (currentX + wordWidth > ctx.margin + maxWidth) {
-        flushLine();
-      }
-      
-      currentLine.push({
-        text: word + ' ',
-        bold: segment.bold,
-        italic: segment.italic,
-        x: currentX,
-      });
-      
-      currentX += wordWidth;
-    }
-  }
-  
-  flushLine();
-};
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-const getRiskColor = (score: number): RGBColor => {
-  if (score >= 70) return COLORS.danger;
-  if (score >= 50) return COLORS.warning;
-  return COLORS.success;
-};
-
-const getTrendSymbol = (trend: string): string => {
-  const trendLower = trend.toLowerCase();
-  if (trendLower === 'up') return '+';
-  if (trendLower === 'down') return '-';
-  return '=';
-};
-
-const getRiskLevelText = (level: string): string => {
-  const levelLower = level.toLowerCase();
-  if (levelLower === 'critical') return TRANSLATIONS.CRITICAL;
-  if (levelLower === 'high') return TRANSLATIONS.HIGH;
-  if (levelLower === 'medium') return TRANSLATIONS.MEDIUM;
-  return TRANSLATIONS.LOW;
-};
-
-const getRiskLevelColor = (level: string): RGBColor => {
-  const levelLower = level.toLowerCase();
-  if (levelLower === 'critical') return COLORS.danger;
-  if (levelLower === 'high') return COLORS.warning;
-  return COLORS.success;
-};
-
-const getImpactText = (impact: string): string => {
-  const impactLower = impact.toLowerCase();
-  if (impactLower === 'high') return 'Alto';
-  if (impactLower === 'medium') return 'Medio';
-  return 'Baixo';
-};
-
-const getAlertTypeText = (type: string): string => {
-  const typeLower = type.toLowerCase();
-  if (typeLower === 'critical') return TRANSLATIONS.CRITICAL;
-  if (typeLower === 'warning') return TRANSLATIONS.WARNING;
-  return TRANSLATIONS.INFO;
-};
-
-const getRiskClassification = (score: number): string => {
-  if (score >= 70) return TRANSLATIONS.ELEVATED;
-  if (score >= 50) return TRANSLATIONS.MODERATE;
-  return TRANSLATIONS.LOW;
-};
-
-const getGlobalRiskClassification = (score: number): string => {
-  if (score >= 70) return TRANSLATIONS.ELEVATED;
-  if (score >= 50) return TRANSLATIONS.MODERATE;
-  return TRANSLATIONS.LOW;
-};
-
-const formatDate = (): string => {
-  return new Date().toLocaleDateString('pt-AO', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const formatPercentage = (value: number): string => {
-  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
-};
-
-const formatCurrency = (value: number): string => {
-  return `$${value.toFixed(0)}`;
-};
-
-const setTextStyle = (
-  doc: jsPDF,
-  fontSize: number,
-  fontWeight: 'normal' | 'bold' | 'italic',
-  color: RGBColor
-): void => {
-  doc.setFontSize(fontSize);
-  doc.setFont('helvetica', fontWeight);
-  doc.setTextColor(...color);
-};
-
-// ============================================================================
-// PDF GENERATION FUNCTIONS
-// ============================================================================
-
-const checkNewPage = (ctx: PDFContext, requiredSpace: number): void => {
-  if (ctx.yPos + requiredSpace > ctx.pageHeight - ctx.margin - LAYOUT.FOOTER_HEIGHT - 5) {
+function needsPage(ctx: PDFCtx, space: number) {
+  if (ctx.y + space > bottomLimit(ctx)) {
     ctx.doc.addPage();
-    ctx.yPos = ctx.margin;
-    addHeader(ctx);
+    ctx.doc.setFillColor(...P.bg);
+    ctx.doc.rect(0, 0, ctx.W, ctx.H, 'F');
+    ctx.y = ctx.margin;
+    ctx.onNewPage();
   }
+}
+
+function setFont(doc: jsPDF, size: number, weight: 'normal' | 'bold' | 'italic', color: RGB) {
+  doc.setFontSize(size);
+  doc.setFont('helvetica', weight);
+  doc.setTextColor(...color);
+}
+
+function safeDate(d: any): Date {
+  const parsed = d instanceof Date ? d : new Date(d);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RISK HELPERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function scoreColor(score: number): RGB {
+  if (score >= 70) return P.scoreHigh;
+  if (score >= 45) return P.scoreMed;
+  return P.scoreLow;
+}
+
+function scorePaleColor(score: number): RGB {
+  if (score >= 70) return P.accentRedPale;
+  if (score >= 45) return P.accentOrangePale;
+  return P.accentGreenPale;
+}
+
+function riskLevelColor(level: string): RGB {
+  const l = level.toLowerCase();
+  if (l === 'critical') return P.scoreHigh;
+  if (l === 'high')     return P.scoreMed;
+  return P.scoreLow;
+}
+
+function riskLevelText(level: string): string {
+  const l = level.toLowerCase();
+  if (l === 'critical') return T.critical;
+  if (l === 'high')     return T.high;
+  if (l === 'medium')   return T.medium;
+  return T.low;
+}
+
+function riskBand(score: number): string {
+  if (score >= 70) return T.critical;
+  if (score >= 45) return T.medium;
+  return T.low;
+}
+
+function trendArrow(trend: string): string {
+  const t = trend.toLowerCase();
+  if (t === 'up')   return '[+] Agravamento';
+  if (t === 'down') return '[-] Melhoria';
+  return '[=] Estavel';
+}
+
+// Short version for narrow columns
+function trendShort(trend: string): string {
+  const t = trend.toLowerCase();
+  if (t === 'up')   return '[+] Agrav.';
+  if (t === 'down') return '[-] Melhoria';
+  return '[=] Estavel';
+}
+
+function trendColor(trend: string): RGB {
+  const t = trend.toLowerCase();
+  if (t === 'up')   return P.scoreHigh;
+  if (t === 'down') return P.scoreLow;
+  return P.textMuted;
+}
+
+function alertSeverityColor(type: string): RGB {
+  const t = type.toLowerCase();
+  if (t === 'critical') return P.scoreHigh;
+  if (t === 'warning')  return P.scoreMed;
+  return P.accentBlue;
+}
+
+function alertSeverityPale(type: string): RGB {
+  const t = type.toLowerCase();
+  if (t === 'critical') return P.accentRedPale;
+  if (t === 'warning')  return P.accentOrangePale;
+  return P.accentBluePale;
+}
+
+function alertTypeLabel(type: string): string {
+  const t = type.toLowerCase();
+  if (t === 'critical') return T.critical;
+  if (t === 'warning')  return T.warning;
+  return T.info;
+}
+
+function impactText(impact: string): string {
+  const i = impact.toLowerCase();
+  if (i === 'high')   return 'Alto';
+  if (i === 'medium') return 'Medio';
+  return 'Baixo';
+}
+
+function fmtPct(v: number): string {
+  return `${v > 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
+
+function fmtDelta(v: number, unit = '%'): string {
+  return `${v > 0 ? '+' : ''}${v.toFixed(2)} ${unit}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARED TABLE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const TH = {
+  fillColor:   P.accentBlue as any,
+  textColor:   [255, 255, 255] as any,
+  fontStyle:   'bold' as const,
+  fontSize:    7.5,
+  cellPadding: 4,
+};
+const TB = {
+  fontSize:    8,
+  textColor:   P.textSecondary as any,
+  cellPadding: 4,
+  fillColor:   P.surface as any,
+};
+const TS = {
+  lineColor: P.border as any,
+  lineWidth: 0.25,
+  font:      'helvetica',
 };
 
-const addHeader = (ctx: PDFContext): void => {
-  ctx.doc.setFillColor(...COLORS.dark);
-  ctx.doc.rect(0, 0, ctx.pageWidth, LAYOUT.HEADER_HEIGHT, 'F');
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER - identical to reportGenerator
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  setTextStyle(ctx.doc, LAYOUT.ALPHA_SYMBOL_SIZE, 'bold', COLORS.brand);
-  ctx.doc.text('α', ctx.margin, 26);
+function makeHeaderFn(
+  doc: jsPDF,
+  data: RiskReportData,
+  logoBase64: string | undefined,
+  W: number
+): () => void {
+  return function drawHeader() {
+    doc.setFillColor(...P.bg);
+    doc.rect(0, 0, W, L.HEADER_H, 'F');
 
-  setTextStyle(ctx.doc, LAYOUT.TITLE_SIZE, 'bold', COLORS.white);
-  ctx.doc.text('ALPHADATA', ctx.margin + 14, 26);
+    doc.setFillColor(...P.brand);
+    doc.rect(0, 0, W, 2.5, 'F');
 
-  setTextStyle(ctx.doc, LAYOUT.SUBTITLE_SIZE, 'normal', COLORS.lightGray);
-  ctx.doc.text(TRANSLATIONS.REPORT_TITLE, ctx.margin, 37);
+    doc.setDrawColor(...P.border);
+    doc.setLineWidth(0.4);
+    doc.line(0, L.HEADER_H, W, L.HEADER_H);
 
-  setTextStyle(ctx.doc, LAYOUT.DATE_SIZE, 'normal', COLORS.mediumGray);
-  ctx.doc.text(
-    `${TRANSLATIONS.GENERATED_AT} ${formatDate()}`,
-    ctx.pageWidth - ctx.margin - 85,
-    26
-  );
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', L.MARGIN, 9, 10, 10);
+        setFont(doc, 13, 'bold', P.textPrimary);
+        doc.text('ALPHADATA', L.MARGIN + 13, 17);
+      } catch {
+        setFont(doc, 13, 'bold', P.textPrimary);
+        doc.text('ALPHADATA', L.MARGIN, 17);
+      }
+    } else {
+      setFont(doc, 13, 'bold', P.textPrimary);
+      doc.text('ALPHADATA', L.MARGIN, 17);
+    }
 
-  ctx.yPos = LAYOUT.HEADER_HEIGHT + 8;
-};
+    doc.setDrawColor(...P.border);
+    doc.setLineWidth(0.4);
+    doc.line(L.MARGIN + 52, 10, L.MARGIN + 52, 28);
 
-const addFooter = (ctx: PDFContext): void => {
-  const totalPages = ctx.doc.getNumberOfPages();
+    setFont(doc, 6.5, 'normal', P.textMuted);
+    doc.text('PETROLEUM INTELLIGENCE PLATFORM', L.MARGIN + 56, 15);
+    doc.text('Angola | Oil & Gas Analytics', L.MARGIN + 56, 22);
 
-  for (let i = 1; i <= totalPages; i++) {
-    ctx.doc.setPage(i);
+    const title = (data.title || T.reportTitle).substring(0, 62);
+    setFont(doc, 7.5, 'normal', P.textSecondary);
+    doc.text(title, W / 2, 17, { align: 'center' });
 
-    ctx.doc.setFillColor(...COLORS.ultraLight);
-    ctx.doc.rect(0, ctx.pageHeight - LAYOUT.FOOTER_HEIGHT, ctx.pageWidth, LAYOUT.FOOTER_HEIGHT, 'F');
-
-    ctx.doc.setDrawColor(...COLORS.brand);
-    ctx.doc.setLineWidth(LAYOUT.LINE_WIDTH_THIN);
-    ctx.doc.line(0, ctx.pageHeight - LAYOUT.FOOTER_HEIGHT, ctx.pageWidth, ctx.pageHeight - LAYOUT.FOOTER_HEIGHT);
-
-    setTextStyle(ctx.doc, LAYOUT.CAPTION, 'normal', COLORS.muted);
-
-    ctx.doc.text(TRANSLATIONS.FOOTER_TEXT, ctx.margin, ctx.pageHeight - 10);
-
-    ctx.doc.text(
-      `${TRANSLATIONS.PAGE} ${i} ${TRANSLATIONS.OF} ${totalPages}`,
-      ctx.pageWidth / 2,
-      ctx.pageHeight - 10,
-      { align: 'center' }
+    const d = safeDate(data.generatedAt);
+    setFont(doc, 6.5, 'normal', P.textMuted);
+    doc.text(
+      `${T.generatedOn}: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      W - L.MARGIN, 17, { align: 'right' }
     );
 
-    ctx.doc.text(
-      TRANSLATIONS.CONFIDENTIAL,
-      ctx.pageWidth - ctx.margin - 48,
-      ctx.pageHeight - 10
-    );
+    if (data.aiGenerated) {
+      doc.setFillColor(...P.accentBlue);
+      doc.roundedRect(W - L.MARGIN - 34, 24, 30, 7, 1.5, 1.5, 'F');
+      setFont(doc, 5.5, 'bold', P.white);
+      doc.text(T.generatedBy, W - L.MARGIN - 30, 28.8);
+    }
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER - identical to reportGenerator (no "Confidential")
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function addFooters(doc: jsPDF, W: number, H: number, period: string, startPage = 2) {
+  const total = doc.getNumberOfPages();
+  for (let i = startPage; i <= total; i++) {
+    doc.setPage(i);
+
+    doc.setFillColor(...P.bg);
+    doc.rect(0, H - L.FOOTER_H, W, L.FOOTER_H, 'F');
+
+    doc.setDrawColor(...P.border);
+    doc.setLineWidth(0.4);
+    doc.line(0, H - L.FOOTER_H, W, H - L.FOOTER_H);
+
+    doc.setFillColor(...P.brand);
+    doc.rect(0, H - 2, W, 2, 'F');
+
+    setFont(doc, 6.5, 'bold', P.textMuted);
+    doc.text('AlphaData | Petroleum Intelligence | Risk & Geopolitics', L.MARGIN, H - 7);
+
+    setFont(doc, 6.5, 'normal', P.textMuted);
+    doc.text(T.pageOf(i, total), W / 2, H - 7, { align: 'center' });
+
+    setFont(doc, 6.5, 'normal', P.textMuted);
+    doc.text(period || '', W - L.MARGIN, H - 7, { align: 'right' });
   }
-};
+}
 
-const addSectionTitle = (ctx: PDFContext, title: string): void => {
-  checkNewPage(ctx, 25);
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION TITLE - identical to reportGenerator
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  ctx.doc.setFillColor(...COLORS.brand);
-  ctx.doc.roundedRect(ctx.margin, ctx.yPos, LAYOUT.SECTION_BAR_WIDTH, LAYOUT.SECTION_BAR_HEIGHT, 1, 1, 'F');
+function sectionTitle(ctx: PDFCtx, title: string, subtitle?: string) {
+  const h = subtitle ? 18 : 14;
+  needsPage(ctx, h + 8);
 
-  setTextStyle(ctx.doc, LAYOUT.SECTION_TITLE_SIZE, 'bold', COLORS.dark);
-  ctx.doc.text(title, ctx.margin + 10, ctx.yPos + 10);
+  ctx.doc.setFillColor(...P.surfaceAlt);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, ctx.W - 2 * ctx.margin, h, L.BOX_R, L.BOX_R, 'F');
 
-  ctx.yPos += 22;
-};
+  ctx.doc.setFillColor(...P.accentBlue);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, 3, h, 1, 1, 'F');
 
-const renderExecutiveSummary = (ctx: PDFContext, data: PDFData): void => {
-  addSectionTitle(ctx, TRANSLATIONS.EXECUTIVE_SUMMARY);
+  setFont(ctx.doc, 11, 'bold', P.textPrimary);
+  ctx.doc.text(title, ctx.margin + 10, ctx.y + (subtitle ? 7 : 9.5));
 
-  setTextStyle(ctx.doc, LAYOUT.BODY_NORMAL, 'normal', COLORS.dark);
+  if (subtitle) {
+    setFont(ctx.doc, 7, 'normal', P.textMuted);
+    ctx.doc.text(subtitle, ctx.margin + 10, ctx.y + 14);
+  }
 
-  const classification = getGlobalRiskClassification(data.globalRiskIndex);
-  const summaryText = `Este relatorio apresenta uma analise abrangente dos riscos geopoliticos, regulatorios e fiscais que afetam o setor petrolifero angolano. O Indice de Risco Global atual e de ${data.globalRiskIndex}/100, classificado como ${classification}.`;
+  ctx.y += h + 6;
+}
 
-  const splitSummary = ctx.doc.splitTextToSize(summaryText, ctx.pageWidth - 2 * ctx.margin);
-  ctx.doc.text(splitSummary, ctx.margin, ctx.yPos);
-  ctx.yPos += splitSummary.length * LAYOUT.LINE_SPACING + LAYOUT.CARD_SPACING;
-};
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUB-SECTION LABEL
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-const renderGlobalRiskIndex = (ctx: PDFContext, data: PDFData): void => {
-  checkNewPage(ctx, LAYOUT.RISK_CARD_HEIGHT + 10);
+function subLabel(ctx: PDFCtx, text: string) {
+  needsPage(ctx, 12);
+  setFont(ctx.doc, 7.5, 'bold', P.accentBlue);
+  ctx.doc.text(text.toUpperCase(), ctx.margin, ctx.y);
+  ctx.doc.setDrawColor(...P.accentBlue);
+  ctx.doc.setLineWidth(0.3);
+  ctx.doc.line(ctx.margin, ctx.y + 2, ctx.W - ctx.margin, ctx.y + 2);
+  ctx.y += 8;
+}
 
-  const riskColor = getRiskColor(data.globalRiskIndex);
-  ctx.doc.setFillColor(...riskColor);
-  ctx.doc.roundedRect(
-    ctx.margin,
-    ctx.yPos,
-    ctx.pageWidth - 2 * ctx.margin,
-    LAYOUT.RISK_CARD_HEIGHT,
-    LAYOUT.BOX_RADIUS,
-    LAYOUT.BOX_RADIUS,
-    'F'
-  );
+/* ═══════════════════════════════════════════════════════════════════════════
+   INLINE SCORE BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  setTextStyle(ctx.doc, LAYOUT.BODY_LARGE, 'bold', COLORS.white);
-  ctx.doc.text(TRANSLATIONS.GLOBAL_RISK_INDEX, ctx.margin + 10, ctx.yPos + 12);
+function drawScoreBar(ctx: PDFCtx, x: number, y: number, w: number, score: number) {
+  ctx.doc.setFillColor(...P.surfaceDark);
+  ctx.doc.roundedRect(x, y, w, L.SCORE_BAR_H, 1, 1, 'F');
+  const fillW = Math.max((score / 100) * w, 2);
+  ctx.doc.setFillColor(...scoreColor(score));
+  ctx.doc.roundedRect(x, y, fillW, L.SCORE_BAR_H, 1, 1, 'F');
+}
 
-  setTextStyle(ctx.doc, 26, 'bold', COLORS.white);
-  ctx.doc.text(`${data.globalRiskIndex}/100`, ctx.pageWidth - ctx.margin - 35, ctx.yPos + 18);
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEMI-CIRCULAR GAUGE
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  ctx.yPos += LAYOUT.RISK_CARD_HEIGHT + LAYOUT.SECTION_SPACING;
-};
+function drawGauge(ctx: PDFCtx, cx: number, cy: number, r: number, score: number) {
+  const doc = ctx.doc;
+  const PI  = Math.PI;
 
-const renderRiskScoresTable = (ctx: PDFContext, data: PDFData): void => {
-  if (!data.riskScores || data.riskScores.length === 0) return;
+  // Grey background arc
+  const bgSteps = 36;
+  doc.setFillColor(...P.surfaceDark);
+  for (let s = 0; s < bgSteps; s++) {
+    const a1 = PI + (s / bgSteps) * PI;
+    const a2 = PI + ((s + 1) / bgSteps) * PI;
+    doc.triangle(cx, cy, cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, cx + Math.cos(a2) * r, cy + Math.sin(a2) * r, 'F');
+  }
 
-  addSectionTitle(ctx, TRANSLATIONS.RISK_PROFILE);
+  // White inner hole
+  doc.setFillColor(...P.bg);
+  doc.circle(cx, cy, r * 0.62, 'F');
 
-  const riskTableData = data.riskScores.map((risk) => [
-    risk.category,
-    `${risk.score}/100`,
-    getTrendSymbol(risk.trend),
-    risk.description || '-',
-  ]);
-
-  autoTable(ctx.doc, {
-    startY: ctx.yPos,
-    head: [[TRANSLATIONS.CATEGORY, TRANSLATIONS.SCORE, TRANSLATIONS.TREND, TRANSLATIONS.DESCRIPTION]],
-    body: riskTableData,
-    margin: { left: ctx.margin, right: ctx.margin },
-    headStyles: {
-      fillColor: COLORS.dark,
-      textColor: COLORS.white,
-      fontStyle: 'bold',
-      fontSize: LAYOUT.BODY_SMALL,
-      halign: 'left',
-    },
-    bodyStyles: {
-      fontSize: LAYOUT.CAPTION,
-      textColor: COLORS.darkGray,
-    },
-    alternateRowStyles: {
-      fillColor: COLORS.ultraLight,
-    },
-    theme: 'plain',
-    styles: {
-      cellPadding: 3,
-      lineColor: COLORS.lightGray,
-      lineWidth: 0.1,
-    },
-    columnStyles: {
-      0: { cellWidth: 35 },
-      1: { cellWidth: 22, halign: 'center' },
-      2: { cellWidth: 22, halign: 'center' },
-      3: { cellWidth: 'auto' },
-    },
+  // Colour zones
+  const zones: Array<[number, number, RGB]> = [
+    [0,  45, P.scoreLow],
+    [45, 70, P.scoreMed],
+    [70, 100, P.scoreHigh],
+  ];
+  const zoneSteps = 12;
+  zones.forEach(([from, to, color]) => {
+    const a1Base = PI + (from / 100) * PI;
+    const a2Base = PI + (to   / 100) * PI;
+    doc.setFillColor(...color);
+    for (let s = 0; s < zoneSteps; s++) {
+      const a1 = a1Base + (s / zoneSteps) * (a2Base - a1Base);
+      const a2 = a1Base + ((s + 1) / zoneSteps) * (a2Base - a1Base);
+      doc.triangle(cx, cy, cx + Math.cos(a1) * (r * 0.98), cy + Math.sin(a1) * (r * 0.98), cx + Math.cos(a2) * (r * 0.98), cy + Math.sin(a2) * (r * 0.98), 'F');
+    }
   });
 
-  ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-};
+  // Re-draw inner hole over zones
+  doc.setFillColor(...P.bg);
+  doc.circle(cx, cy, r * 0.62, 'F');
 
-const renderGeopoliticalForecasts = (ctx: PDFContext, data: PDFData): void => {
-  if (!data.geopoliticalForecasts || data.geopoliticalForecasts.length === 0) return;
+  // Needle
+  const needleAngle = PI + (score / 100) * PI;
+  const nx = cx + Math.cos(needleAngle) * (r * 0.72);
+  const ny = cy + Math.sin(needleAngle) * (r * 0.72);
+  doc.setDrawColor(...P.textPrimary);
+  doc.setLineWidth(1.2);
+  doc.line(cx, cy, nx, ny);
+  doc.setFillColor(...P.textPrimary);
+  doc.circle(cx, cy, 1.8, 'F');
 
-  addSectionTitle(ctx, TRANSLATIONS.GEOPOLITICAL_FORECASTS);
+  // Score text inside hole
+  setFont(doc, 16, 'bold', scoreColor(score));
+  doc.text(`${score}`, cx, cy - 3, { align: 'center' });
+  setFont(doc, 6, 'bold', P.textMuted);
+  doc.text(T.riskGaugeLabel, cx, cy + 3.5, { align: 'center' });
 
-  data.geopoliticalForecasts.forEach((forecast) => {
-    checkNewPage(ctx, 65);
+  // Scale labels
+  setFont(doc, 5.5, 'normal', P.textMuted);
+  doc.text('0',   cx - r - 2, cy + 2, { align: 'right' });
+  doc.text('100', cx + r + 2, cy + 2);
+  doc.text('50',  cx,         cy - r - 2, { align: 'center' });
+}
 
-    const riskLevelColor = getRiskLevelColor(forecast.risk_level);
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI STRIP - 4 inline tiles
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-    ctx.doc.setFillColor(...riskLevelColor);
-    ctx.doc.roundedRect(
-      ctx.margin,
-      ctx.yPos,
-      ctx.pageWidth - 2 * ctx.margin,
-      9,
-      LAYOUT.SMALL_RADIUS,
-      LAYOUT.SMALL_RADIUS,
-      'F'
+function renderKpiStrip(ctx: PDFCtx, data: RiskReportData) {
+  needsPage(ctx, 30);
+
+  const contentW = ctx.W - 2 * ctx.margin;
+  const tileW    = (contentW - 9) / 4;
+  const tileH    = 24;
+
+  const criticalCount = data.alerts.filter(a => a.alert_type.toLowerCase() === 'critical').length;
+  const regionCount   = [...new Set(data.geopoliticalForecasts.map(f => f.region))].length;
+
+  const kpis = [
+    { label: T.kpiAlerts,     value: String(data.alerts.length),   color: P.accentBlue,  pale: P.accentBluePale   },
+    { label: T.kpiCritical,   value: String(criticalCount),         color: P.scoreHigh,   pale: P.accentRedPale    },
+    { label: T.kpiRegions,    value: String(regionCount),           color: P.scoreMed,    pale: P.accentOrangePale },
+    { label: T.kpiCategories, value: String(data.riskScores.length),color: P.scoreLow,    pale: P.accentGreenPale  },
+  ];
+
+  kpis.forEach((kpi, i) => {
+    const tx = ctx.margin + i * (tileW + 3);
+
+    ctx.doc.setFillColor(...kpi.pale);
+    ctx.doc.roundedRect(tx, ctx.y, tileW, tileH, L.BOX_R, L.BOX_R, 'F');
+    ctx.doc.setDrawColor(...kpi.color);
+    ctx.doc.setLineWidth(0.3);
+    ctx.doc.roundedRect(tx, ctx.y, tileW, tileH, L.BOX_R, L.BOX_R, 'S');
+
+    // Top colour strip
+    ctx.doc.setFillColor(...kpi.color);
+    ctx.doc.roundedRect(tx, ctx.y, tileW, 2.5, 1, 1, 'F');
+
+    setFont(ctx.doc, 15, 'bold', kpi.color);
+    ctx.doc.text(kpi.value, tx + tileW / 2, ctx.y + 15.5, { align: 'center' });
+
+    setFont(ctx.doc, 6, 'normal', P.textMuted);
+    ctx.doc.text(kpi.label, tx + tileW / 2, ctx.y + 21, { align: 'center' });
+  });
+
+  ctx.y += tileH + L.SUBSEC_SP;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL RISK INDEX PANEL - gauge + risk band scale
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderGlobalRiskPanel(ctx: PDFCtx, data: RiskReportData) {
+  sectionTitle(ctx, T.globalRiskIndex, T.reportSubtitle);
+  needsPage(ctx, 64);
+
+  const contentW = ctx.W - 2 * ctx.margin;
+  const panelH   = 58;
+
+  // Panel background
+  ctx.doc.setFillColor(...P.surface);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, panelH, L.BOX_R, L.BOX_R, 'F');
+  ctx.doc.setDrawColor(...P.border);
+  ctx.doc.setLineWidth(L.THIN);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, panelH, L.BOX_R, L.BOX_R, 'S');
+
+  // Gauge - left column
+  drawGauge(ctx, ctx.margin + 44, ctx.y + panelH / 2 + 4, 28, data.globalRiskIndex);
+
+  // Vertical divider
+  ctx.doc.setDrawColor(...P.border);
+  ctx.doc.setLineWidth(0.3);
+  ctx.doc.line(ctx.margin + 90, ctx.y + 6, ctx.margin + 90, ctx.y + panelH - 6);
+
+  // Right column
+  const rx = ctx.margin + 96;
+  const ry = ctx.y + 8;
+  const color = scoreColor(data.globalRiskIndex);
+
+  setFont(ctx.doc, 7.5, 'bold', P.textMuted);
+  ctx.doc.text('CLASSIFICACAO DO RISCO GLOBAL', rx, ry);
+
+  // Classification badge
+  const badge = riskBand(data.globalRiskIndex);
+  ctx.doc.setFillColor(...color);
+  ctx.doc.roundedRect(rx, ry + 4, 46, 12, L.SMALL_R, L.SMALL_R, 'F');
+  setFont(ctx.doc, 10, 'bold', P.white);
+  ctx.doc.text(badge, rx + 23, ry + 11.5, { align: 'center' });
+
+  // Risk band scale bar
+  const bandY = ry + 22;
+  const bandW = contentW - 96 - 10;
+  setFont(ctx.doc, 6.5, 'normal', P.textMuted);
+  ctx.doc.text('Escala de Referencia:', rx, bandY);
+
+  const bands: Array<[RGB, string, number]> = [
+    [P.scoreLow,  'CONTROLADO 0-44',   44],
+    [P.scoreMed,  'MODERADO 45-69',    25],
+    [P.scoreHigh, 'CRITICO 70+',       31],
+  ];
+  let bx = rx;
+  bands.forEach(([c, , pct]) => {
+    ctx.doc.setFillColor(...c);
+    ctx.doc.rect(bx, bandY + 4, (pct / 100) * bandW, 6, 'F');
+    bx += (pct / 100) * bandW;
+  });
+
+  // Pointer
+  const pointerX = rx + (data.globalRiskIndex / 100) * bandW;
+  ctx.doc.setDrawColor(...P.textPrimary);
+  ctx.doc.setLineWidth(0.7);
+  ctx.doc.line(pointerX, bandY + 2, pointerX, bandY + 12);
+  ctx.doc.setFillColor(...P.textPrimary);
+  ctx.doc.circle(pointerX, bandY + 2, 1.2, 'F');
+
+  // Legend - evenly spaced, not proportional, to avoid text overlap
+  const legendLabels = ['CONTROLADO', 'MODERADO', 'CRITICO'];
+  const legendColors: RGB[] = [P.scoreLow, P.scoreMed, P.scoreHigh];
+  const legendStepW = bandW / 3;
+  legendLabels.forEach((label, i) => {
+    const lx2 = rx + i * legendStepW;
+    ctx.doc.setFillColor(...legendColors[i]);
+    ctx.doc.roundedRect(lx2, bandY + 14, 4, 4, 0.5, 0.5, 'F');
+    setFont(ctx.doc, 5.5, 'normal', P.textMuted);
+    ctx.doc.text(label, lx2 + 6, bandY + 17.5);
+  });
+
+  // Metadata row
+  const d = safeDate(data.generatedAt);
+  setFont(ctx.doc, 6.5, 'normal', P.textMuted);
+  ctx.doc.text(
+    `Periodo: ${data.period || '-'}   |   Actualizado: ${d.toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+    rx, ctx.y + panelH - 6
+  );
+
+  ctx.y += panelH + L.SECTION_SP;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RISK MATRIX - custom row renderer with inline score bars
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderRiskMatrix(ctx: PDFCtx, data: RiskReportData) {
+  if (!data.riskScores?.length) return;
+
+  renderKpiStrip(ctx, data);
+  sectionTitle(ctx, T.riskProfile);
+
+  const contentW = ctx.W - 2 * ctx.margin;
+  const colCat   = 52;
+  const colScore = 20;
+  const colTrend = 38;
+  const colBar   = contentW - colCat - colScore - colTrend; // ~60mm - safe
+  const rowH     = 15;
+
+  // Column header row
+  ctx.doc.setFillColor(...P.accentBlue);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, 10, L.BOX_R, L.BOX_R, 'F');
+  setFont(ctx.doc, 7, 'bold', P.white);
+  ctx.doc.text(T.category,  ctx.margin + 4,                             ctx.y + 7);
+  ctx.doc.text(T.score,     ctx.margin + colCat + colScore / 2,         ctx.y + 7, { align: 'center' });
+  ctx.doc.text(T.scoreBar,  ctx.margin + colCat + colScore + colBar / 2,ctx.y + 7, { align: 'center' });
+  ctx.doc.text(T.trend,     ctx.margin + colCat + colScore + colBar + 4,ctx.y + 7);
+  ctx.y += 12;
+
+  data.riskScores.forEach((r, idx) => {
+    needsPage(ctx, rowH + 6);
+    const isAlt = idx % 2 === 1;
+
+    ctx.doc.setFillColor(...(isAlt ? P.bg : P.surface));
+    ctx.doc.rect(ctx.margin, ctx.y, contentW, rowH, 'F');
+
+    // Left accent strip
+    ctx.doc.setFillColor(...scoreColor(r.score));
+    ctx.doc.rect(ctx.margin, ctx.y, 2.5, rowH, 'F');
+
+    // Category name
+    setFont(ctx.doc, 8, 'bold', P.textPrimary);
+    ctx.doc.text(r.category, ctx.margin + 5, ctx.y + 10);
+
+    // Score value
+    setFont(ctx.doc, 9.5, 'bold', scoreColor(r.score));
+    ctx.doc.text(`${r.score}`, ctx.margin + colCat + colScore / 2, ctx.y + 10, { align: 'center' });
+
+    // Score bar
+    const barX = ctx.margin + colCat + colScore + 3;
+    const barW = colBar - 6;
+    drawScoreBar(ctx, barX, ctx.y + 5, barW, r.score);
+
+    // Percentage label on bar fill
+    if (r.score > 12) {
+      const fillW = Math.max((r.score / 100) * barW, 10);
+      setFont(ctx.doc, 5.5, 'bold', P.white);
+      ctx.doc.text(`${r.score}%`, barX + fillW - 1, ctx.y + 9.5, { align: 'right' });
+    }
+
+    // Trend - short ASCII label, clipped
+    const tLabel   = trendShort(r.trend);
+    setFont(ctx.doc, 6.5, 'normal', trendColor(r.trend));
+    ctx.doc.text(tLabel, ctx.margin + colCat + colScore + colBar + 4, ctx.y + 10);
+
+    ctx.doc.setDrawColor(...P.border);
+    ctx.doc.setLineWidth(0.15);
+    ctx.doc.line(ctx.margin, ctx.y + rowH, ctx.margin + contentW, ctx.y + rowH);
+    ctx.y += rowH;
+  });
+
+  // Description detail table
+  const withDesc = data.riskScores.filter(r => r.description);
+  if (withDesc.length > 0) {
+    ctx.y += 8;
+    subLabel(ctx, T.description);
+    autoTable(ctx.doc, {
+      startY: ctx.y,
+      head: [[T.category, T.description]],
+      body: withDesc.map(r => [r.category, r.description]),
+      margin: { left: ctx.margin, right: ctx.margin },
+      headStyles:         TH,
+      bodyStyles:         { ...TB, fontSize: 7.5 },
+      alternateRowStyles: { fillColor: P.bg as any },
+      theme:              'grid',
+      styles:             TS,
+      columnStyles:       { 0: { cellWidth: 50, fontStyle: 'bold', textColor: P.textPrimary as any } },
+    });
+    ctx.y = (ctx.doc as any).lastAutoTable.finalY + L.SECTION_SP;
+  } else {
+    ctx.y += L.SECTION_SP;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GEOPOLITICAL FORECASTS
+   Each forecast: region header + two-column cards + indicator chips + table
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderGeopoliticalForecasts(ctx: PDFCtx, data: RiskReportData) {
+  if (!data.geopoliticalForecasts?.length) return;
+  sectionTitle(ctx, T.geopoliticalForecasts, 'Analise por regiao com horizonte 30/90 dias');
+
+  const contentW = ctx.W - 2 * ctx.margin;
+
+  data.geopoliticalForecasts.forEach((f, idx) => {
+    needsPage(ctx, 96);
+
+    const lvlColor = riskLevelColor(f.risk_level);
+    const lvlPale  = scorePaleColor(
+      f.risk_level === 'critical' ? 80 : f.risk_level === 'high' ? 60 : 30
     );
 
-    setTextStyle(ctx.doc, LAYOUT.BODY_NORMAL, 'bold', COLORS.white);
-    ctx.doc.text(forecast.region.toUpperCase(), ctx.margin + 8, ctx.yPos + 6);
+    // ── Region header bar ─────────────────────────────────────────────────
+    ctx.doc.setFillColor(...lvlColor);
+    ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, 12, L.SMALL_R, L.SMALL_R, 'F');
 
-    const riskLabel = getRiskLevelText(forecast.risk_level);
-    ctx.doc.text(`${TRANSLATIONS.RISK_LABEL} ${riskLabel}`, ctx.pageWidth - ctx.margin - 35, ctx.yPos + 6);
+    // Region name - reserve space for badge on right
+    const badgeText   = riskLevelText(f.risk_level);
+    const badgeFixedW = 26; // fixed badge width so region name never overlaps it
+    const regionLabel = `${idx + 1}. ${f.region.toUpperCase()}`;
+    const maxRegionW  = contentW - badgeFixedW - 16;
+    setFont(ctx.doc, 8.5, 'bold', P.white);
+    const regionLines = ctx.doc.splitTextToSize(regionLabel, maxRegionW);
+    ctx.doc.text(regionLines[0], ctx.margin + 6, ctx.y + 8.5);
 
-    ctx.yPos += 14;
+    // Badge - fixed width, right-aligned within content area
+    ctx.doc.setFillColor(...P.white);
+    ctx.doc.roundedRect(ctx.W - ctx.margin - badgeFixedW, ctx.y + 2, badgeFixedW, 8, 1, 1, 'F');
+    setFont(ctx.doc, 6.5, 'bold', lvlColor);
+    ctx.doc.text(badgeText, ctx.W - ctx.margin - badgeFixedW / 2, ctx.y + 7.5, { align: 'center' });
 
-    setTextStyle(ctx.doc, LAYOUT.BODY_SMALL, 'bold', COLORS.dark);
-    ctx.doc.text(TRANSLATIONS.CURRENT_SITUATION, ctx.margin, ctx.yPos);
-    ctx.yPos += 5;
+    ctx.y += 16;
 
-    setTextStyle(ctx.doc, LAYOUT.BODY_SMALL, 'normal', COLORS.darkGray);
-    const situationLines = ctx.doc.splitTextToSize(forecast.situation, ctx.pageWidth - 2 * ctx.margin);
-    ctx.doc.text(situationLines, ctx.margin, ctx.yPos);
-    ctx.yPos += situationLines.length * 4 + 4;
+    // ── Two-column info cards ─────────────────────────────────────────────
+    const halfW = (contentW - 6) / 2;
 
-    setTextStyle(ctx.doc, LAYOUT.BODY_SMALL, 'bold', COLORS.dark);
-    ctx.doc.text(TRANSLATIONS.OIL_IMPACT, ctx.margin, ctx.yPos);
-    ctx.yPos += 5;
+    // Situation card (left)
+    ctx.doc.setFillColor(...P.surface);
+    ctx.doc.roundedRect(ctx.margin, ctx.y, halfW, 40, L.SMALL_R, L.SMALL_R, 'F');
+    ctx.doc.setDrawColor(...P.border);
+    ctx.doc.setLineWidth(0.2);
+    ctx.doc.roundedRect(ctx.margin, ctx.y, halfW, 40, L.SMALL_R, L.SMALL_R, 'S');
+    ctx.doc.setFillColor(...P.accentBlue);
+    ctx.doc.roundedRect(ctx.margin, ctx.y, halfW, 3, 1, 1, 'F');
 
-    setTextStyle(ctx.doc, LAYOUT.BODY_SMALL, 'normal', COLORS.darkGray);
-    const impactLines = ctx.doc.splitTextToSize(forecast.impact_on_oil, ctx.pageWidth - 2 * ctx.margin);
-    ctx.doc.text(impactLines, ctx.margin, ctx.yPos);
-    ctx.yPos += impactLines.length * 4 + 4;
+    setFont(ctx.doc, 7, 'bold', P.accentBlue);
+    ctx.doc.text(T.situation.toUpperCase(), ctx.margin + 4, ctx.y + 10);
+    setFont(ctx.doc, 7.5, 'normal', P.textSecondary);
+    const sitLines = ctx.doc.splitTextToSize(f.situation, halfW - 8);
+    ctx.doc.text(sitLines.slice(0, 5), ctx.margin + 4, ctx.y + 16);
 
+    // Oil impact card (right)
+    const rx2 = ctx.margin + halfW + 6;
+    ctx.doc.setFillColor(...lvlPale);
+    ctx.doc.roundedRect(rx2, ctx.y, halfW, 40, L.SMALL_R, L.SMALL_R, 'F');
+    ctx.doc.setDrawColor(...lvlColor);
+    ctx.doc.setLineWidth(0.2);
+    ctx.doc.roundedRect(rx2, ctx.y, halfW, 40, L.SMALL_R, L.SMALL_R, 'S');
+    ctx.doc.setFillColor(...lvlColor);
+    ctx.doc.roundedRect(rx2, ctx.y, halfW, 3, 1, 1, 'F');
+
+    setFont(ctx.doc, 7, 'bold', lvlColor);
+    ctx.doc.text(T.oilImpact.toUpperCase(), rx2 + 4, ctx.y + 10);
+    setFont(ctx.doc, 7.5, 'normal', P.textSecondary);
+    const impLines = ctx.doc.splitTextToSize(f.impact_on_oil, halfW - 8);
+    ctx.doc.text(impLines.slice(0, 5), rx2 + 4, ctx.y + 16);
+
+    ctx.y += 44;
+
+    // ── Key indicator chips ───────────────────────────────────────────────
+    if (f.key_indicators?.length) {
+      needsPage(ctx, 22);
+      setFont(ctx.doc, 7, 'bold', P.textMuted);
+      ctx.doc.text(`${T.keyIndicators}:`, ctx.margin, ctx.y + 5);
+      ctx.y += 10;
+
+      let chipX = ctx.margin;
+      f.key_indicators.slice(0, 8).forEach(ind => {
+        // Truncate long indicators
+        const display = ind.length > 28 ? ind.substring(0, 27) + '.' : ind;
+        setFont(ctx.doc, 6, 'normal', P.accentBlue);
+        const chipW = ctx.doc.getTextWidth(display) + 10;
+        if (chipX + chipW > ctx.W - ctx.margin) {
+          chipX  = ctx.margin;
+          ctx.y += 11;
+          needsPage(ctx, 11);
+        }
+        ctx.doc.setFillColor(...P.accentBluePale);
+        ctx.doc.roundedRect(chipX, ctx.y, chipW, 8, 1, 1, 'F');
+        ctx.doc.setDrawColor(...P.accentBlue);
+        ctx.doc.setLineWidth(0.2);
+        ctx.doc.roundedRect(chipX, ctx.y, chipW, 8, 1, 1, 'S');
+        ctx.doc.text(display, chipX + chipW / 2, ctx.y + 5.5, { align: 'center' });
+        chipX += chipW + 3;
+      });
+      ctx.y += 14;
+    }
+
+    // ── 30/90-day forecast table ──────────────────────────────────────────
+    needsPage(ctx, 30);
     autoTable(ctx.doc, {
-      startY: ctx.yPos,
-      head: [[TRANSLATIONS.HORIZON, TRANSLATIONS.PREDICTION]],
+      startY: ctx.y,
+      head: [[T.horizon, T.forecast]],
       body: [
-        ['30 dias', forecast.prediction_30d],
-        ['90 dias', forecast.prediction_90d],
+        ['30 dias', f.prediction_30d],
+        ['90 dias', f.prediction_90d],
       ],
       margin: { left: ctx.margin, right: ctx.margin },
-      headStyles: {
-        fillColor: COLORS.primary,
-        fontSize: LAYOUT.CAPTION,
-        fontStyle: 'bold',
-      },
-      bodyStyles: {
-        fontSize: LAYOUT.CAPTION,
-      },
-      theme: 'plain',
-      styles: {
-        lineColor: COLORS.lightGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 25 },
-      },
+      headStyles:         { ...TH, fillColor: lvlColor as any },
+      bodyStyles:         TB,
+      alternateRowStyles: { fillColor: P.bg as any },
+      theme:              'grid',
+      styles:             TS,
+      columnStyles:       { 0: { cellWidth: 22, fontStyle: 'bold', halign: 'center' } },
     });
-
-    ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.CARD_SPACING;
+    ctx.y = (ctx.doc as any).lastAutoTable.finalY + L.SUBSEC_SP + 6;
   });
-};
+}
 
-const renderActiveAlerts = (ctx: PDFContext, data: PDFData): void => {
-  if (!data.alerts || data.alerts.length === 0) return;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACTIVE ALERTS - summary table + detail cards
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  addSectionTitle(ctx, TRANSLATIONS.ACTIVE_ALERTS);
+function renderActiveAlerts(ctx: PDFCtx, data: RiskReportData) {
+  if (!data.alerts?.length) return;
+  sectionTitle(ctx, T.activeAlerts);
 
-  const alertsTableData = data.alerts.map((alert) => [
-    getAlertTypeText(alert.alert_type),
-    alert.title,
-    alert.region || '-',
-    getImpactText(alert.impact),
-  ]);
+  const contentW = ctx.W - 2 * ctx.margin;
 
   autoTable(ctx.doc, {
-    startY: ctx.yPos,
-    head: [[TRANSLATIONS.TYPE, TRANSLATIONS.ALERT, TRANSLATIONS.REGION, TRANSLATIONS.IMPACT]],
-    body: alertsTableData,
+    startY: ctx.y,
+    head: [[T.alertSeverity, T.alertTitle, T.region, T.impact]],
+    body: data.alerts.map(a => [
+      alertTypeLabel(a.alert_type),
+      a.title,
+      a.region || '-',
+      impactText(a.impact),
+    ]),
     margin: { left: ctx.margin, right: ctx.margin },
-    headStyles: {
-      fillColor: COLORS.danger,
-      fontSize: LAYOUT.BODY_SMALL,
-      fontStyle: 'bold',
-    },
-    bodyStyles: {
-      fontSize: LAYOUT.CAPTION,
-    },
-    theme: 'plain',
-    styles: {
-      lineColor: COLORS.lightGray,
-      lineWidth: 0.1,
-    },
+    headStyles:         { ...TH, fillColor: P.scoreHigh as any },
+    bodyStyles:         TB,
+    alternateRowStyles: { fillColor: P.bg as any },
+    theme:              'grid',
+    styles:             TS,
     columnStyles: {
-      0: { cellWidth: 20, halign: 'center' },
-      1: { cellWidth: 65 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 25, halign: 'center' },
+      0: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
+      2: { cellWidth: 38 },
+      3: { cellWidth: 22, halign: 'center' },
+    },
+    didParseCell(cell: any) {
+      if (cell.column.index === 0 && cell.section === 'body') {
+        const txt = cell.cell.text[0] as string;
+        cell.cell.styles.textColor =
+          txt === T.critical ? P.scoreHigh :
+          txt === T.warning  ? P.scoreMed  : P.accentBlue;
+      }
     },
   });
+  ctx.y = (ctx.doc as any).lastAutoTable.finalY + L.SUBSEC_SP;
 
-  ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-};
+  // Detail cards for alerts with descriptions
+  const withDesc = data.alerts.filter(a => a.description);
+  if (withDesc.length > 0) {
+    ctx.y += 6;
+    subLabel(ctx, 'Detalhe dos Alertas');
 
-const renderCountryRiskComparison = (ctx: PDFContext, data: PDFData): void => {
-  if (!data.countryRisks || data.countryRisks.length === 0) return;
+    withDesc.forEach(a => {
+      needsPage(ctx, 28);
+      const sev    = alertSeverityColor(a.alert_type);
+      const pale   = alertSeverityPale(a.alert_type);
+      const cardH  = 24;
 
-  addSectionTitle(ctx, TRANSLATIONS.COUNTRY_COMPARISON);
+      ctx.doc.setFillColor(...pale);
+      ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, cardH, L.SMALL_R, L.SMALL_R, 'F');
+      ctx.doc.setDrawColor(...sev);
+      ctx.doc.setLineWidth(0.25);
+      ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, cardH, L.SMALL_R, L.SMALL_R, 'S');
+      ctx.doc.setFillColor(...sev);
+      ctx.doc.roundedRect(ctx.margin, ctx.y, 3.5, cardH, 1, 1, 'F');
 
-  const countryTableData = data.countryRisks.map((cr) => [
-    cr.country,
-    `${cr.score}/100`,
-    getTrendSymbol(cr.trend),
-    getRiskClassification(cr.score),
-  ]);
+      // Title - truncate to avoid overlap with badge
+      const maxTitleW = contentW - 50;
+      setFont(ctx.doc, 8.5, 'bold', P.textPrimary);
+      const titleLines = ctx.doc.splitTextToSize(a.title, maxTitleW);
+      ctx.doc.text(titleLines[0], ctx.margin + 8, ctx.y + 9);
 
-  autoTable(ctx.doc, {
-    startY: ctx.yPos,
-    head: [[TRANSLATIONS.COUNTRY, TRANSLATIONS.SCORE, TRANSLATIONS.TREND, TRANSLATIONS.CLASSIFICATION]],
-    body: countryTableData,
-    margin: { left: ctx.margin, right: ctx.margin },
-    headStyles: {
-      fillColor: COLORS.dark,
-      fontSize: LAYOUT.BODY_SMALL,
-      fontStyle: 'bold',
-    },
-    bodyStyles: {
-      fontSize: LAYOUT.BODY_SMALL,
-    },
-    theme: 'plain',
-    styles: {
-      lineColor: COLORS.lightGray,
-      lineWidth: 0.1,
-    },
-    columnStyles: {
-      0: { cellWidth: 50 },
-      1: { cellWidth: 28, halign: 'center' },
-      2: { cellWidth: 28, halign: 'center' },
-      3: { cellWidth: 38, halign: 'center' },
-    },
+      // Badge - fixed max width 48mm, truncate region if needed
+      const regionDisplay = (a.region || '-').length > 16
+        ? (a.region || '-').substring(0, 15) + '.'
+        : (a.region || '-');
+      const badgeLabel = `${alertTypeLabel(a.alert_type)} | ${regionDisplay}`;
+      const maxBadgeW  = 48;
+      const bw = Math.min(ctx.doc.getTextWidth(badgeLabel) + 8, maxBadgeW);
+      ctx.doc.setFillColor(...sev);
+      ctx.doc.roundedRect(ctx.W - ctx.margin - bw, ctx.y + 2.5, bw, 7, 1, 1, 'F');
+      setFont(ctx.doc, 5.5, 'bold', P.white);
+      ctx.doc.text(badgeLabel, ctx.W - ctx.margin - bw / 2, ctx.y + 7, { align: 'center' });
+
+      setFont(ctx.doc, 7.5, 'normal', P.textSecondary);
+      const descLines = ctx.doc.splitTextToSize(a.description, contentW - 14);
+      ctx.doc.text(descLines.slice(0, 2), ctx.margin + 8, ctx.y + 17);
+
+      ctx.y += cardH + 4;
+    });
+  }
+
+  ctx.y += L.SECTION_SP;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COUNTRY RISK - custom row renderer with inline bars
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderCountryRisk(ctx: PDFCtx, data: RiskReportData) {
+  if (!data.countryRisks?.length) return;
+  sectionTitle(ctx, T.countryComparison);
+
+  const contentW = ctx.W - 2 * ctx.margin;
+  // Columns: Country | Score | Bar | Trend | Band
+  // colBand is fixed - enough for "MODERADO" (widest label ~18mm at 6pt)
+  const colCountry = 50;
+  const colScore   = 18;
+  const colBand    = 22;
+  const colTrend   = 28;
+  const colBar     = contentW - colCountry - colScore - colBand - colTrend; // ~52mm
+  const rowH       = 13;
+  const sorted     = [...data.countryRisks].sort((a, b) => b.score - a.score);
+
+  // Header row
+  ctx.doc.setFillColor(...P.accentBlue);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, 10, L.BOX_R, L.BOX_R, 'F');
+  setFont(ctx.doc, 6.5, 'bold', P.white);
+
+  ctx.doc.text(T.country,  ctx.margin + 4,                                        ctx.y + 7);
+  ctx.doc.text(T.scoreCol, ctx.margin + colCountry + colScore / 2,                ctx.y + 7, { align: 'center' });
+  ctx.doc.text(T.scoreBar, ctx.margin + colCountry + colScore + colBar / 2,       ctx.y + 7, { align: 'center' });
+  ctx.doc.text(T.trendCol, ctx.margin + colCountry + colScore + colBar + 3,       ctx.y + 7);
+  ctx.doc.text(T.riskBand, ctx.margin + colCountry + colScore + colBar + colTrend + colBand / 2, ctx.y + 7, { align: 'center' });
+  ctx.y += 12;
+
+  sorted.forEach((cr, idx) => {
+    needsPage(ctx, rowH + 4);
+    const isAlt = idx % 2 === 1;
+
+    // Row bg
+    ctx.doc.setFillColor(...(isAlt ? P.bg : P.surface));
+    ctx.doc.rect(ctx.margin, ctx.y, contentW, rowH, 'F');
+
+    // Left accent strip
+    ctx.doc.setFillColor(...scoreColor(cr.score));
+    ctx.doc.rect(ctx.margin, ctx.y, 2.5, rowH, 'F');
+
+    // Country name - truncate to fit column
+    const maxCountryChars = 18;
+    const displayName = cr.country.length > maxCountryChars
+      ? cr.country.substring(0, maxCountryChars - 1) + '.'
+      : cr.country;
+    setFont(ctx.doc, 7.5, 'bold', P.textPrimary);
+    ctx.doc.text(displayName, ctx.margin + 5, ctx.y + 9);
+
+    // Score
+    setFont(ctx.doc, 9, 'bold', scoreColor(cr.score));
+    ctx.doc.text(`${cr.score}`, ctx.margin + colCountry + colScore / 2, ctx.y + 9, { align: 'center' });
+
+    // Score bar
+    const barX = ctx.margin + colCountry + colScore + 2;
+    const barW = colBar - 4;
+    drawScoreBar(ctx, barX, ctx.y + 4, barW, cr.score);
+
+    // Trend - short ASCII label
+    const trendLabel = trendShort(cr.trend);
+    setFont(ctx.doc, 6, 'normal', trendColor(cr.trend));
+    ctx.doc.text(trendLabel, ctx.margin + colCountry + colScore + colBar + 3, ctx.y + 9);
+
+    // Band badge - fixed position from right edge of row
+    const band     = riskBand(cr.score);
+    const badgeX   = ctx.margin + colCountry + colScore + colBar + colTrend;
+    const badgeW   = colBand - 2;
+    ctx.doc.setFillColor(...scoreColor(cr.score));
+    ctx.doc.roundedRect(badgeX, ctx.y + 2.5, badgeW, 8, 1, 1, 'F');
+    setFont(ctx.doc, 5.5, 'bold', P.white);
+    ctx.doc.text(band, badgeX + badgeW / 2, ctx.y + 8, { align: 'center' });
+
+    // Row divider
+    ctx.doc.setDrawColor(...P.border);
+    ctx.doc.setLineWidth(0.15);
+    ctx.doc.line(ctx.margin, ctx.y + rowH, ctx.margin + contentW, ctx.y + rowH);
+    ctx.y += rowH;
   });
 
-  ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-};
+  ctx.y += L.SECTION_SP;
+}
 
-const renderSimulationResults = (ctx: PDFContext, data: PDFData): void => {
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIMULATION - side-by-side layout with colour-coded delta column
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderSimulation(ctx: PDFCtx, data: RiskReportData) {
   if (!data.simulationParams || !data.simulationResults) return;
 
   ctx.doc.addPage();
-  ctx.yPos = ctx.margin;
-  addHeader(ctx);
+  ctx.doc.setFillColor(...P.bg);
+  ctx.doc.rect(0, 0, ctx.W, ctx.H, 'F');
+  ctx.y = ctx.margin;
+  ctx.onNewPage();
 
-  addSectionTitle(ctx, TRANSLATIONS.SIMULATION_IMPACT);
+  sectionTitle(ctx, T.simulationImpact, 'Modelo de impacto regulatorio, fiscal e macroeconomico AlphaData v2');
 
-  setTextStyle(ctx.doc, LAYOUT.BODY_NORMAL, 'bold', COLORS.dark);
-  ctx.doc.text(TRANSLATIONS.SIMULATION_PARAMS, ctx.margin, ctx.yPos);
-  ctx.yPos += 10;
+  const contentW = ctx.W - 2 * ctx.margin;
+  const halfW    = (contentW - 8) / 2;
+  const p        = data.simulationParams;
+  const r        = data.simulationResults;
+  const startY   = ctx.y;
 
-  const params = data.simulationParams;
-  const paramsData = [
-    [TRANSLATIONS.ROYALTY_CHANGE, formatPercentage(params.royaltyChange)],
-    [TRANSLATIONS.TAX_CHANGE, formatPercentage(params.taxChange)],
-    [TRANSLATIONS.ENVIRONMENTAL_COSTS, `+${params.environmentalCompliance}%`],
-    [TRANSLATIONS.OPEC_QUOTA, formatPercentage(params.opepQuotaChange)],
-    [TRANSLATIONS.BRENT_PRICE, `${formatCurrency(params.brentPriceScenario)}/bbl`],
-    [TRANSLATIONS.CURRENCY_DEVALUATION, `+${params.currencyDevaluation}%`],
-  ];
-
+  // ── Params (left column) ─────────────────────────────────────────────────
+  subLabel(ctx, T.simulationParams);
   autoTable(ctx.doc, {
-    startY: ctx.yPos,
-    body: paramsData,
-    margin: { left: ctx.margin, right: ctx.margin },
-    theme: 'plain',
-    bodyStyles: {
-      fontSize: LAYOUT.BODY_SMALL,
-    },
-    styles: {
-      lineColor: COLORS.lightGray,
-      lineWidth: 0.1,
-    },
+    startY: ctx.y,
+    head: [[T.parameter, T.inputValue]],
+    body: [
+      [T.royaltyChange,       fmtPct(p.royaltyChange)],
+      [T.taxChange,           fmtPct(p.taxChange)],
+      [T.environmentalCosts,  `+${p.environmentalCompliance.toFixed(1)}%`],
+      [T.opecQuota,           fmtPct(p.opepQuotaChange)],
+      [T.brentPrice,          `USD ${p.brentPriceScenario.toFixed(2)}/bbl`],
+      [T.currencyDevaluation, `+${p.currencyDevaluation.toFixed(1)}%`],
+    ],
+    margin: { left: ctx.margin, right: ctx.margin + halfW + 8 },
+    headStyles:         TH,
+    bodyStyles:         TB,
+    alternateRowStyles: { fillColor: P.bg as any },
+    theme:              'grid',
+    styles:             TS,
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 55 },
-      1: { halign: 'right', cellWidth: 35 },
+      0: { fontStyle: 'bold', textColor: P.textPrimary as any },
+      1: { halign: 'right', fontStyle: 'bold' },
     },
   });
+  const paramsBottom = (ctx.doc as any).lastAutoTable.finalY;
 
-  ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-
-  setTextStyle(ctx.doc, LAYOUT.BODY_NORMAL, 'bold', COLORS.dark);
-  ctx.doc.text(TRANSLATIONS.SIMULATION_RESULTS, ctx.margin, ctx.yPos);
-  ctx.yPos += 10;
-
-  const results = data.simulationResults;
-  const resultsData = [
-    [TRANSLATIONS.REVENUE_IMPACT, formatPercentage(results.revenueImpact)],
-    [TRANSLATIONS.COST_IMPACT, formatPercentage(results.productionCostImpact)],
-    [TRANSLATIONS.NET_PROFIT_IMPACT, formatPercentage(results.netProfitImpact)],
-    [TRANSLATIONS.EXPORT_IMPACT, formatPercentage(results.exportVolumeImpact)],
-    [TRANSLATIONS.GOVERNMENT_TAKE_CHANGE, `${results.governmentTakeChange > 0 ? '+' : ''}${results.governmentTakeChange.toFixed(0)}pp`],
-    [TRANSLATIONS.BREAK_EVEN_PRICE, `${formatCurrency(results.breakEvenPrice)}/bbl`],
+  // ── Results (right column - same start Y) ────────────────────────────────
+  const resultRows: [string, string, boolean][] = [
+    [T.revenueImpact,   fmtDelta(r.revenueImpact),              r.revenueImpact >= 0],
+    [T.costImpact,      fmtDelta(r.productionCostImpact),        r.productionCostImpact <= 0],
+    [T.netProfitImpact, fmtDelta(r.netProfitImpact),             r.netProfitImpact >= 0],
+    [T.exportImpact,    fmtDelta(r.exportVolumeImpact),          r.exportVolumeImpact >= 0],
+    [T.govTakeChange,   fmtDelta(r.governmentTakeChange, 'pp'),  r.governmentTakeChange <= 0],
+    [T.breakEvenPrice,  `USD ${r.breakEvenPrice.toFixed(2)}/bbl`, r.breakEvenPrice <= 50],
   ];
 
   autoTable(ctx.doc, {
-    startY: ctx.yPos,
-    body: resultsData,
-    margin: { left: ctx.margin, right: ctx.margin },
-    theme: 'plain',
-    bodyStyles: {
-      fontSize: LAYOUT.BODY_SMALL,
-    },
-    styles: {
-      lineColor: COLORS.lightGray,
-      lineWidth: 0.1,
-    },
+    startY,
+    head: [[T.indicator, T.delta]],
+    body: resultRows.map(row => [row[0], row[1]]),
+    margin: { left: ctx.margin + halfW + 8, right: ctx.margin },
+    headStyles:         { ...TH, fillColor: P.scoreMed as any },
+    bodyStyles:         TB,
+    alternateRowStyles: { fillColor: P.bg as any },
+    theme:              'grid',
+    styles:             TS,
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 55 },
-      1: { halign: 'right', cellWidth: 35 },
+      0: { fontStyle: 'bold', textColor: P.textPrimary as any },
+      1: { halign: 'right', fontStyle: 'bold' },
     },
-    didParseCell: function (cellData: any) {
-      if (cellData.column.index === 1 && cellData.section === 'body') {
-        const val = parseFloat(cellData.cell.text[0]);
-        if (!isNaN(val)) {
-          if (cellData.row.index === 1) {
-            cellData.cell.styles.textColor = val > 0 ? COLORS.danger : COLORS.success;
-          } else if (cellData.row.index < 4) {
-            cellData.cell.styles.textColor = val > 0 ? COLORS.success : COLORS.danger;
-          }
-        }
+    didParseCell(cell: any) {
+      if (cell.column.index === 1 && cell.section === 'body') {
+        const positive = resultRows[cell.row.index]?.[2];
+        cell.cell.styles.textColor = positive ? P.accentGreen : P.accentRed;
       }
     },
   });
 
-  ctx.yPos = (ctx.doc as any).lastAutoTable.finalY + LAYOUT.SECTION_SPACING;
-};
+  ctx.y = Math.max(paramsBottom, (ctx.doc as any).lastAutoTable.finalY) + L.SUBSEC_SP;
 
-const renderDisclaimer = (ctx: PDFContext): void => {
-  checkNewPage(ctx, LAYOUT.DISCLAIMER_BOX_HEIGHT + 5);
+  // Model note — dynamic height
+  needsPage(ctx, 20);
+  setFont(ctx.doc, 6.5, 'italic', P.accentBlue);
+  const noteLines = ctx.doc.splitTextToSize(`[i]  ${T.simulationNote}`, contentW - 10);
+  const noteH     = noteLines.length * 4.5 + 8;
+  ctx.doc.setFillColor(...P.accentBluePale);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, noteH, L.SMALL_R, L.SMALL_R, 'F');
+  ctx.doc.setDrawColor(...P.accentBlue);
+  ctx.doc.setLineWidth(0.2);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, noteH, L.SMALL_R, L.SMALL_R, 'S');
+  ctx.doc.text(noteLines, ctx.margin + 4, ctx.y + 6.5);
+  ctx.y += noteH + 6;
+}
 
-  ctx.doc.setFillColor(...COLORS.ultraLight);
-  ctx.doc.roundedRect(
-    ctx.margin,
-    ctx.yPos,
-    ctx.pageWidth - 2 * ctx.margin,
-    LAYOUT.DISCLAIMER_BOX_HEIGHT,
-    LAYOUT.BOX_RADIUS,
-    LAYOUT.BOX_RADIUS,
-    'F'
-  );
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEGAL DISCLAIMER
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  setTextStyle(ctx.doc, LAYOUT.DISCLAIMER_SIZE, 'italic', COLORS.muted);
-  const disclaimerLines = ctx.doc.splitTextToSize(TRANSLATIONS.DISCLAIMER, ctx.pageWidth - 2 * ctx.margin - 10);
-  ctx.doc.text(disclaimerLines, ctx.margin + 5, ctx.yPos + 8);
-};
+function renderDisclaimer(ctx: PDFCtx) {
+  const contentW = ctx.W - 2 * ctx.margin;
+  setFont(ctx.doc, 6.5, 'italic', P.textMuted);
+  const lines    = ctx.doc.splitTextToSize(T.legalText, contentW - 12);
+  const boxH     = 10 + lines.length * 4.5 + 4;
+  needsPage(ctx, boxH + 4);
 
-const validatePDFData = (data: PDFData): void => {
-  if (!data) {
-    throw new Error('PDF data is required');
-  }
-  if (typeof data.globalRiskIndex !== 'number' || data.globalRiskIndex < 0 || data.globalRiskIndex > 100) {
-    throw new Error('Global risk index must be a number between 0 and 100');
-  }
-  if (!Array.isArray(data.riskScores)) {
-    throw new Error('Risk scores must be an array');
-  }
-  if (!Array.isArray(data.alerts)) {
-    throw new Error('Alerts must be an array');
-  }
-  if (!Array.isArray(data.countryRisks)) {
-    throw new Error('Country risks must be an array');
-  }
-  if (!Array.isArray(data.geopoliticalForecasts)) {
-    throw new Error('Geopolitical forecasts must be an array');
-  }
-};
+  ctx.doc.setFillColor(...P.surfaceAlt);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'F');
+  ctx.doc.setDrawColor(...P.border);
+  ctx.doc.setLineWidth(L.THIN);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, contentW, boxH, L.BOX_R, L.BOX_R, 'S');
+  ctx.doc.setFillColor(...P.textMuted);
+  ctx.doc.roundedRect(ctx.margin, ctx.y, 2.5, boxH, 1, 1, 'F');
 
-// ============================================================================
-// MAIN EXPORT FUNCTION
-// ============================================================================
+  setFont(ctx.doc, 7, 'bold', P.textMuted);
+  ctx.doc.text(T.legalNotice, ctx.margin + 6, ctx.y + 8);
+  setFont(ctx.doc, 6.5, 'italic', P.textMuted);
+  ctx.doc.text(lines, ctx.margin + 6, ctx.y + 14);
+}
 
-export const generateRiskPDF = (data: PDFData): void => {
-  try {
-    validatePDFData(data);
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN EXPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const ctx: PDFContext = {
-      doc,
-      yPos: LAYOUT.MARGIN,
-      pageWidth: doc.internal.pageSize.getWidth(),
-      pageHeight: doc.internal.pageSize.getHeight(),
-      margin: LAYOUT.MARGIN,
-    };
+export const generateRiskPDF = async (data: RiskReportData): Promise<void> => {
+  if (typeof data.globalRiskIndex !== 'number' || data.globalRiskIndex < 0 || data.globalRiskIndex > 100)
+    throw new Error('globalRiskIndex must be 0-100');
 
-    doc.setProperties({
-      title: TRANSLATIONS.REPORT_TITLE,
-      subject: 'Geopolitical and Risk Analysis',
-      author: 'AlphaData',
-      keywords: 'AlphaData, Geopolitics, Risk, Angola, Oil, Petroleum',
-      creator: 'AlphaData Platform',
-    });
+  let logoBase64: string | undefined;
+  try { logoBase64 = await loadLogoAsBase64(); } catch { /* optional */ }
 
-    addHeader(ctx);
-    renderExecutiveSummary(ctx, data);
-    renderGlobalRiskIndex(ctx, data);
-    renderRiskScoresTable(ctx, data);
-    renderGeopoliticalForecasts(ctx, data);
-    renderActiveAlerts(ctx, data);
-    renderCountryRiskComparison(ctx, data);
-    renderSimulationResults(ctx, data);
-    renderDisclaimer(ctx);
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const W   = doc.internal.pageSize.getWidth();
+  const H   = doc.internal.pageSize.getHeight();
 
-    addFooter(ctx);
+  /* ── 1. COVER PAGE - dark institutional ── */
+  const defaultCover = getDefaultCoverPageData('pt');
+  const coverData: CoverPageData = {
+    ...defaultCover,
+    reportTitle:       data.title || T.reportTitle,
+    reportType:        T.reportTitle,
+    reportPeriod:      data.period || 'Actual',
+    generatedAt:       safeDate(data.generatedAt),
+    isAiGenerated:     data.aiGenerated ?? true,
+    requestingCompany: data.requestingCompany,
+    requestedBy:       data.requestedBy,
+    logoBase64,
+    language:          'pt',
+  };
+  addCoverPageToPDF(doc, coverData);
 
-    const fileName = `AlphaData_Analise_Geopolitica_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-  } catch (error) {
-    console.error('Error generating risk PDF:', error);
-    throw new Error(
-      `Failed to generate risk PDF: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+  /* ── 2. INTERNAL PAGES - white ── */
+  doc.addPage();
+  doc.setFillColor(...P.bg);
+  doc.rect(0, 0, W, H, 'F');
+
+  const drawHeader = makeHeaderFn(doc, data, logoBase64, W);
+  drawHeader();
+
+  const ctx: PDFCtx = {
+    doc,
+    y:      L.HEADER_H + 8,
+    W,
+    H,
+    margin: L.MARGIN,
+    onNewPage: () => {
+      drawHeader();
+      ctx.y = L.HEADER_H + 8;
+    },
+  };
+
+  /* ── Sections ── */
+  renderGlobalRiskPanel(ctx, data);
+  renderRiskMatrix(ctx, data);
+  renderGeopoliticalForecasts(ctx, data);
+  renderActiveAlerts(ctx, data);
+  renderCountryRisk(ctx, data);
+  renderSimulation(ctx, data);
+  renderDisclaimer(ctx);
+
+  /* ── 3. FOOTERS ── */
+  addFooters(doc, W, H, data.period || '', 2);
+
+  /* ── 4. SAVE ── */
+  const dateStr = safeDate(data.generatedAt).toISOString().split('T')[0];
+  doc.save(`AlphaData_Risco_Geopolitico_${dateStr}.pdf`);
 };

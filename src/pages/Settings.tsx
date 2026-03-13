@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Helmet } from "react-helmet-async";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,123 +23,213 @@ import {
   Loader2, Sun, Moon, Bell, Shield, User,
   Building2, Key, Smartphone, Download,
   Trash2, Save, CheckCircle2, ChevronRight,
-  Mail, BarChart3, Lock, Eye, EyeOff, AlertTriangle
+  Mail, BarChart3, Lock, Eye, EyeOff, AlertTriangle,
+  Terminal, Activity, Radio, Settings as SettingsIcon,
 } from "lucide-react";
 
-/* ─── Types ─────────────────────────────────────── */
-interface ProfileForm  { contact_name: string; contact_phone: string; contact_role: string; }
-interface CompanyForm  { company_name: string; nif: string; country: string; }
+/* ─── Types ──────────────────────────────────────────────────────────────── */
+interface ProfileForm { contact_name: string; contact_phone: string; contact_role: string; }
+interface CompanyForm { company_name: string; nif: string; country: string; }
 
-/* ─── Nav tabs ───────────────────────────────────── */
+/* ─── Nav Tabs ───────────────────────────────────────────────────────────── */
 const NAV_TABS = [
-  { id: "appearance",    label: "Aparência",     icon: Sun    },
-  { id: "notifications", label: "Notificações",  icon: Bell   },
-  { id: "profile",       label: "Perfil",        icon: User   },
-  { id: "company",       label: "Empresa",       icon: Building2 },
-  { id: "security",      label: "Segurança",     icon: Shield },
-  { id: "data",          label: "Dados",         icon: Download },
+  { id: "appearance",    label: "APARÊNCIA",    sig: "APR", icon: Sun      },
+  { id: "notifications", label: "NOTIFICAÇÕES", sig: "NTF", icon: Bell     },
+  { id: "profile",       label: "PERFIL",       sig: "PRF", icon: User     },
+  { id: "company",       label: "EMPRESA",      sig: "EMP", icon: Building2 },
+  { id: "security",      label: "SEGURANÇA",    sig: "SEC", icon: Shield   },
+  { id: "data",          label: "DADOS",        sig: "DAT", icon: Download },
 ];
 
-/* ─── Section wrapper ────────────────────────────── */
+/* ─── Scanline Overlay ───────────────────────────────────────────────────── */
+const ScanlineOverlay = () => (
+  <div
+    className="pointer-events-none fixed inset-0 z-50 opacity-[0.025]"
+    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)" }}
+  />
+);
+
+/* ─── Radar Pulse ────────────────────────────────────────────────────────── */
+const RadarPulse = ({ active }: { active: boolean }) => (
+  <span className="relative inline-flex h-2 w-2">
+    <span className={`absolute inline-flex h-full w-full rounded-full ${active ? "bg-red-500 animate-ping opacity-75" : "bg-slate-600"}`} />
+    <span className={`relative inline-flex rounded-full h-2 w-2 ${active ? "bg-red-500" : "bg-slate-600"}`} />
+  </span>
+);
+
+/* ─── Section ────────────────────────────────────────────────────────────── */
 const Section = ({
-  id, title, desc, icon: Icon, children, delay = 0
+  id, title, sig, desc, icon: Icon, children, accentColor = "rgba(220,38,38,0.8)", delay = 0
 }: {
-  id?: string; title: string; desc: string; icon: any;
-  children: React.ReactNode; delay?: number;
+  id?: string; title: string; sig: string; desc: string; icon: any;
+  children: React.ReactNode; accentColor?: string; delay?: number;
 }) => (
   <motion.div
     id={id}
-    initial={{ opacity: 0, y: 18 }}
+    initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay, duration: 0.3 }}
-    className="rounded-2xl overflow-hidden bg-card border border-border/50"
+    className="relative rounded overflow-hidden group"
+    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
   >
-    <div className="px-6 py-5 flex items-center gap-4 border-b border-border/50 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.04] bg-gradient-to-r from-primary/30 to-transparent" />
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative bg-primary/10">
-        <Icon className="w-5 h-5 text-primary" />
+    {/* Corner sig tag */}
+    <div
+      className="absolute top-0 right-0 text-[8px] font-bold px-2.5 py-1 tracking-widest"
+      style={{ background: `${accentColor}18`, color: accentColor, borderBottomLeftRadius: "4px" }}
+    >
+      {sig}
+    </div>
+
+    {/* Bottom accent on hover */}
+    <div
+      className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+      style={{ background: `linear-gradient(90deg, ${accentColor}, transparent)` }}
+    />
+
+    {/* Header */}
+    <div
+      className="px-6 py-4 flex items-center gap-4"
+      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}
+    >
+      <div
+        className="w-8 h-8 flex items-center justify-center rounded shrink-0"
+        style={{ background: `${accentColor}15` }}
+      >
+        <Icon className="w-4 h-4" style={{ color: accentColor }} />
       </div>
       <div>
-        <p className="font-black text-foreground text-sm">{title}</p>
-        <p className="text-[11px] font-medium mt-0.5 text-muted-foreground">{desc}</p>
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className="text-[11px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--foreground))" }}>{title}</p>
+        </div>
+        <p className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>{desc}</p>
       </div>
     </div>
-    <div className="px-6 py-6 space-y-5">{children}</div>
+
+    <div className="px-6 py-5 space-y-4">{children}</div>
   </motion.div>
 );
 
-/* ─── Field wrapper ──────────────────────────────── */
-const Field = ({
-  label, id, hint, children
-}: {
-  label: string; id?: string; hint?: string; children: React.ReactNode;
-}) => (
+/* ─── Field ──────────────────────────────────────────────────────────────── */
+const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <label htmlFor={id} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+    <label className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
       {label}
     </label>
     {children}
-    {hint && <p className="text-[10px] pl-0.5 text-muted-foreground/40">{hint}</p>}
+    {hint && <p className="text-[9px] pl-0.5" style={{ color: "hsl(var(--muted-foreground))", opacity: 0.5 }}>{hint}</p>}
   </div>
 );
 
-/* ─── Shared input class ─────────────────────────── */
-const inputCls = "h-11 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/40 focus:ring-0 bg-muted/50 border border-border focus:border-primary/40";
+/* ─── Input style ────────────────────────────────────────────────────────── */
+const inpStyle = {
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  color: "hsl(var(--foreground))",
+  fontFamily: "'IBM Plex Mono', monospace",
+  height: "44px",
+  borderRadius: "4px",
+  padding: "0 12px",
+  fontSize: "11px",
+  fontWeight: "bold",
+  letterSpacing: "0.05em",
+  width: "100%",
+  outline: "none",
+  transition: "border-color 0.15s",
+};
 
-/* ─── Toggle row ─────────────────────────────────── */
-const ToggleRow = ({
-  label, desc, checked, onChange, icon: Icon
+const TermInput = ({
+  value, onChange, placeholder, type = "text", rightSlot
 }: {
-  label: string; desc: string; checked: boolean;
-  onChange: (v: boolean) => void; icon?: any;
+  value: string; onChange: (v: string) => void; placeholder?: string;
+  type?: string; rightSlot?: React.ReactNode;
+}) => (
+  <div className="relative">
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{ ...inpStyle, paddingRight: rightSlot ? "40px" : "12px" }}
+      onFocus={e => (e.target as HTMLInputElement).style.borderColor = "rgba(220,38,38,0.4)"}
+      onBlur={e => (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.08)"}
+    />
+    {rightSlot && (
+      <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</div>
+    )}
+  </div>
+);
+
+/* ─── Toggle Row ─────────────────────────────────────────────────────────── */
+const ToggleRow = ({
+  label, desc, checked, onChange, icon: Icon, accentColor = "rgba(220,38,38,0.8)", accentHex = "#dc2626"
+}: {
+  label: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
+  icon?: any; accentColor?: string; accentHex?: string;
 }) => (
   <div
-    className={`flex items-center justify-between gap-4 p-4 rounded-xl transition-colors cursor-pointer group border ${
-      checked ? "bg-primary/5 border-primary/20" : "bg-transparent border-border/50"
-    }`}
+    className="flex items-center justify-between gap-4 p-4 rounded cursor-pointer group transition-all"
+    style={{
+      background: checked ? `${accentHex}08` : "rgba(255,255,255,0.02)",
+      border: `1px solid ${checked ? `${accentHex}22` : "rgba(255,255,255,0.06)"}`,
+    }}
     onClick={() => onChange(!checked)}
   >
     <div className="flex items-start gap-3">
       {Icon && (
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-          checked ? "bg-primary/15" : "bg-muted"
-        }`}>
-          <Icon className={`w-4 h-4 ${checked ? "text-primary" : "text-muted-foreground"}`} />
+        <div
+          className="w-8 h-8 rounded flex items-center justify-center shrink-0 mt-0.5"
+          style={{ background: checked ? `${accentHex}18` : "rgba(255,255,255,0.04)" }}
+        >
+          <Icon className="w-4 h-4" style={{ color: checked ? accentHex : "hsl(var(--muted-foreground))" }} />
         </div>
       )}
       <div>
-        <p className="text-sm font-bold text-foreground">{label}</p>
-        <p className="text-[11px] font-medium mt-0.5 text-muted-foreground">{desc}</p>
+        <p className="text-[11px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{label}</p>
+        <p className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{desc}</p>
       </div>
     </div>
-    <Switch
-      checked={checked}
-      onCheckedChange={onChange}
-      onClick={e => e.stopPropagation()}
-    />
+
+    {/* Custom toggle */}
+    <div
+      className="w-10 h-5 rounded-full relative transition-colors shrink-0"
+      style={{ background: checked ? accentHex : "rgba(255,255,255,0.1)" }}
+      onClick={e => { e.stopPropagation(); onChange(!checked); }}
+    >
+      <div
+        className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
+        style={{ left: checked ? "calc(100% - 18px)" : "2px" }}
+      />
+    </div>
   </div>
 );
 
-/* ─── Action row ─────────────────────────────────── */
+/* ─── Action Row ─────────────────────────────────────────────────────────── */
 const ActionRow = ({
   label, desc, children, danger = false
 }: {
   label: string; desc: string; children: React.ReactNode; danger?: boolean;
 }) => (
-  <div className={`flex items-center justify-between gap-4 p-4 rounded-xl border ${
-    danger ? "bg-destructive/10 border-destructive/30" : "bg-muted/50 border-border/50"
-  }`}>
+  <div
+    className="flex items-center justify-between gap-4 p-4 rounded"
+    style={{
+      background: danger ? "rgba(220,38,38,0.05)" : "rgba(255,255,255,0.02)",
+      border: danger ? "1px solid rgba(220,38,38,0.2)" : "1px solid rgba(255,255,255,0.06)",
+    }}
+  >
     <div>
-      <p className={`text-sm font-bold ${danger ? "text-destructive" : "text-foreground"}`}>{label}</p>
-      <p className="text-[11px] font-medium mt-0.5 text-muted-foreground">{desc}</p>
+      <p
+        className="text-[11px] font-bold tracking-wider"
+        style={{ color: danger ? "#f87171" : "hsl(var(--foreground))" }}
+      >{label}</p>
+      <p className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{desc}</p>
     </div>
     {children}
   </div>
 );
 
-/* ─── Save button ────────────────────────────────── */
+/* ─── Save Button ────────────────────────────────────────────────────────── */
 const SaveBtn = ({
-  onClick, pending, label = "Guardar Alterações", icon: Icon = Save
+  onClick, pending, label = "GUARDAR ALTERAÇÕES", icon: Icon = Save
 }: {
   onClick: () => void; pending: boolean; label?: string; icon?: any;
 }) => (
@@ -148,36 +237,48 @@ const SaveBtn = ({
     <button
       onClick={onClick}
       disabled={pending}
-      className="h-10 px-5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40 text-primary-foreground bg-primary hover:bg-primary/90"
+      className="flex items-center gap-2 px-5 py-2.5 rounded text-[10px] font-bold tracking-widest transition-all"
+      style={{
+        background: "linear-gradient(135deg, #dc2626, #991b1b)",
+        color: "white",
+        boxShadow: "0 0 16px rgba(220,38,38,0.25)",
+        border: "1px solid rgba(220,38,38,0.4)",
+        opacity: pending ? 0.6 : 1,
+      }}
     >
-      {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
-      {label}
+      {pending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Icon className="w-3 h-3" />}
+      {pending ? "GUARDANDO…" : label}
     </button>
   </div>
 );
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
-══════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
   const { data: profile, isLoading: loadingProfile } = useUserProfile();
   const { data: notificationSettings } = useUserNotificationSettings();
-  const updateProfile      = useUpdateProfile();
+  const updateProfile       = useUpdateProfile();
   const updateNotifications = useUpdateNotificationSettings();
-  const changePassword     = useChangePassword();
-  const exportData         = useExportUserData();
-  const deleteAccount      = useDeleteAccount();
+  const changePassword      = useChangePassword();
+  const exportData          = useExportUserData();
+  const deleteAccount       = useDeleteAccount();
 
   const [profileForm, setProfileForm] = useState<ProfileForm>({ contact_name: "", contact_phone: "", contact_role: "" });
   const [companyForm, setCompanyForm] = useState<CompanyForm>({ company_name: "", nif: "", country: "" });
   const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
-  const [showNewPw, setShowNewPw]       = useState(false);
+  const [showNewPw, setShowNewPw]         = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [isPwDialogOpen, setIsPwDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("appearance");
+  const [activeTab, setActiveTab]         = useState("appearance");
+  const [bootDone, setBootDone]           = useState(false);
+  const [now, setNow]                     = useState(new Date());
+
+  useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { setTimeout(() => setBootDone(true), 1200); }, []);
 
   useEffect(() => {
     if (profile) {
@@ -204,9 +305,9 @@ const Settings = () => {
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword)
-      return toast.error("As senhas não coincidem");
+      return toast.error("ERRO // SENHAS NÃO COINCIDEM");
     if (passwordForm.newPassword.length < 8)
-      return toast.error("A senha deve ter pelo menos 8 caracteres");
+      return toast.error("ERRO // MÍNIMO 8 CARACTERES");
     changePassword.mutate({ newPassword: passwordForm.newPassword }, {
       onSuccess: () => {
         setIsPwDialogOpen(false);
@@ -220,116 +321,286 @@ const Settings = () => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const pwStrength = passwordForm.newPassword.length >= 12 ? 4
+    : passwordForm.newPassword.length >= 10 ? 3
+    : passwordForm.newPassword.length >= 8  ? 2
+    : passwordForm.newPassword.length > 0   ? 1 : 0;
+
+  const pwColor   = pwStrength <= 1 ? "#f87171" : pwStrength === 2 ? "#fb923c" : pwStrength === 3 ? "#fbbf24" : "#4ade80";
+  const pwLabel   = pwStrength <= 1 ? "FRACO" : pwStrength === 2 ? "MÉDIO" : pwStrength === 3 ? "FORTE" : "MÁXIMO";
+
+  // Loading
   if (loadingProfile) return (
-    <div className="flex h-screen items-center justify-center bg-background">
+    <div
+      className="flex h-screen items-center justify-center"
+      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', monospace" }}
+    >
       <div className="flex flex-col items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-primary/10">
-          <Loader2 className="w-7 h-7 animate-spin text-primary" />
+        <div
+          className="w-12 h-12 flex items-center justify-center rounded"
+          style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)" }}
+        >
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#dc2626" }} />
         </div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-          A carregar configurações…
+        <p className="text-[10px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+          CARREGANDO CONFIGURAÇÕES…
         </p>
       </div>
     </div>
   );
 
   return (
-    <>
-      <Helmet><title>Configurações | AlphaData</title></Helmet>
+    <div
+      className="min-h-screen text-foreground"
+      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
+    >
+      <Helmet>
+        <title>ALPHADAT-OS // CONFIGURAÇÕES</title>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      </Helmet>
 
-      <div className="flex h-screen overflow-hidden font-sans bg-background text-foreground relative">
+      <ScanlineOverlay />
+
+      {/* Boot screen */}
+      <AnimatePresence>
+        {!bootDone && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
+            exit={{ opacity: 0, transition: { duration: 0.4 } }}
+          >
+            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
+              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
+              <p className="opacity-70">LOADING CONFIG MODULE.................... OK</p>
+              <p className="opacity-70">MOUNTING USER PREFERENCES................ OK</p>
+              <p className="opacity-70">VALIDATING SESSION PERMISSIONS........... OK</p>
+              <p className="text-red-500 animate-pulse">INITIALIZING SETTINGS PANEL.............. ■</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex h-screen overflow-hidden">
         <Sidebar activeItem="/settings" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Atmospheric glow */}
+          <div className="absolute top-0 right-0 w-[50%] h-[35%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(220,38,38,0.04) 0%, transparent 70%)" }} />
+          <div className="absolute bottom-0 left-0 w-[40%] h-[30%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(14,165,233,0.03) 0%, transparent 70%)" }} />
+
           <Header activeItem="/settings" />
+
+          {/* System Status Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : -8 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center justify-between px-6 py-2 border-b"
+            style={{ borderColor: "rgba(220,38,38,0.15)", background: "rgba(220,38,38,0.04)" }}
+          >
+            <div className="flex items-center gap-4 text-[10px] font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <span className="flex items-center gap-1.5 text-red-500">
+                <RadarPulse active={true} />
+                SISTEMA ONLINE
+              </span>
+              <span className="opacity-40">|</span>
+              <span>OPERATOR: {user?.email?.split("@")[0].toUpperCase() ?? "ANON"}</span>
+              <span className="opacity-40">|</span>
+              <span>SESSÃO: ACTIVA</span>
+              <span className="opacity-40">|</span>
+              <span>CLASSIFICAÇÃO: RESTRITO</span>
+            </div>
+            <div className="text-[10px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <span style={{ color: "hsl(var(--foreground))" }}>{now.toLocaleTimeString("pt-BR", { hour12: false })}</span>
+              <span className="ml-3 opacity-50">{now.toLocaleDateString("pt-BR")}</span>
+            </div>
+          </motion.div>
 
           <div className="flex-1 flex overflow-hidden">
 
-            {/* ── Left nav ── */}
-            <aside className="hidden lg:flex flex-col w-56 shrink-0 border-r border-border/50 p-4 gap-1 overflow-y-auto bg-card/50">
-              <p className="text-[9px] font-black uppercase tracking-widest mb-3 px-3 text-muted-foreground">
-                Configurações
-              </p>
-              {NAV_TABS.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-left border ${
-                      isActive
-                        ? "bg-primary/10 text-primary border-primary/20"
-                        : "bg-transparent text-muted-foreground border-transparent hover:bg-muted/50"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    {tab.label}
-                    {isActive && <ChevronRight className="w-3 h-3 ml-auto" />}
-                  </button>
-                );
-              })}
+            {/* ── Left Nav (Terminal sidebar) ── */}
+            <motion.aside
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: bootDone ? 1 : 0, x: bootDone ? 0 : -16 }}
+              transition={{ delay: 0.25 }}
+              className="hidden lg:flex flex-col w-56 shrink-0 overflow-y-auto"
+              style={{ borderRight: "1px solid rgba(255,255,255,0.06)", background: "hsl(var(--card))" }}
+            >
+              {/* Sidebar header */}
+              <div
+                className="px-4 py-3 flex items-center gap-2"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[9px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  CONFIG // MÓDULOS
+                </span>
+              </div>
 
-              <div className="mt-auto pt-4 border-t border-border/50">
-                <div className="px-3 py-2">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black mb-2 bg-primary/10 text-primary">
+              <div className="p-3 space-y-1 flex-1">
+                {NAV_TABS.map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabClick(tab.id)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded text-[11px] font-bold tracking-wider transition-all duration-150"
+                      style={isActive ? {
+                        background: "linear-gradient(135deg, rgba(220,38,38,0.15), rgba(220,38,38,0.05))",
+                        color: "#f87171",
+                        border: "1px solid rgba(220,38,38,0.2)",
+                      } : {
+                        background: "transparent",
+                        color: "hsl(var(--muted-foreground))",
+                        border: "1px solid transparent",
+                      }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-3.5 h-3.5" />
+                        {tab.label}
+                      </div>
+                      <span
+                        className="text-[8px] font-bold px-1.5 py-0.5 rounded tabular-nums"
+                        style={{
+                          background: isActive ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.05)",
+                          color: isActive ? "#f87171" : "hsl(var(--muted-foreground))",
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {tab.sig}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* User info */}
+              <div
+                className="p-4"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+              >
+                <div
+                  className="rounded p-3 flex items-center gap-3"
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  <div
+                    className="w-8 h-8 rounded flex items-center justify-center text-[11px] font-bold shrink-0"
+                    style={{ background: "rgba(220,38,38,0.15)", color: "#f87171", border: "1px solid rgba(220,38,38,0.2)" }}
+                  >
                     {user?.email?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <p className="text-[11px] font-bold text-foreground truncate">{profileForm.contact_name || "Utilizador"}</p>
-                  <p className="text-[10px] truncate text-muted-foreground">{user?.email}</p>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold tracking-wider truncate" style={{ color: "hsl(var(--foreground))" }}>
+                      {profileForm.contact_name.toUpperCase() || "UTILIZADOR"}
+                    </p>
+                    <p className="text-[9px] truncate" style={{ color: "hsl(var(--muted-foreground))" }}>{user?.email}</p>
+                  </div>
                 </div>
               </div>
-            </aside>
+            </motion.aside>
 
-            {/* ── Main content ── */}
-            <main className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin">
+            {/* ── Main Content ── */}
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
               <div className="max-w-2xl mx-auto space-y-6">
 
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-1 mb-8">
-                  <h1 className="text-3xl font-black tracking-tight text-foreground">
-                    Configurações
+                {/* Page header */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: bootDone ? 1 : 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="pt-2 mb-8"
+                >
+                  <div className="flex items-center gap-2 text-[10px] mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    <Terminal className="w-3 h-3 text-red-500" />
+                    <span>ALPHADAT-OS</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span>SISTEMA</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span style={{ color: "hsl(var(--foreground))" }}>CONFIGURAÇÕES</span>
+                  </div>
+                  <div className="text-[10px] font-bold tracking-[0.3em] mb-1" style={{ color: "rgba(220,38,38,0.8)" }}>
+                    MÓDULO-08 // PREFERÊNCIAS & SISTEMA
+                  </div>
+                  <h1
+                    className="font-bold leading-none"
+                    style={{ fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.02em", color: "hsl(var(--foreground))" }}
+                  >
+                    CONFIGURAÇÕES
                   </h1>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Gira as preferências da sua conta e organização.
-                  </p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="h-[1px] w-12 bg-red-600" />
+                    <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))", letterSpacing: "0.05em" }}>
+                      GERIR PREFERÊNCIAS, PERFIL E SEGURANÇA DA CONTA
+                    </p>
+                  </div>
                 </motion.div>
 
                 {/* ── APPEARANCE ── */}
-                <Section id="appearance" title="Aparência" desc="Tema visual da plataforma AlphaData."
-                  icon={theme === "dark" ? Moon : Sun} delay={0.05}>
+                <Section
+                  id="appearance" sig="APR"
+                  title="APARÊNCIA" desc="TEMA VISUAL DA PLATAFORMA ALPHADAT"
+                  icon={theme === "dark" ? Moon : Sun}
+                  accentColor="rgba(56,189,248,0.9)"
+                  delay={0.05}
+                >
                   <ToggleRow
-                    label="Modo Escuro"
+                    label="MODO ESCURO"
                     desc="Alterna entre tema claro e escuro para maior conforto visual."
                     checked={theme === "dark"}
                     onChange={toggleTheme}
                     icon={Moon}
+                    accentHex="#38bdf8"
+                    accentColor="rgba(56,189,248,0.9)"
                   />
                 </Section>
 
                 {/* ── NOTIFICATIONS ── */}
-                <Section id="notifications" title="Notificações" desc="Escolha os alertas e canais de comunicação."
-                  icon={Bell} delay={0.1}>
-                  <div className="space-y-3">
-                    <ToggleRow label="Alertas por Email" desc="Notificações críticas e atualizações importantes no email." checked={getNotif("email_alerts")} onChange={v => handleNotifToggle("email_alerts", v)} icon={Mail} />
-                    <ToggleRow label="Alertas de Preço" desc="Seja notificado sobre mudanças significativas no mercado." checked={getNotif("price_alerts")} onChange={v => handleNotifToggle("price_alerts", v)} icon={BarChart3} />
-                    <ToggleRow label="Relatórios Semanais" desc="Resumo executivo de toda a atividade semanal." checked={getNotif("weekly_reports")} onChange={v => handleNotifToggle("weekly_reports", v)} icon={Download} />
-                    <ToggleRow label="Alertas via WhatsApp" desc="Alertas urgentes diretamente no seu telemóvel." checked={getNotif("whatsapp_alerts")} onChange={v => handleNotifToggle("whatsapp_alerts", v)} icon={Smartphone} />
+                <Section
+                  id="notifications" sig="NTF"
+                  title="NOTIFICAÇÕES" desc="CONFIGURAR ALERTAS E CANAIS DE COMUNICAÇÃO"
+                  icon={Bell}
+                  accentColor="rgba(167,139,250,0.9)"
+                  delay={0.1}
+                >
+                  <div className="space-y-2">
+                    <ToggleRow label="ALERTAS POR EMAIL"     desc="Notificações críticas e atualizações no email."         checked={getNotif("email_alerts")}   onChange={v => handleNotifToggle("email_alerts", v)}   icon={Mail}       accentHex="#a78bfa" accentColor="rgba(167,139,250,0.9)" />
+                    <ToggleRow label="ALERTAS DE PREÇO"      desc="Notificado sobre mudanças significativas no mercado."   checked={getNotif("price_alerts")}   onChange={v => handleNotifToggle("price_alerts", v)}   icon={BarChart3}  accentHex="#a78bfa" accentColor="rgba(167,139,250,0.9)" />
+                    <ToggleRow label="RELATÓRIOS SEMANAIS"   desc="Resumo executivo da atividade semanal."                 checked={getNotif("weekly_reports")} onChange={v => handleNotifToggle("weekly_reports", v)} icon={Download}   accentHex="#a78bfa" accentColor="rgba(167,139,250,0.9)" />
+                    <ToggleRow label="ALERTAS VIA WHATSAPP"  desc="Alertas urgentes diretamente no seu telemóvel."         checked={getNotif("whatsapp_alerts")}onChange={v => handleNotifToggle("whatsapp_alerts", v)} icon={Smartphone} accentHex="#a78bfa" accentColor="rgba(167,139,250,0.9)" />
                   </div>
                 </Section>
 
                 {/* ── PROFILE ── */}
-                <Section id="profile" title="Perfil Pessoal" desc="Informações de contato e cargo na organização."
-                  icon={User} delay={0.15}>
+                <Section
+                  id="profile" sig="PRF"
+                  title="PERFIL PESSOAL" desc="INFORMAÇÕES DE CONTACTO E CARGO"
+                  icon={User}
+                  accentColor="rgba(74,222,128,0.9)"
+                  delay={0.15}
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Nome de Contato" id="contact_name">
-                      <Input id="contact_name" value={profileForm.contact_name} onChange={e => setProfileForm(p => ({ ...p, contact_name: e.target.value }))} placeholder="Nome completo" className={inputCls} />
+                    <Field label="NOME DE CONTACTO">
+                      <TermInput
+                        value={profileForm.contact_name}
+                        onChange={v => setProfileForm(p => ({ ...p, contact_name: v }))}
+                        placeholder="NOME COMPLETO"
+                      />
                     </Field>
-                    <Field label="Telefone" id="contact_phone">
-                      <Input id="contact_phone" value={profileForm.contact_phone} onChange={e => setProfileForm(p => ({ ...p, contact_phone: e.target.value }))} placeholder="+244 …" className={inputCls} />
+                    <Field label="TELEFONE">
+                      <TermInput
+                        value={profileForm.contact_phone}
+                        onChange={v => setProfileForm(p => ({ ...p, contact_phone: v }))}
+                        placeholder="+244 …"
+                      />
                     </Field>
                     <div className="sm:col-span-2">
-                      <Field label="Cargo / Função" id="contact_role">
-                        <Input id="contact_role" value={profileForm.contact_role} onChange={e => setProfileForm(p => ({ ...p, contact_role: e.target.value }))} placeholder="Ex: Gestor de Operações" className={inputCls} />
+                      <Field label="CARGO / FUNÇÃO">
+                        <TermInput
+                          value={profileForm.contact_role}
+                          onChange={v => setProfileForm(p => ({ ...p, contact_role: v }))}
+                          placeholder="EX: GESTOR DE OPERAÇÕES"
+                        />
                       </Field>
                     </div>
                   </div>
@@ -337,81 +608,138 @@ const Settings = () => {
                 </Section>
 
                 {/* ── COMPANY ── */}
-                <Section id="company" title="Dados da Empresa" desc="Informações fiscais e de localização da organização."
-                  icon={Building2} delay={0.2}>
+                <Section
+                  id="company" sig="EMP"
+                  title="DADOS DA EMPRESA" desc="INFORMAÇÕES FISCAIS E DE LOCALIZAÇÃO"
+                  icon={Building2}
+                  accentColor="rgba(251,191,36,0.9)"
+                  delay={0.2}
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
-                      <Field label="Nome da Empresa" id="company_name">
-                        <Input id="company_name" value={companyForm.company_name} onChange={e => setCompanyForm(p => ({ ...p, company_name: e.target.value }))} className={inputCls} />
+                      <Field label="NOME DA EMPRESA">
+                        <TermInput
+                          value={companyForm.company_name}
+                          onChange={v => setCompanyForm(p => ({ ...p, company_name: v }))}
+                          placeholder="NOME DA ORGANIZAÇÃO"
+                        />
                       </Field>
                     </div>
-                    <Field label="NIF" id="nif">
-                      <Input id="nif" value={companyForm.nif} onChange={e => setCompanyForm(p => ({ ...p, nif: e.target.value }))} className={inputCls} />
+                    <Field label="NIF">
+                      <TermInput
+                        value={companyForm.nif}
+                        onChange={v => setCompanyForm(p => ({ ...p, nif: v }))}
+                        placeholder="000000000"
+                      />
                     </Field>
-                    <Field label="País" id="country">
-                      <Input id="country" value={companyForm.country} onChange={e => setCompanyForm(p => ({ ...p, country: e.target.value }))} className={inputCls} />
+                    <Field label="PAÍS">
+                      <TermInput
+                        value={companyForm.country}
+                        onChange={v => setCompanyForm(p => ({ ...p, country: v }))}
+                        placeholder="EX: ANGOLA"
+                      />
                     </Field>
                   </div>
-                  <SaveBtn onClick={() => updateProfile.mutate(companyForm)} pending={updateProfile.isPending} label="Atualizar Empresa" icon={CheckCircle2} />
+                  <SaveBtn
+                    onClick={() => updateProfile.mutate(companyForm)}
+                    pending={updateProfile.isPending}
+                    label="ACTUALIZAR EMPRESA"
+                    icon={CheckCircle2}
+                  />
                 </Section>
 
                 {/* ── SECURITY ── */}
-                <Section id="security" title="Segurança" desc="Mantenha a sua conta protegida com uma senha forte."
-                  icon={Shield} delay={0.25}>
-                  <ActionRow label="Senha de Acesso" desc="Recomendamos uma senha forte com pelo menos 8 caracteres.">
+                <Section
+                  id="security" sig="SEC"
+                  title="SEGURANÇA" desc="PROTEGER A CONTA COM CREDENCIAIS FORTES"
+                  icon={Shield}
+                  accentColor="rgba(220,38,38,0.9)"
+                  delay={0.25}
+                >
+                  <ActionRow label="SENHA DE ACESSO" desc="Recomendamos senha forte com mínimo 8 caracteres.">
                     <button
                       onClick={() => setIsPwDialogOpen(true)}
-                      className="h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shrink-0 bg-muted text-muted-foreground border border-border hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                      className="flex items-center gap-2 px-4 py-2 rounded text-[10px] font-bold tracking-widest transition-all shrink-0"
+                      style={{ border: "1px solid rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))", background: "transparent" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor="rgba(220,38,38,0.3)"; (e.currentTarget as HTMLElement).style.color="hsl(var(--foreground))"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color="hsl(var(--muted-foreground))"; }}
                     >
-                      <Key className="w-3.5 h-3.5" /> Alterar Senha
+                      <Key className="w-3 h-3" /> ALTERAR SENHA
                     </button>
                   </ActionRow>
                 </Section>
 
                 {/* ── DATA ── */}
-                <Section id="data" title="Gestão de Dados" desc="Controle as suas informações e a sua conta."
-                  icon={Download} delay={0.3}>
-                  <div className="space-y-3">
-                    <ActionRow label="Exportar Meus Dados" desc="Cópia completa dos seus dados em formato JSON.">
+                <Section
+                  id="data" sig="DAT"
+                  title="GESTÃO DE DADOS" desc="CONTROLAR INFORMAÇÕES E INTEGRIDADE DA CONTA"
+                  icon={Download}
+                  accentColor="rgba(251,146,60,0.9)"
+                  delay={0.3}
+                >
+                  <div className="space-y-2">
+                    <ActionRow label="EXPORTAR DADOS" desc="Cópia completa dos seus dados em formato JSON.">
                       <button
                         onClick={() => exportData.mutate()}
                         disabled={exportData.isPending}
-                        className="h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shrink-0 disabled:opacity-40 bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
+                        className="flex items-center gap-2 px-4 py-2 rounded text-[10px] font-bold tracking-widest transition-all shrink-0"
+                        style={{ background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", opacity: exportData.isPending ? 0.5 : 1 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="rgba(251,146,60,0.18)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="rgba(251,146,60,0.1)"; }}
                       >
-                        {exportData.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        Exportar
+                        {exportData.isPending
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Download className="w-3 h-3" />}
+                        EXPORTAR
                       </button>
                     </ActionRow>
 
-                    <ActionRow label="Zona de Perigo" desc="Eliminar a sua conta é uma ação permanente e irreversível." danger>
+                    <ActionRow label="ZONA DE PERIGO // ELIMINAR CONTA" desc="Acção permanente e irreversível. Todos os dados serão apagados." danger>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <button className="h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shrink-0 text-destructive-foreground bg-destructive hover:bg-destructive/90">
-                            <Trash2 className="w-3.5 h-3.5" /> Eliminar Conta
+                          <button
+                            className="flex items-center gap-2 px-4 py-2 rounded text-[10px] font-bold tracking-widest transition-all shrink-0"
+                            style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171" }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.25)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.15)"; }}
+                          >
+                            <Trash2 className="w-3 h-3" /> ELIMINAR CONTA
                           </button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-2xl">
+                        <AlertDialogContent
+                          style={{ background: "hsl(var(--card))", border: "1px solid rgba(220,38,38,0.3)", borderRadius: "6px", fontFamily: "'IBM Plex Mono', monospace" }}
+                        >
                           <AlertDialogHeader>
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-destructive/10">
-                                <AlertTriangle className="w-5 h-5 text-destructive" />
-                              </div>
-                              <AlertDialogTitle className="text-foreground text-lg font-black">
-                                Tem certeza absoluta?
-                              </AlertDialogTitle>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Terminal className="w-4 h-4 text-red-500" />
+                              <span className="text-[9px] font-bold tracking-[0.3em] text-red-500">ALERTA CRÍTICO // CONFIRMAÇÃO</span>
                             </div>
-                            <AlertDialogDescription className="text-muted-foreground">
-                              Esta ação não pode ser desfeita. A sua conta e todos os dados associados serão eliminados permanentemente dos nossos servidores.
+                            <AlertDialogTitle
+                              className="text-[14px] font-bold tracking-wider"
+                              style={{ color: "hsl(var(--foreground))" }}
+                            >
+                              CONFIRMAR ELIMINAÇÃO DE CONTA
+                            </AlertDialogTitle>
+                            <AlertDialogDescription
+                              className="text-[11px] leading-relaxed mt-2"
+                              style={{ color: "hsl(var(--muted-foreground))" }}
+                            >
+                              ESTA ACÇÃO NÃO PODE SER DESFEITA. A SUA CONTA E TODOS OS DADOS ASSOCIADOS SERÃO ELIMINADOS PERMANENTEMENTE DOS SERVIDORES ALPHADAT.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter className="mt-4">
-                            <AlertDialogCancel className="rounded-xl text-xs font-black uppercase tracking-widest h-10">
-                              Cancelar
+                          <AlertDialogFooter className="mt-4 gap-2">
+                            <AlertDialogCancel
+                              className="px-4 py-2 rounded text-[10px] font-bold tracking-widest"
+                              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))", fontFamily: "'IBM Plex Mono', monospace" }}
+                            >
+                              CANCELAR
                             </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => deleteAccount.mutate()}
-                              className="rounded-xl text-xs font-black uppercase tracking-widest h-10 text-destructive-foreground bg-destructive hover:bg-destructive/90">
-                              Sim, Eliminar Permanentemente
+                              className="flex items-center gap-2 px-5 py-2 rounded text-[10px] font-bold tracking-widest"
+                              style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", color: "white", border: "1px solid rgba(220,38,38,0.4)", fontFamily: "'IBM Plex Mono', monospace" }}
+                            >
+                              <Trash2 className="w-3 h-3" /> SIM, ELIMINAR PERMANENTEMENTE
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -428,86 +756,103 @@ const Settings = () => {
 
       {/* ── Password Dialog ── */}
       <Dialog open={isPwDialogOpen} onOpenChange={setIsPwDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-2xl">
+        <DialogContent
+          className="sm:max-w-[400px]"
+          style={{ background: "hsl(var(--card))", border: "1px solid rgba(220,38,38,0.2)", borderRadius: "6px", fontFamily: "'IBM Plex Mono', monospace" }}
+        >
           <form onSubmit={handleChangePassword}>
             <DialogHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-primary/10">
-                  <Lock className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <DialogTitle className="text-foreground font-black">Alterar Senha</DialogTitle>
-                  <DialogDescription className="text-muted-foreground text-xs mt-0.5">
-                    Digite a nova senha abaixo para atualizar o acesso.
-                  </DialogDescription>
-                </div>
+              <div className="flex items-center gap-2 mb-1">
+                <Terminal className="w-4 h-4 text-red-500" />
+                <span className="text-[9px] font-bold tracking-[0.3em]" style={{ color: "rgba(220,38,38,0.8)" }}>
+                  SEGURANÇA // ACTUALIZAR CREDENCIAIS
+                </span>
               </div>
+              <DialogTitle className="text-[14px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>
+                ALTERAR SENHA
+              </DialogTitle>
+              <DialogDescription className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                INTRODUZA A NOVA SENHA DE ACESSO AO SISTEMA.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="py-5 space-y-4">
-              <Field label="Nova Senha" id="new-password">
-                <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showNewPw ? "text" : "password"}
-                    required
-                    value={passwordForm.newPassword}
-                    onChange={e => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
-                    className={`${inputCls} pr-10`}
-                    placeholder="Mínimo 8 caracteres"
-                  />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowNewPw(p => !p)}>
-                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {passwordForm.newPassword.length > 0 && (
-                  <div className="flex gap-1 mt-2">
-                    {[...Array(4)].map((_, i) => {
-                      const strength = passwordForm.newPassword.length >= 12 ? 4 : passwordForm.newPassword.length >= 10 ? 3 : passwordForm.newPassword.length >= 8 ? 2 : 1;
-                      const filled = i < strength;
-                      const col = strength <= 1 ? "bg-destructive" : strength === 2 ? "bg-orange-500" : strength === 3 ? "bg-amber-400" : "bg-emerald-400";
-                      return <div key={i} className={`h-1 flex-1 rounded-full transition-all ${filled ? col : "bg-muted"}`} />;
-                    })}
-                    <span className={`text-[9px] font-black ml-1 ${
-                      passwordForm.newPassword.length >= 12 ? "text-emerald-400" : passwordForm.newPassword.length >= 8 ? "text-amber-400" : "text-destructive"
-                    }`}>
-                      {passwordForm.newPassword.length >= 12 ? "Forte" : passwordForm.newPassword.length >= 8 ? "Médio" : "Fraco"}
-                    </span>
+              <Field label="NOVA SENHA">
+                <TermInput
+                  type={showNewPw ? "text" : "password"}
+                  value={passwordForm.newPassword}
+                  onChange={v => setPasswordForm(p => ({ ...p, newPassword: v }))}
+                  placeholder="MÍNIMO 8 CARACTERES"
+                  rightSlot={
+                    <button type="button" onClick={() => setShowNewPw(p => !p)} style={{ color: "hsl(var(--muted-foreground))" }}>
+                      {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  }
+                />
+                {pwStrength > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex gap-1 flex-1">
+                      {[...Array(4)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-[3px] flex-1 rounded-full transition-all"
+                          style={{ background: i < pwStrength ? pwColor : "rgba(255,255,255,0.08)" }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[9px] font-bold tracking-widest" style={{ color: pwColor }}>{pwLabel}</span>
                   </div>
                 )}
               </Field>
 
-              <Field label="Confirmar Nova Senha" id="confirm-password">
-                <div className="relative">
-                  <Input
-                    id="confirm-password"
-                    type={showConfirmPw ? "text" : "password"}
-                    required
-                    value={passwordForm.confirmPassword}
-                    onChange={e => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
-                    className={`${inputCls} pr-10 ${passwordForm.confirmPassword && passwordForm.confirmPassword !== passwordForm.newPassword ? "border-destructive/50" : ""}`}
-                    placeholder="Repita a nova senha"
-                  />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowConfirmPw(p => !p)}>
-                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+              <Field label="CONFIRMAR NOVA SENHA">
+                <TermInput
+                  type={showConfirmPw ? "text" : "password"}
+                  value={passwordForm.confirmPassword}
+                  onChange={v => setPasswordForm(p => ({ ...p, confirmPassword: v }))}
+                  placeholder="REPETIR NOVA SENHA"
+                  rightSlot={
+                    <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={{ color: "hsl(var(--muted-foreground))" }}>
+                      {showConfirmPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  }
+                />
                 {passwordForm.confirmPassword && passwordForm.confirmPassword !== passwordForm.newPassword && (
-                  <p className="text-[10px] font-bold mt-1 text-destructive">As senhas não coincidem.</p>
+                  <p className="text-[9px] font-bold mt-1.5 flex items-center gap-1.5" style={{ color: "#f87171" }}>
+                    <AlertTriangle className="w-3 h-3" /> SENHAS NÃO COINCIDEM
+                  </p>
+                )}
+                {passwordForm.confirmPassword && passwordForm.confirmPassword === passwordForm.newPassword && passwordForm.newPassword.length >= 8 && (
+                  <p className="text-[9px] font-bold mt-1.5 flex items-center gap-1.5" style={{ color: "#4ade80" }}>
+                    <CheckCircle2 className="w-3 h-3" /> SENHAS COINCIDEM
+                  </p>
                 )}
               </Field>
             </div>
 
             <DialogFooter className="gap-2">
-              <button type="button" onClick={() => setIsPwDialogOpen(false)}
-                className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest bg-muted text-muted-foreground border border-border">
-                Cancelar
+              <button
+                type="button"
+                onClick={() => setIsPwDialogOpen(false)}
+                className="px-4 py-2 rounded text-[10px] font-bold tracking-widest transition-colors"
+                style={{ color: "hsl(var(--muted-foreground))" }}
+              >
+                CANCELAR
               </button>
-              <button type="submit"
-                disabled={changePassword.isPending || passwordForm.newPassword !== passwordForm.confirmPassword}
-                className="h-10 px-5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40 text-primary-foreground bg-primary hover:bg-primary/90">
-                {changePassword.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                Atualizar Senha
+              <button
+                type="submit"
+                disabled={changePassword.isPending || passwordForm.newPassword !== passwordForm.confirmPassword || passwordForm.newPassword.length < 8}
+                className="flex items-center gap-2 px-6 py-2.5 rounded text-[10px] font-bold tracking-widest transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #dc2626, #991b1b)",
+                  color: "white",
+                  boxShadow: "0 0 16px rgba(220,38,38,0.25)",
+                  opacity: (changePassword.isPending || passwordForm.newPassword !== passwordForm.confirmPassword || passwordForm.newPassword.length < 8) ? 0.5 : 1,
+                }}
+              >
+                {changePassword.isPending
+                  ? <><Loader2 className="w-3 h-3 animate-spin" /> ACTUALIZANDO…</>
+                  : <><Lock className="w-3 h-3" /> ACTUALIZAR SENHA</>}
               </button>
             </DialogFooter>
           </form>
@@ -515,7 +860,7 @@ const Settings = () => {
       </Dialog>
 
       <MobileBottomNav />
-    </>
+    </div>
   );
 };
 

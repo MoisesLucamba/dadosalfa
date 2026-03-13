@@ -1,23 +1,18 @@
 import { useState, useEffect } from "react";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import {
   Users, Database, Bell, MessageSquare, BarChart3, Plus, Check, X,
   RefreshCw, Send, Edit, Trash2, Shield, Clock, TrendingUp,
   AlertTriangle, Globe, Eye, Mail, Crown, UserCog, Building2,
   Settings, Cog, ChevronRight, Search, Filter, Download, Activity,
-  Zap, ArrowUpRight, MoreHorizontal, CheckCircle2, XCircle, ChevronDown
+  Zap, ArrowUpRight, MoreHorizontal, CheckCircle2, XCircle, ChevronDown,
+  Terminal, Radio, Lock,
 } from "lucide-react";
 import {
   useIsAdmin, useIsSuperAdmin, useAllUsers, useAllUsersWithEmail,
@@ -42,176 +37,262 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
+import { useAuth } from "@/hooks/useAuth";
 
-/* ─── Design tokens ──────────────────────────────────────── */
-const ACCENT   = "hsl(var(--accent))";
-const PANEL_BG = "hsl(var(--card))";
-const BORDER   = "hsl(var(--border))";
-
-/* ─── Micro helpers ──────────────────────────────────────── */
-const Dot = ({ color = ACCENT }: { color?: string }) => (
-  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+/* ─── Scanline Overlay ───────────────────────────────────────────────────── */
+const ScanlineOverlay = () => (
+  <div
+    className="pointer-events-none fixed inset-0 z-50 opacity-[0.025]"
+    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)" }}
+  />
 );
 
-const KPICard = ({
-  label, value, icon: Icon, delta, color
-}: {
-  label: string; value: number | string; icon: any; delta?: string; color: string;
+/* ─── Radar Pulse ────────────────────────────────────────────────────────── */
+const RadarPulse = ({ active }: { active: boolean }) => (
+  <span className="relative inline-flex h-2 w-2">
+    <span className={`absolute inline-flex h-full w-full rounded-full ${active ? "bg-red-500 animate-ping opacity-75" : "bg-slate-600"}`} />
+    <span className={`relative inline-flex rounded-full h-2 w-2 ${active ? "bg-red-500" : "bg-slate-600"}`} />
+  </span>
+);
+
+/* ─── Stat Counter ───────────────────────────────────────────────────────── */
+const StatCounter = ({ value }: { value: number }) => {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    let start = 0;
+    const step = Math.ceil(value / 40);
+    const iv = setInterval(() => {
+      start = Math.min(start + step, value);
+      setDisplay(start);
+      if (start >= value) clearInterval(iv);
+    }, 25);
+    return () => clearInterval(iv);
+  }, [value]);
+  return <>{display}</>;
+};
+
+/* ─── KPI Card ───────────────────────────────────────────────────────────── */
+const KPICard = ({ label, value, icon: Icon, delta, color, tag }: {
+  label: string; value: number | string; icon: any; delta?: string; color: string; tag: string;
 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 16 }}
+    initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
-    className="relative overflow-hidden rounded-2xl border border-border/50 p-6 flex flex-col gap-4 group bg-card"
+    className="relative overflow-hidden rounded p-5 group cursor-default"
+    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)", transition: "border-color 0.2s" }}
+    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = `${color}33`}
+    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"}
   >
-    {/* glow blob */}
-    <div
-      className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-      style={{ background: color }}
-    />
-    <div className="flex items-center justify-between">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
-        <Icon className="w-5 h-5" style={{ color }} />
+    {/* Corner tag */}
+    <div className="absolute top-0 right-0 text-[8px] font-bold px-2 py-0.5 tracking-widest"
+      style={{ background: `${color}18`, color, borderBottomLeftRadius: "4px" }}>
+      {tag}
+    </div>
+
+    <div className="flex items-center gap-2 mb-4">
+      <Icon className="w-3.5 h-3.5" style={{ color }} />
+      <span className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</span>
+    </div>
+
+    <div className="flex items-end justify-between">
+      <div className="text-3xl font-bold tabular-nums" style={{ color: "hsl(var(--foreground))", letterSpacing: "-0.03em" }}>
+        {typeof value === "number" ? <StatCounter value={value} /> : value}
       </div>
       {delta && (
-        <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color }}>
+        <span className="flex items-center gap-0.5 text-[10px] font-bold mb-1" style={{ color }}>
           <ArrowUpRight className="w-3 h-3" />{delta}
         </span>
       )}
     </div>
-    <div>
-      <p className="text-3xl font-black text-foreground tracking-tight">{value}</p>
-      <p className="text-xs text-muted-foreground font-medium mt-0.5 uppercase tracking-widest">{label}</p>
-    </div>
+
+    {/* Bottom accent */}
+    <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+      style={{ background: `linear-gradient(90deg, ${color}, transparent)` }} />
   </motion.div>
 );
 
-const SectionHeader = ({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) => (
-  <div className="flex items-start justify-between mb-6">
-    <div>
-      <h2 className="text-xl font-black text-foreground">{title}</h2>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5 font-medium">{sub}</p>}
-    </div>
-    {action}
-  </div>
-);
-
-/* ─── Pill tab trigger ───────────────────────────────────── */
-const TabPill = ({ value, label }: { value: string; label: string }) => (
-  <TabsTrigger
-    value={value}
-    className="
-      px-5 py-2 text-[11px] font-black uppercase tracking-widest rounded-full
-      text-white/40 transition-all
-      data-[state=active]:text-black data-[state=active]:shadow-lg
-    "
-    style={{
-      // active state override via CSS variable trick (Radix sets data-state)
-    } as any}
-  >
-    {label}
-  </TabsTrigger>
-);
-
-/* ─── Status badge ───────────────────────────────────────── */
+/* ─── Status Badge ───────────────────────────────────────────────────────── */
 const StatusBadge = ({ approved }: { approved: boolean }) => (
   <span
-    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-      approved
-        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-        : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-    }`}
+    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-bold tracking-widest"
+    style={approved
+      ? { background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }
+      : { background: "rgba(251,191,36,0.1)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}
   >
-    <Dot color={approved ? "hsl(var(--success))" : "hsl(var(--accent))"} />
-    {approved ? "Aprovado" : "Pendente"}
+    <span className={`w-1.5 h-1.5 rounded-full ${approved ? "bg-green-400" : "bg-yellow-400"} ${!approved ? "animate-pulse" : ""}`} />
+    {approved ? "APROVADO" : "PENDENTE"}
   </span>
 );
 
-/* ─── Score ring ─────────────────────────────────────────── */
-const ScorePill = ({ score }: { score: number }) => {
-  const cls = score > 70
-    ? "bg-destructive/10 text-destructive"
-    : score > 40
-    ? "bg-amber-500/10 text-amber-500"
-    : "bg-emerald-500/10 text-emerald-500";
-  return (
-    <span className={`font-black text-xs px-2 py-0.5 rounded-lg ${cls}`}>
-      {score}/100
-    </span>
-  );
-};
+/* ─── Score Pill ─────────────────────────────────────────────────────────── */
+const ScorePill = ({ score }: { score: number }) => (
+  <span
+    className="font-bold text-[10px] px-2 py-0.5 rounded tabular-nums"
+    style={score > 70
+      ? { background: "rgba(220,38,38,0.12)", color: "#f87171" }
+      : score > 40
+      ? { background: "rgba(251,191,36,0.12)", color: "#fbbf24" }
+      : { background: "rgba(74,222,128,0.12)", color: "#4ade80" }}
+  >
+    {score}/100
+  </span>
+);
 
-/* ─── Main component ─────────────────────────────────────── */
+/* ─── Table Panel ────────────────────────────────────────────────────────── */
+const TablePanel = ({ title, sig, desc, accentColor = "#dc2626", action, children }: {
+  title: string; sig: string; desc?: string; accentColor?: string;
+  action?: React.ReactNode; children: React.ReactNode;
+}) => (
+  <div
+    className="relative rounded overflow-hidden group"
+    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+  >
+    {/* Corner sig */}
+    <div className="absolute top-0 right-0 text-[8px] font-bold px-2.5 py-1 tracking-widest z-10"
+      style={{ background: `${accentColor}18`, color: accentColor, borderBottomLeftRadius: "4px" }}>
+      {sig}
+    </div>
+    {/* Bottom accent on hover */}
+    <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+      style={{ background: `linear-gradient(90deg, ${accentColor}, transparent)` }} />
+
+    <div className="px-5 py-4 flex items-center justify-between"
+      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+      <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accentColor }} />
+        <div>
+          <p className="text-[11px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--foreground))" }}>{title}</p>
+          {desc && <p className="text-[9px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{desc}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+
+    <div className="overflow-x-auto">{children}</div>
+  </div>
+);
+
+/* ─── Input style ────────────────────────────────────────────────────────── */
+const inpStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  color: "hsl(var(--foreground))",
+  fontFamily: "'IBM Plex Mono', monospace",
+  height: "44px",
+  borderRadius: "4px",
+  padding: "0 12px",
+  fontSize: "11px",
+  fontWeight: "bold",
+  letterSpacing: "0.05em",
+  width: "100%",
+  outline: "none",
+  transition: "border-color 0.15s",
+};
+const taStyle: React.CSSProperties = { ...inpStyle, height: "auto", padding: "10px 12px", resize: "none" };
+
+const TermInput = ({ value, onChange, placeholder, type = "text" }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) => (
+  <input
+    type={type}
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    placeholder={placeholder}
+    style={inpStyle}
+    onFocus={e => (e.target as HTMLInputElement).style.borderColor = "rgba(220,38,38,0.4)"}
+    onBlur={e => (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.08)"}
+  />
+);
+
+const TermArea = ({ value, onChange, placeholder, rows = 4 }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
+}) => (
+  <textarea
+    rows={rows}
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    placeholder={placeholder}
+    style={taStyle}
+    onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = "rgba(220,38,38,0.4)"}
+    onBlur={e => (e.target as HTMLTextAreaElement).style.borderColor = "rgba(255,255,255,0.08)"}
+  />
+);
+
+/* ─── Field wrapper ──────────────────────────────────────────────────────── */
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="space-y-1.5">
+    <label className="text-[9px] font-bold tracking-[0.2em] block" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</label>
+    {children}
+  </div>
+);
+
+/* ─── Dialog wrapper ─────────────────────────────────────────────────────── */
+const TermDialog = ({ title, sig, children }: { title: string; sig: string; children: React.ReactNode }) => (
+  <DialogContent
+    style={{ background: "hsl(var(--card))", border: "1px solid rgba(220,38,38,0.2)", borderRadius: "6px", fontFamily: "'IBM Plex Mono', monospace" }}
+  >
+    <DialogHeader>
+      <div className="flex items-center gap-2 mb-1">
+        <Terminal className="w-4 h-4 text-red-500" />
+        <span className="text-[9px] font-bold tracking-[0.3em]" style={{ color: "rgba(220,38,38,0.8)" }}>ADMIN // {sig}</span>
+      </div>
+      <DialogTitle className="text-[14px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{title}</DialogTitle>
+    </DialogHeader>
+    {children}
+  </DialogContent>
+);
+
+/* ─── Shared table head/cell classes ─────────────────────────────────────── */
+const TH = "py-3 px-4 text-[9px] font-bold tracking-[0.2em] text-left";
+const TD = "py-3.5 px-4 text-[11px]";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+═══════════════════════════════════════════════════════════════════════════ */
 const Admin = () => {
-  const navigate = useNavigate();
-  const { data: isAdmin, isLoading: checkingAdmin } = useIsAdmin();
+  const navigate   = useNavigate();
+  const { user }   = useAuth();
+  const { data: isAdmin,     isLoading: checkingAdmin } = useIsAdmin();
   const { data: isSuperAdmin } = useIsSuperAdmin();
 
-  const { data: users } = useAllUsers();
-  const { data: usersWithRoles } = useAllUsersWithEmail();
-  const { data: requests } = useUserRequests();
-  const { data: dataUpdates } = useDataUpdates();
-  const { data: productionData } = useProductionData();
-  const { data: priceData } = usePriceData();
-  const { data: exportData } = useExportData();
-  const { data: riskData } = useRiskData();
-  const { data: riskAlerts } = useRiskAlerts();
-  const { data: countryRisk } = useCountryRisk();
-  const { data: regulatoryEvents } = useRegulatoryEvents();
+  const { data: users }         = useAllUsers();
+  const { data: usersWithRoles }= useAllUsersWithEmail();
+  const { data: requests }      = useUserRequests();
+  const { data: dataUpdates }   = useDataUpdates();
+  const { data: productionData }= useProductionData();
+  const { data: priceData }     = usePriceData();
+  const { data: exportData }    = useExportData();
+  const { data: riskData }      = useRiskData();
+  const { data: riskAlerts }    = useRiskAlerts();
   const { data: organizations } = usePendingOrganizations();
 
-  const updateApproval      = useUpdateUserApproval();
-  const updateOrgApproval   = useUpdateOrganizationApproval();
-  const sendNotification    = useSendNotification();
-  const respondToRequest    = useRespondToRequest();
-  const promoteToAdmin      = usePromoteToAdmin();
-  const demoteFromAdmin     = useDemoteFromAdmin();
-  const addProduction       = useAddProductionData();
-  const addPrice            = useAddPriceData();
-  const addExport           = useAddExportData();
-  const deleteProduction    = useDeleteProductionData();
-  const deletePrice         = useDeletePriceData();
-  const deleteExport        = useDeleteExportData();
-  const updateProduction    = useUpdateProductionData();
-  const updatePrice         = useUpdatePriceData();
-  const updateExport        = useUpdateExportData();
-  const logUpdate           = useLogDataUpdate();
-  const addRisk             = useAddRiskData();
-  const addRiskAlert        = useAddRiskAlert();
-  const addCountry          = useAddCountryRisk();
-  const addRegulatory       = useAddRegulatoryEvent();
-  const deleteRisk          = useDeleteRiskData();
+  const updateApproval    = useUpdateUserApproval();
+  const updateOrgApproval = useUpdateOrganizationApproval();
+  const sendNotification  = useSendNotification();
+  const respondToRequest  = useRespondToRequest();
+  const addProduction     = useAddProductionData();
+  const addPrice          = useAddPriceData();
+  const deleteProduction  = useDeleteProductionData();
+  const deletePrice       = useDeletePriceData();
+  const deleteExport      = useDeleteExportData();
+  const deleteRisk        = useDeleteRiskData();
   const deleteRiskAlertMutation = useDeleteRiskAlert();
-  const deleteCountry       = useDeleteCountryRisk();
-  const deleteRegulatory    = useDeleteRegulatoryEvent();
+  const logUpdate         = useLogDataUpdate();
 
   const [notificationForm, setNotificationForm] = useState({ title: "", message: "", type: "info", isGlobal: true, userId: "" });
-  const [productionForm, setProductionForm]     = useState({ operator: "", block: "", field: "", daily_production: "", monthly_production: "", decline_rate: "", data_date: new Date().toISOString().split("T")[0] });
+  const [productionForm, setProductionForm]     = useState({ operator: "", block: "", field: "", daily_production: "", data_date: new Date().toISOString().split("T")[0] });
   const [priceForm, setPriceForm]               = useState({ crude_type: "", price: "", change_percent: "", data_date: new Date().toISOString().split("T")[0] });
-  const [exportForm, setExportForm]             = useState({ destination: "", volume: "", value_usd: "", tanker_name: "", status: "in_transit", data_date: new Date().toISOString().split("T")[0] });
-  const [riskForm, setRiskForm]                 = useState({ category: "", score: "", trend: "stable", description: "", source: "", data_date: new Date().toISOString().split("T")[0] });
-  const [alertForm, setAlertForm]               = useState({ title: "", description: "", alert_type: "geopolitical", region: "", impact: "medium" });
-  const [countryForm, setCountryForm]           = useState({ country: "", score: "", trend: "stable", data_date: new Date().toISOString().split("T")[0] });
-  const [regulatoryForm, setRegulatoryForm]     = useState({ title: "", description: "", event_date: "", status: "upcoming", impact_level: "medium" });
   const [responseForm, setResponseForm]         = useState({ requestId: "", response: "", status: "resolved" });
 
-  useEffect(() => {
-    if (!checkingAdmin && !isAdmin) navigate("/");
-  }, [checkingAdmin, isAdmin, navigate]);
+  const [activeTab, setActiveTab] = useState("users");
+  const [bootDone, setBootDone]   = useState(false);
+  const [now, setNow]             = useState(new Date());
 
-  if (checkingAdmin) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-accent/10">
-          <RefreshCw className="w-7 h-7 animate-spin text-accent" />
-        </div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">A carregar…</p>
-      </div>
-    </div>
-  );
+  useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { setTimeout(() => setBootDone(true), 1200); }, []);
+  useEffect(() => { if (!checkingAdmin && !isAdmin) navigate("/"); }, [checkingAdmin, isAdmin, navigate]);
 
-  if (!isAdmin) return null;
-
-  /* handlers (unchanged logic) */
+  /* handlers */
   const handleSendNotification = () => {
     if (!notificationForm.title || !notificationForm.message) return;
     sendNotification.mutate({ title: notificationForm.title, message: notificationForm.message, type: notificationForm.type, isGlobal: notificationForm.isGlobal, userId: notificationForm.isGlobal ? undefined : notificationForm.userId });
@@ -219,9 +300,9 @@ const Admin = () => {
   };
   const handleAddProduction = () => {
     if (!productionForm.operator || !productionForm.block) return;
-    addProduction.mutate({ operator: productionForm.operator, block: productionForm.block, field: productionForm.field || undefined, daily_production: parseFloat(productionForm.daily_production) || 0, monthly_production: parseFloat(productionForm.monthly_production) || 0, decline_rate: parseFloat(productionForm.decline_rate) || 0, data_date: productionForm.data_date });
+    addProduction.mutate({ operator: productionForm.operator, block: productionForm.block, field: productionForm.field || undefined, daily_production: parseFloat(productionForm.daily_production) || 0, monthly_production: 0, decline_rate: 0, data_date: productionForm.data_date });
     logUpdate.mutate({ data_type: "production", source: "Admin Manual Entry", records_updated: 1 });
-    setProductionForm({ operator: "", block: "", field: "", daily_production: "", monthly_production: "", decline_rate: "", data_date: new Date().toISOString().split("T")[0] });
+    setProductionForm({ operator: "", block: "", field: "", daily_production: "", data_date: new Date().toISOString().split("T")[0] });
   };
   const handleAddPrice = () => {
     if (!priceForm.crude_type || !priceForm.price) return;
@@ -229,850 +310,919 @@ const Admin = () => {
     logUpdate.mutate({ data_type: "price", source: "Admin Manual Entry", records_updated: 1 });
     setPriceForm({ crude_type: "", price: "", change_percent: "", data_date: new Date().toISOString().split("T")[0] });
   };
-  const handleAddRisk = () => {
-    if (!riskForm.category || !riskForm.score) return;
-    addRisk.mutate({ category: riskForm.category, score: parseInt(riskForm.score), trend: riskForm.trend, description: riskForm.description, source: riskForm.source, data_date: riskForm.data_date });
-    logUpdate.mutate({ data_type: "risk", source: "Admin Manual Entry", records_updated: 1 });
-    setRiskForm({ category: "", score: "", trend: "stable", description: "", source: "", data_date: new Date().toISOString().split("T")[0] });
-  };
   const handleRespondToRequest = () => {
     if (!responseForm.requestId || !responseForm.response) return;
     respondToRequest.mutate({ requestId: responseForm.requestId, response: responseForm.response, status: responseForm.status });
     setResponseForm({ requestId: "", response: "", status: "resolved" });
   };
   const handleSendUserAlert = (userId: string, userName: string) => {
-    sendNotification.mutate({ userId, title: "Alerta do Administrador", message: `Prezado(a) ${userName}, o administrador enviou um alerta para sua conta.`, type: "warning", isGlobal: false });
+    sendNotification.mutate({ userId, title: "ALERTA DO ADMINISTRADOR", message: `PREZADO(A) ${userName.toUpperCase()}, O ADMINISTRADOR ENVIOU UM ALERTA PARA A SUA CONTA.`, type: "warning", isGlobal: false });
+    toast.success("ALERTA ENVIADO // ACK");
   };
 
-  const stats = [
-    { label: "Utilizadores Ativos", value: users?.length || 0,                                                     icon: Users,        delta: "+4%",  color: "#60a5fa" },
-    { label: "Solicitações Pendentes", value: requests?.filter(r => r.status === "pending").length || 0,            icon: MessageSquare, delta: "–2%", color: "#fbbf24" },
-    { label: "Alertas de Risco",     value: riskAlerts?.length || 0,                                               icon: AlertTriangle, delta: "+1",  color: "#f87171" },
-    { label: "Orgs. Pendentes",      value: organizations?.length || 0,                                            icon: Building2,    delta: "–",   color: ACCENT    },
+  const TABS = [
+    { id: "users",         label: "UTILIZADORES", sig: "USR" },
+    { id: "orgs",          label: "ORGANIZAÇÕES", sig: "ORG" },
+    { id: "production",    label: "PRODUÇÃO",      sig: "PRD" },
+    { id: "prices",        label: "PREÇOS",        sig: "PRC" },
+    { id: "exports",       label: "EXPORTAÇÃO",    sig: "EXP" },
+    { id: "risks",         label: "RISCOS",        sig: "RSK" },
+    { id: "notifications", label: "NOTIFICAÇÕES",  sig: "NTF" },
+    { id: "requests",      label: "SOLICITAÇÕES",  sig: "REQ" },
+    { id: "logs",          label: "LOGS",          sig: "LOG" },
+    ...(isSuperAdmin ? [{ id: "admins", label: "ADMINS", sig: "ADM" }] : []),
   ];
 
-  /* ── shared table head style ── */
-  const TH = "py-3 px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground";
-  const TD = "py-3.5 px-4 text-sm";
+  const stats = [
+    { label: "UTILIZADORES ACTIVOS",  value: users?.length || 0,                                      icon: Users,        delta: "+4%", color: "#60a5fa", tag: "USR" },
+    { label: "SOLICITAÇÕES PENDENTES",value: requests?.filter(r => r.status === "pending").length || 0,icon: MessageSquare, delta: "–",  color: "#fbbf24", tag: "REQ" },
+    { label: "ALERTAS DE RISCO",      value: riskAlerts?.length || 0,                                 icon: AlertTriangle, delta: "+1", color: "#f87171", tag: "RSK" },
+    { label: "ORGS. PENDENTES",       value: organizations?.length || 0,                              icon: Building2,    delta: "–",   color: "#a78bfa", tag: "ORG" },
+  ];
 
-  /* ── shared input/textarea style ── */
-  const inputCls = "bg-muted/50 border-border rounded-xl text-foreground placeholder:text-muted-foreground/40 focus:border-accent/40 focus:ring-0";
+  // Loading / auth guard
+  if (checkingAdmin) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', monospace" }}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 flex items-center justify-center rounded" style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)" }}>
+          <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "#dc2626" }} />
+        </div>
+        <p className="text-[10px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>VERIFICANDO PERMISSÕES…</p>
+      </div>
+    </div>
+  );
+  if (!isAdmin) return null;
 
   return (
     <div
-      className="flex h-screen overflow-hidden font-sans bg-background text-foreground"
+      className="min-h-screen text-foreground"
+      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
     >
-      <Sidebar activeItem="/admin" />
+      <Helmet>
+        <title>ALPHADAT-OS // ADMIN</title>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      </Helmet>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header activeItem="/admin" />
+      <ScanlineOverlay />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 scrollbar-thin">
-          <div className="max-w-[1400px] mx-auto space-y-10">
-
-            {/* ── Hero header ── */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
-                    style={{ background: `${ACCENT}18`, color: ACCENT, border: `1px solid ${ACCENT}30` }}
-                  >
-                    <Shield className="w-3 h-3" /> Painel Admin
-                  </span>
-                  <Dot color="#4ade80" />
-                  <span className="text-[11px] text-muted-foreground font-medium">Sistema operacional</span>
-                </div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-none text-foreground">
-                  Gestão do<br />
-                  <span className="text-accent">Sistema</span>
-                </h1>
-                <p className="text-sm text-muted-foreground max-w-md font-medium">
-                  Controle centralizado de utilizadores, dados energéticos, riscos e configurações globais da plataforma.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl h-10 gap-2 border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 text-xs font-bold"
-                >
-                  <Download className="w-4 h-4" /> Exportar Logs
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl h-10 gap-2 text-accent-foreground font-black text-xs uppercase tracking-widest bg-accent hover:bg-accent/90"
-                >
-                  <Plus className="w-4 h-4" /> Novo Registo
-                </Button>
-              </div>
+      {/* Boot screen */}
+      <AnimatePresence>
+        {!bootDone && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
+            exit={{ opacity: 0, transition: { duration: 0.4 } }}
+          >
+            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
+              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
+              <p className="opacity-70">LOADING ADMIN KERNEL..................... OK</p>
+              <p className="opacity-70">VALIDATING OPERATOR CLEARANCE............ OK</p>
+              <p className="opacity-70">MOUNTING SYSTEM DATABASES................ OK</p>
+              <p className="text-red-500 animate-pulse">INITIALIZING CONTROL PANEL............... ■</p>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* ── KPI strip ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((s, i) => (
-                <KPICard key={i} {...s} />
-              ))}
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar activeItem="/admin" />
+
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Atmospheric glow */}
+          <div className="absolute top-0 right-0 w-[50%] h-[35%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(220,38,38,0.04) 0%, transparent 70%)" }} />
+          <div className="absolute bottom-0 left-0 w-[40%] h-[30%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(167,139,250,0.03) 0%, transparent 70%)" }} />
+
+          <Header activeItem="/admin" />
+
+          {/* System Status Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : -8 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center justify-between px-6 py-2 border-b"
+            style={{ borderColor: "rgba(220,38,38,0.15)", background: "rgba(220,38,38,0.04)" }}
+          >
+            <div className="flex items-center gap-4 text-[10px] font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <span className="flex items-center gap-1.5 text-red-500">
+                <RadarPulse active={true} />
+                SISTEMA ONLINE
+              </span>
+              <span className="opacity-40">|</span>
+              <span>OPERATOR: {user?.email?.split("@")[0].toUpperCase() ?? "ANON"}</span>
+              <span className="opacity-40">|</span>
+              <span className="flex items-center gap-1 text-amber-400">
+                <Shield className="w-3 h-3" />
+                {isSuperAdmin ? "SUPER-ADMIN" : "ADMIN"}
+              </span>
+              <span className="opacity-40">|</span>
+              <span>ACESSO: TOTAL</span>
             </div>
+            <div className="text-[10px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <span style={{ color: "hsl(var(--foreground))" }}>{now.toLocaleTimeString("pt-BR", { hour12: false })}</span>
+              <span className="ml-3 opacity-50">{now.toLocaleDateString("pt-BR")}</span>
+            </div>
+          </motion.div>
 
-            {/* ── Tabs ── */}
-            <Tabs defaultValue="users" className="space-y-8">
-              {/* Tab list — must use TabsList so Radix RovingFocusGroup context is provided */}
-              <TabsList
-                className="flex items-center gap-1 p-1.5 rounded-2xl w-fit overflow-x-auto h-auto"
-                style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}
+          <main className="flex-1 overflow-y-auto" style={{ padding: 0 }}>
+            <div className="p-4 md:p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto">
+
+              {/* ── Page Header ── */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: bootDone ? 1 : 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2"
               >
-                {(
-                  [
-                    ["users",         "Utilizadores"],
-                    ["orgs",          "Organizações"],
-                    ["production",    "Produção"],
-                    ["prices",        "Preços"],
-                    ["exports",       "Exportação"],
-                    ["risks",         "Riscos"],
-                    ["notifications", "Notificações"],
-                    ["requests",      "Solicitações"],
-                    ["logs",          "Logs"],
-                    ...(isSuperAdmin ? [["admins", "Admins"]] : []),
-                  ] as [string, string][]
-                ).map(([v, l]) => (
-                  <TabsTrigger
-                    key={v}
-                    value={v}
-                    className="
-                      px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest
-                      text-white/30 transition-all whitespace-nowrap
-                      data-[state=active]:text-black data-[state=active]:shadow-md
-                    "
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    <Terminal className="w-3 h-3 text-red-500" />
+                    <span>ALPHADAT-OS</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span>ROOT</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span style={{ color: "hsl(var(--foreground))" }}>PAINEL ADMIN</span>
+                  </div>
+                  <div className="text-[10px] font-bold tracking-[0.3em] mb-1" style={{ color: "rgba(220,38,38,0.8)" }}>
+                    MÓDULO-00 // CONTROLO TOTAL DO SISTEMA
+                  </div>
+                  <h1 className="font-bold leading-none" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)", letterSpacing: "-0.02em", color: "hsl(var(--foreground))" }}>
+                    ADMIN CONTROL
+                  </h1>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="h-[1px] w-12 bg-red-600" />
+                    <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))", letterSpacing: "0.05em" }}>
+                      UTILIZADORES, DADOS, RISCOS E CONFIGURAÇÕES GLOBAIS
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-2 px-4 py-2.5 rounded text-[11px] font-bold tracking-widest transition-all border"
+                    style={{ borderColor: "rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))", background: "transparent" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor="rgba(220,38,38,0.3)"; (e.currentTarget as HTMLElement).style.color="hsl(var(--foreground))"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color="hsl(var(--muted-foreground))"; }}
                   >
-                    {l}
-                  </TabsTrigger>
+                    <Download className="w-3.5 h-3.5" /> EXPORTAR LOGS
+                  </button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded text-[11px] font-bold tracking-widest"
+                    style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", color: "white", boxShadow: "0 0 20px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.1)", border: "1px solid rgba(220,38,38,0.5)" }}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> NOVO REGISTO
+                  </motion.button>
+                </div>
+              </motion.div>
+
+              {/* ── KPI Strip ── */}
+              <motion.div
+                className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 16 }}
+                transition={{ delay: 0.3 }}
+              >
+                {stats.map((s, i) => (
+                  <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }} transition={{ delay: 0.33 + i * 0.06 }}>
+                    <KPICard {...s} />
+                  </motion.div>
                 ))}
-              </TabsList>
+              </motion.div>
 
-              {/* ══ USERS ══ */}
-              <TabsContent value="users" className="mt-0">
+              {/* ── Tab Bar ── */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: bootDone ? 1 : 0 }}
+                transition={{ delay: 0.4 }}
+              >
                 <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}
+                  className="flex items-center gap-0 rounded overflow-hidden overflow-x-auto text-[10px] font-bold tracking-widest mb-6"
+                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "hsl(var(--card))", width: "fit-content", maxWidth: "100%" }}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <div>
-                      <p className="font-black text-white">Gestão de Utilizadores</p>
-                      <p className="text-xs text-white/30 font-medium mt-0.5">Aprovação e controlo de acesso à plataforma</p>
-                    </div>
-                    <div className="relative w-full md:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                      <Input
-                        placeholder="Procurar utilizador…"
-                        className={`pl-9 h-9 ${inputCls}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Utilizador</th>
-                          <th className={`${TH} text-left`}>Status</th>
-                          <th className={`${TH} text-left`}>Função</th>
-                          <th className={`${TH} text-left`}>Registo</th>
-                          <th className={`${TH} text-right`}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {usersWithRoles?.map((user) => (
-                          <tr
-                            key={user.id}
-                            className="group transition-colors"
-                            style={{ borderBottom: `1px solid ${BORDER}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                          >
-                            <td className={TD}>
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[13px] font-black shrink-0"
-                                  style={{ background: `${ACCENT}18`, color: ACCENT }}
-                                >
-                                  {user.contact_name?.charAt(0) || "U"}
-                                </div>
-                                <div>
-                                  <p className="font-bold text-white text-sm">{user.contact_name || "Sem nome"}</p>
-                                  <p className="text-[11px] text-white/30">{user.company_name}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className={TD}><StatusBadge approved={!!user.is_approved} /></td>
-                            <td className={TD}>
-                              <div className="flex items-center gap-1.5">
-                                {user.roles?.[0]?.role === "admin"
-                                  ? <Shield className="w-3.5 h-3.5" style={{ color: ACCENT }} />
-                                  : <UserCog className="w-3.5 h-3.5 text-white/30" />}
-                                <span className="text-xs font-bold capitalize text-white/60">{user.roles?.[0]?.role || "viewer"}</span>
-                              </div>
-                            </td>
-                            <td className={`${TD} text-white/30 text-xs font-medium`}>
-                              {user.created_at ? format(new Date(user.created_at), "dd/MM/yyyy") : "N/A"}
-                            </td>
-                            <td className={`${TD} text-right`}>
-                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {!user.is_approved && (
-                                  <button
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                    style={{ color: "#4ade80" }}
-                                    onClick={() => updateApproval.mutate({ userId: user.id, isApproved: true })}
-                                    title="Aprovar"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <button
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-amber-400 hover:bg-amber-400/10"
-                                  onClick={() => handleSendUserAlert(user.id, user.contact_name || user.company_name)}
-                                  title="Enviar alerta"
-                                >
-                                  <Bell className="w-4 h-4" />
-                                </button>
-                                <button
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-red-400 hover:bg-red-400/10"
-                                  title="Remover"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className="flex items-center gap-2 px-4 py-3 transition-all duration-150 whitespace-nowrap shrink-0"
+                      style={activeTab === tab.id ? {
+                        background: "rgba(255,255,255,0.07)",
+                        color: "hsl(var(--foreground))",
+                        borderRight: "1px solid rgba(255,255,255,0.06)",
+                      } : {
+                        color: "hsl(var(--muted-foreground))",
+                        borderRight: "1px solid rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <span
+                        className="text-[8px] px-1.5 py-0.5 rounded tracking-widest"
+                        style={{
+                          background: activeTab === tab.id ? "rgba(220,38,38,0.18)" : "rgba(255,255,255,0.05)",
+                          color: activeTab === tab.id ? "#f87171" : "inherit",
+                        }}
+                      >{tab.sig}</span>
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-              </TabsContent>
 
-              {/* ══ ORGS ══ */}
-              <TabsContent value="orgs" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  <div className="px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <p className="font-black text-white">Organizações Pendentes</p>
-                    <p className="text-xs text-white/30 font-medium mt-0.5">Valide entidades que solicitam acesso à plataforma</p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Organização</th>
-                          <th className={`${TH} text-left`}>NIF / Reg.</th>
-                          <th className={`${TH} text-left`}>Setor</th>
-                          <th className={`${TH} text-left`}>Solicitação</th>
-                          <th className={`${TH} text-right`}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {organizations?.map((org) => (
-                          <tr key={org.id} className="group" style={{ borderBottom: `1px solid ${BORDER}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                            <td className={TD}>
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.05)" }}>
-                                  <Building2 className="w-4 h-4 text-white/40" />
-                                </div>
-                                <div>
-                                  <p className="font-bold text-white text-sm">{org.name}</p>
-                                  <p className="text-[11px] text-white/30">{org.contact_email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className={`${TD} font-mono text-white/50 text-xs`}>{org.nif || "N/A"}</td>
-                            <td className={TD}>
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest text-white/50 border border-white/10">
-                                {org.sector || "Empresa"}
-                              </span>
-                            </td>
-                            <td className={`${TD} text-white/30 text-xs`}>{format(new Date(org.created_at), "dd/MM/yyyy")}</td>
-                            <td className={`${TD} text-right`}>
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  className="h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-widest transition-colors"
-                                  style={{ background: "rgba(74,222,128,0.12)", color: "#4ade80" }}
-                                  onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: true })}
-                                >
-                                  Aprovar
-                                </button>
-                                <button
-                                  className="h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 transition-colors"
-                                  onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: false })}
-                                >
-                                  Rejeitar
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {(!organizations || organizations.length === 0) && (
-                          <tr><td colSpan={5} className="py-16 text-center text-white/20 text-sm font-medium">
-                            <Building2 className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                            Nenhuma organização pendente de aprovação.
-                          </td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
+                {/* ── Tab Content ── */}
+                <AnimatePresence mode="wait">
 
-              {/* ══ PRODUCTION ══ */}
-              <TabsContent value="production" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <div>
-                      <p className="font-black text-white">Dados de Produção</p>
-                      <p className="text-xs text-white/30 font-medium mt-0.5">Histórico de extração por operadora e bloco</p>
-                    </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="h-9 rounded-xl gap-2 text-black font-black text-xs uppercase tracking-widest" style={{ background: ACCENT }}>
-                          <Plus className="w-4 h-4" /> Adicionar
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="rounded-3xl border" style={{ background: "#0f1015", borderColor: BORDER }}>
-                        <DialogHeader>
-                          <DialogTitle className="text-xl font-black text-white">Nova Produção</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Operadora</label>
-                              <Input placeholder="Ex: TotalEnergies" value={productionForm.operator} onChange={e => setProductionForm({...productionForm, operator: e.target.value})} className={inputCls} />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Bloco</label>
-                              <Input placeholder="Ex: Bloco 17" value={productionForm.block} onChange={e => setProductionForm({...productionForm, block: e.target.value})} className={inputCls} />
-                            </div>
+                  {/* USERS */}
+                  {activeTab === "users" && (
+                    <motion.div key="users" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <TablePanel title="GESTÃO DE UTILIZADORES" sig="USR" desc="APROVAÇÃO E CONTROLO DE ACESSO À PLATAFORMA" accentColor="#60a5fa"
+                        action={
+                          <div className="relative">
+                            <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "hsl(var(--muted-foreground))" }} />
+                            <input
+                              placeholder="PROCURAR UTILIZADOR…"
+                              style={{ ...inpStyle, height: "36px", paddingLeft: "32px", width: "220px", fontSize: "10px" }}
+                              onFocus={e => (e.target as HTMLInputElement).style.borderColor = "rgba(96,165,250,0.4)"}
+                              onBlur={e => (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.08)"}
+                            />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Campo (Opcional)</label>
-                            <Input placeholder="Ex: Dalia" value={productionForm.field} onChange={e => setProductionForm({...productionForm, field: e.target.value})} className={inputCls} />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Prod. Diária (bpd)</label>
-                              <Input type="number" placeholder="0" value={productionForm.daily_production} onChange={e => setProductionForm({...productionForm, daily_production: e.target.value})} className={inputCls} />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Data</label>
-                              <Input type="date" value={productionForm.data_date} onChange={e => setProductionForm({...productionForm, data_date: e.target.value})} className={inputCls} />
-                            </div>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleAddProduction} disabled={addProduction.isPending} className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-black" style={{ background: ACCENT }}>
-                            Salvar Registo
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Operadora</th>
-                          <th className={`${TH} text-left`}>Bloco / Campo</th>
-                          <th className={`${TH} text-left`}>Produção Diária</th>
-                          <th className={`${TH} text-left`}>Data</th>
-                          <th className={`${TH} text-right`}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productionData?.slice(0, 15).map(item => (
-                          <tr key={item.id} className="group" style={{ borderBottom: `1px solid ${BORDER}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                            <td className={`${TD} font-bold text-white`}>{item.operator}</td>
-                            <td className={TD}>
-                              <p className="text-white text-sm font-medium">{item.block}</p>
-                              <p className="text-[10px] text-white/30 uppercase tracking-widest">{item.field || "N/A"}</p>
-                            </td>
-                            <td className={TD}>
-                              <div className="flex items-center gap-2">
-                                <Activity className="w-3.5 h-3.5" style={{ color: ACCENT }} />
-                                <span className="font-mono font-black text-white">{Number(item.daily_production).toLocaleString()}</span>
-                                <span className="text-[10px] text-white/30">bpd</span>
-                              </div>
-                            </td>
-                            <td className={`${TD} text-white/30 text-xs font-medium`}>{format(new Date(item.data_date), "dd/MM/yyyy")}</td>
-                            <td className={`${TD} text-right`}>
-                              <button className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all ml-auto"
-                                onClick={() => deleteProduction.mutate(item.id)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* ══ PRICES ══ */}
-              <TabsContent value="prices" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <div>
-                      <p className="font-black text-white">Dados de Preço</p>
-                      <p className="text-xs text-white/30 font-medium mt-0.5">Cotações do mercado petrolífero</p>
-                    </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="h-9 rounded-xl gap-2 text-black font-black text-xs uppercase tracking-widest" style={{ background: ACCENT }}>
-                          <Plus className="w-4 h-4" /> Adicionar Preço
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="rounded-3xl border" style={{ background: "#0f1015", borderColor: BORDER }}>
-                        <DialogHeader>
-                          <DialogTitle className="text-xl font-black text-white">Novo Preço</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Tipo de Crude</label>
-                            <Select value={priceForm.crude_type} onValueChange={v => setPriceForm({...priceForm, crude_type: v})}>
-                              <SelectTrigger className={`${inputCls} h-11`}><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                              <SelectContent style={{ background: "#0f1015", borderColor: BORDER }}>
-                                {["Brent","Cabinda","Girassol","Dalia","Nemba"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Preço (USD)</label>
-                              <Input type="number" placeholder="0.00" value={priceForm.price} onChange={e => setPriceForm({...priceForm, price: e.target.value})} className={inputCls} />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Variação (%)</label>
-                              <Input type="number" placeholder="0.00" value={priceForm.change_percent} onChange={e => setPriceForm({...priceForm, change_percent: e.target.value})} className={inputCls} />
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Data</label>
-                            <Input type="date" value={priceForm.data_date} onChange={e => setPriceForm({...priceForm, data_date: e.target.value})} className={inputCls} />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleAddPrice} disabled={addPrice.isPending} className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-black" style={{ background: ACCENT }}>
-                            Atualizar Cotação
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Tipo de Crude</th>
-                          <th className={`${TH} text-left`}>Preço Atual</th>
-                          <th className={`${TH} text-left`}>Variação</th>
-                          <th className={`${TH} text-left`}>Data</th>
-                          <th className={`${TH} text-right`}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {priceData?.slice(0, 15).map(item => {
-                          const up = Number(item.change_percent) >= 0;
-                          return (
-                            <tr key={item.id} className="group" style={{ borderBottom: `1px solid ${BORDER}` }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                              <td className={`${TD} font-bold text-white`}>{item.crude_type}</td>
-                              <td className={TD}>
-                                <span className="font-mono font-black text-xl text-white">${Number(item.price).toFixed(2)}</span>
-                              </td>
-                              <td className={TD}>
-                                <span
-                                  className="inline-flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-lg"
-                                  style={{ background: up ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", color: up ? "#4ade80" : "#f87171" }}
-                                >
-                                  <TrendingUp className={`w-3 h-3 ${!up ? "rotate-180" : ""}`} />
-                                  {up ? "+" : ""}{Number(item.change_percent).toFixed(2)}%
-                                </span>
-                              </td>
-                              <td className={`${TD} text-white/30 text-xs font-medium`}>{format(new Date(item.data_date), "dd/MM/yyyy")}</td>
-                              <td className={`${TD} text-right`}>
-                                <button className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all ml-auto"
-                                  onClick={() => deletePrice.mutate(item.id)}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
+                        }
+                      >
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["UTILIZADOR", "STATUS", "FUNÇÃO", "REGISTO", ""].map((h, i) => (
+                                <th key={i} className={`${TH} ${i === 4 ? "text-right" : ""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
+                          </thead>
+                          <tbody>
+                            {usersWithRoles?.map(u => (
+                              <tr key={u.id} className="group transition-colors"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                              >
+                                <td className={TD}>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 flex items-center justify-center rounded text-[11px] font-bold shrink-0"
+                                      style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>
+                                      {u.contact_name?.charAt(0)?.toUpperCase() || "U"}
+                                    </div>
+                                    <div>
+                                      <p className="text-[11px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{u.contact_name?.toUpperCase() || "SEM NOME"}</p>
+                                      <p className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>{u.company_name}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className={TD}><StatusBadge approved={!!u.is_approved} /></td>
+                                <td className={TD}>
+                                  <div className="flex items-center gap-1.5">
+                                    {u.roles?.[0]?.role === "admin"
+                                      ? <Shield className="w-3 h-3 text-amber-400" />
+                                      : <UserCog className="w-3 h-3" style={{ color: "hsl(var(--muted-foreground))" }} />}
+                                    <span className="text-[10px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                      {(u.roles?.[0]?.role || "viewer").toUpperCase()}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className={`${TD} tabular-nums text-[10px]`} style={{ color: "hsl(var(--muted-foreground))" }}>
+                                  {u.created_at ? format(new Date(u.created_at), "dd/MM/yyyy") : "N/A"}
+                                </td>
+                                <td className={`${TD} text-right`}>
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {!u.is_approved && (
+                                      <button className="w-7 h-7 rounded flex items-center justify-center transition-all"
+                                        style={{ color: "#4ade80" }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(74,222,128,0.1)"}
+                                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                        onClick={() => updateApproval.mutate({ userId: u.id, isApproved: true })}
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <button className="w-7 h-7 rounded flex items-center justify-center transition-all"
+                                      style={{ color: "#fbbf24" }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(251,191,36,0.1)"}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                      onClick={() => handleSendUserAlert(u.id, u.contact_name || u.company_name)}
+                                    >
+                                      <Bell className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button className="w-7 h-7 rounded flex items-center justify-center transition-all"
+                                      style={{ color: "#f87171" }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+                    </motion.div>
+                  )}
 
-              {/* ══ EXPORTS ══ */}
-              <TabsContent value="exports" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <div>
-                      <p className="font-black text-white">Dados de Exportação</p>
-                      <p className="text-xs text-white/30 font-medium mt-0.5">Embarques e destinos de exportação</p>
-                    </div>
-                    <Button size="sm" className="h-9 rounded-xl gap-2 text-black font-black text-xs uppercase tracking-widest" style={{ background: ACCENT }}>
-                      <Plus className="w-4 h-4" /> Adicionar
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Destino</th>
-                          <th className={`${TH} text-left`}>Volume</th>
-                          <th className={`${TH} text-left`}>Valor (USD)</th>
-                          <th className={`${TH} text-left`}>Status</th>
-                          <th className={`${TH} text-left`}>Data</th>
-                          <th className={`${TH} text-right`}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {exportData?.slice(0, 15).map(item => (
-                          <tr key={item.id} className="group" style={{ borderBottom: `1px solid ${BORDER}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                            <td className={`${TD} font-bold text-white`}>{item.destination}</td>
-                            <td className={`${TD} font-mono font-bold text-white/80`}>{Number(item.volume).toLocaleString()} <span className="text-white/30 text-xs">bbl</span></td>
-                            <td className={`${TD} font-mono text-white/80`}>${Number(item.value_usd).toLocaleString()}</td>
-                            <td className={TD}>
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border border-white/10 text-white/40">
-                                {item.status}
-                              </span>
-                            </td>
-                            <td className={`${TD} text-white/30 text-xs font-medium`}>{format(new Date(item.data_date), "dd/MM/yyyy")}</td>
-                            <td className={`${TD} text-right`}>
-                              <button className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all ml-auto"
-                                onClick={() => deleteExport.mutate(item.id)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
+                  {/* ORGS */}
+                  {activeTab === "orgs" && (
+                    <motion.div key="orgs" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <TablePanel title="ORGANIZAÇÕES PENDENTES" sig="ORG" desc="VALIDAR ENTIDADES A SOLICITAR ACESSO" accentColor="#a78bfa">
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["ORGANIZAÇÃO", "NIF / REG.", "SECTOR", "SOLICITAÇÃO", ""].map((h, i) => (
+                                <th key={i} className={`${TH} ${i === 4 ? "text-right" : ""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {organizations?.map(org => (
+                              <tr key={org.id} className="group"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="rgba(255,255,255,0.02)")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                              >
+                                <td className={TD}>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 flex items-center justify-center rounded shrink-0"
+                                      style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>
+                                      <Building2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[11px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{org.name?.toUpperCase()}</p>
+                                      <p className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>{org.contact_email}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className={`${TD} font-mono text-[10px]`} style={{ color: "hsl(var(--muted-foreground))" }}>{org.nif || "N/A"}</td>
+                                <td className={TD}>
+                                  <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded"
+                                    style={{ background: "rgba(255,255,255,0.05)", color: "hsl(var(--muted-foreground))", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                    {(org.sector || "EMPRESA").toUpperCase()}
+                                  </span>
+                                </td>
+                                <td className={`${TD} text-[10px] tabular-nums`} style={{ color: "hsl(var(--muted-foreground))" }}>
+                                  {format(new Date(org.created_at), "dd/MM/yyyy")}
+                                </td>
+                                <td className={`${TD} text-right`}>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      className="h-7 px-3 rounded text-[9px] font-bold tracking-widest transition-all"
+                                      style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(74,222,128,0.2)"}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(74,222,128,0.1)"}
+                                      onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: true })}
+                                    >APROVAR</button>
+                                    <button
+                                      className="h-7 px-3 rounded text-[9px] font-bold tracking-widest transition-all"
+                                      style={{ background: "rgba(220,38,38,0.1)", color: "#f87171", border: "1px solid rgba(220,38,38,0.2)" }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.2)"}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                      onClick={() => updateOrgApproval.mutate({ organizationId: org.id, isApproved: false })}
+                                    >REJEITAR</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            {(!organizations || organizations.length === 0) && (
+                              <tr><td colSpan={5} className="py-16 text-center">
+                                <Building2 className="w-8 h-8 mx-auto mb-3 opacity-20" style={{ color: "hsl(var(--muted-foreground))" }} />
+                                <p className="text-[10px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>// NENHUMA ORGANIZAÇÃO PENDENTE</p>
+                              </td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+                    </motion.div>
+                  )}
 
-              {/* ══ RISKS ══ */}
-              <TabsContent value="risks" className="mt-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Risk indices */}
-                  <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                    <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                      <p className="font-black text-white">Índices de Risco</p>
-                      <button className="h-8 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-white/40 hover:text-white hover:border-white/20 transition-colors flex items-center gap-1.5">
-                        <Plus className="w-3 h-3" /> Novo
-                      </button>
-                    </div>
-                    <table className="w-full">
-                      <thead>
-                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                          <th className={`${TH} text-left`}>Categoria</th>
-                          <th className={`${TH} text-left`}>Score</th>
-                          <th className={`${TH} text-left`}>Tendência</th>
-                          <th className={`${TH} text-right`}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {riskData?.slice(0, 10).map(item => (
-                          <tr key={item.id} className="group" style={{ borderBottom: `1px solid ${BORDER}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                            <td className={`${TD} capitalize text-white/80 font-medium text-sm`}>{item.category}</td>
-                            <td className={TD}><ScorePill score={item.score} /></td>
-                            <td className={TD}>
-                              <div className="flex items-center gap-1.5 text-xs font-bold">
-                                {item.trend === "up"
-                                  ? <TrendingUp className="w-3.5 h-3.5 text-red-400" />
-                                  : item.trend === "down"
-                                  ? <TrendingUp className="w-3.5 h-3.5 text-green-400 rotate-180" />
-                                  : <div className="w-3.5 h-0.5 bg-white/20 rounded" />}
-                                <span className="text-white/30 capitalize">{item.trend}</span>
-                              </div>
-                            </td>
-                            <td className={`${TD} text-right`}>
-                              <button className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all ml-auto"
-                                onClick={() => deleteRisk.mutate(item.id)}>
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Risk alerts */}
-                  <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                    <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                      <p className="font-black text-white">Alertas Ativos</p>
-                      <button className="h-8 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-white/40 hover:text-white hover:border-white/20 transition-colors flex items-center gap-1.5">
-                        <Plus className="w-3 h-3" /> Novo
-                      </button>
-                    </div>
-                    <div className="p-4 space-y-3 flex-1">
-                      {riskAlerts?.slice(0, 5).map(alert => (
-                        <div
-                          key={alert.id}
-                          className="flex items-start justify-between p-4 rounded-xl group transition-colors"
-                          style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}` }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}
-                        >
-                          <div className="flex gap-3">
-                            <div
-                              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                              style={{
-                                background: alert.impact === "high" ? "rgba(248,113,113,0.12)" : "rgba(251,191,36,0.12)",
-                                color: alert.impact === "high" ? "#f87171" : "#fbbf24"
-                              }}
-                            >
-                              <AlertTriangle className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-white text-sm">{alert.title}</p>
-                              <p className="text-[11px] text-white/30 mt-0.5 line-clamp-1">{alert.description}</p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border border-white/10 text-white/30">
-                                  {alert.region || "Global"}
-                                </span>
-                                <span
-                                  className="text-[9px] font-black uppercase tracking-widest"
-                                  style={{ color: alert.impact === "high" ? "#f87171" : "#fbbf24" }}
-                                >
-                                  {alert.impact}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            className="w-7 h-7 rounded-lg text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shrink-0"
-                            onClick={() => deleteRiskAlertMutation.mutate(alert.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* ══ NOTIFICATIONS ══ */}
-              <TabsContent value="notifications" className="mt-0 max-w-2xl">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  {/* panel header with icon */}
-                  <div
-                    className="px-8 py-7 flex items-center gap-4 border-b relative overflow-hidden"
-                    style={{ borderColor: BORDER }}
-                  >
-                    <div
-                      className="absolute inset-0 opacity-5"
-                      style={{ background: `radial-gradient(ellipse at top left, ${ACCENT}, transparent 60%)` }}
-                    />
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative" style={{ background: `${ACCENT}18` }}>
-                      <Bell className="w-6 h-6" style={{ color: ACCENT }} />
-                    </div>
-                    <div>
-                      <p className="font-black text-white text-lg">Enviar Notificação</p>
-                      <p className="text-xs text-white/30 font-medium mt-0.5">Comunique com todos ou utilizadores específicos</p>
-                    </div>
-                  </div>
-                  <div className="p-8 space-y-5">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Título</label>
-                      <Input placeholder="Ex: Manutenção do Sistema" value={notificationForm.title} onChange={e => setNotificationForm({...notificationForm, title: e.target.value})} className={`${inputCls} h-12`} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Conteúdo</label>
-                      <Textarea placeholder="Digite a mensagem aqui…" rows={4} value={notificationForm.message} onChange={e => setNotificationForm({...notificationForm, message: e.target.value})} className={`${inputCls} resize-none`} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Tipo</label>
-                        <Select value={notificationForm.type} onValueChange={v => setNotificationForm({...notificationForm, type: v})}>
-                          <SelectTrigger className={`${inputCls} h-11`}><SelectValue /></SelectTrigger>
-                          <SelectContent style={{ background: "#0f1015", borderColor: BORDER }}>
-                            {[["info","Informação"],["warning","Aviso"],["alert","Crítico"],["success","Sucesso"]].map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Destinatários</label>
-                        <Select value={notificationForm.isGlobal ? "global" : "specific"} onValueChange={v => setNotificationForm({...notificationForm, isGlobal: v === "global"})}>
-                          <SelectTrigger className={`${inputCls} h-11`}><SelectValue /></SelectTrigger>
-                          <SelectContent style={{ background: "#0f1015", borderColor: BORDER }}>
-                            <SelectItem value="global">Todos os Utilizadores</SelectItem>
-                            <SelectItem value="specific">Utilizador Específico</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleSendNotification}
-                      disabled={sendNotification.isPending}
-                      className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-black gap-2"
-                      style={{ background: ACCENT }}
-                    >
-                      <Send className="w-4 h-4" /> Disparar Notificação
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* ══ REQUESTS ══ */}
-              <TabsContent value="requests" className="mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {requests?.map(request => (
-                    <div
-                      key={request.id}
-                      className="rounded-2xl overflow-hidden flex flex-col group transition-all"
-                      style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}
-                    >
-                      <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
-                        <StatusBadge approved={request.status !== "pending"} />
-                        <span className="text-[10px] text-white/20 font-medium">{format(new Date(request.created_at), "dd/MM HH:mm")}</span>
-                      </div>
-                      <div className="p-5 flex-1">
-                        <p className="font-bold text-white text-sm mb-2 line-clamp-1">{request.subject}</p>
-                        <p className="text-xs text-white/30 leading-relaxed line-clamp-3">{request.message}</p>
-                        {request.admin_response && (
-                          <div className="mt-4 p-3 rounded-xl" style={{ background: `${ACCENT}08`, border: `1px solid ${ACCENT}20` }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: ACCENT }}>Resposta Admin</p>
-                            <p className="text-[11px] text-white/50 italic line-clamp-2">{request.admin_response}</p>
-                          </div>
-                        )}
-                      </div>
-                      {request.status === "pending" && (
-                        <div className="p-5 pt-0">
+                  {/* PRODUCTION */}
+                  {activeTab === "production" && (
+                    <motion.div key="production" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <TablePanel title="DADOS DE PRODUÇÃO" sig="PRD" desc="HISTÓRICO DE EXTRAÇÃO POR OPERADORA E BLOCO" accentColor="#4ade80"
+                        action={
                           <Dialog>
                             <DialogTrigger asChild>
-                              <button
-                                className="w-full h-9 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
-                                style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)" }}
-                                onMouseEnter={e => { e.currentTarget.style.background = `${ACCENT}18`; e.currentTarget.style.color = ACCENT; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+                              <button className="flex items-center gap-1.5 h-8 px-3 rounded text-[10px] font-bold tracking-widest transition-all"
+                                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", color: "#4ade80" }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(74,222,128,0.2)"}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(74,222,128,0.1)"}
                               >
-                                Responder <ChevronRight className="w-3 h-3" />
+                                <Plus className="w-3 h-3" /> ADICIONAR
                               </button>
                             </DialogTrigger>
-                            <DialogContent className="rounded-3xl border" style={{ background: "#0f1015", borderColor: BORDER }}>
-                              <DialogHeader>
-                                <DialogTitle className="text-xl font-black text-white">Responder Solicitação</DialogTitle>
-                              </DialogHeader>
-                              <div className="py-4 space-y-4">
-                                <div className="p-4 rounded-xl text-xs text-white/40" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}` }}>
-                                  {request.message}
+                            <TermDialog title="NOVO REGISTO DE PRODUÇÃO" sig="INSERIR DADOS">
+                              <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Field label="OPERADORA"><TermInput value={productionForm.operator} onChange={v => setProductionForm(p=>({...p,operator:v}))} placeholder="EX: TOTALENERGIES" /></Field>
+                                  <Field label="BLOCO"><TermInput value={productionForm.block} onChange={v => setProductionForm(p=>({...p,block:v}))} placeholder="EX: BLOCO 17" /></Field>
                                 </div>
-                                <Textarea
-                                  placeholder="Resposta oficial…"
-                                  className={`${inputCls} min-h-[120px] resize-none`}
-                                  value={responseForm.requestId === request.id ? responseForm.response : ""}
-                                  onChange={e => setResponseForm({...responseForm, requestId: request.id, response: e.target.value})}
-                                />
+                                <Field label="CAMPO (OPCIONAL)"><TermInput value={productionForm.field} onChange={v => setProductionForm(p=>({...p,field:v}))} placeholder="EX: DALIA" /></Field>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Field label="PROD. DIÁRIA (BPD)"><TermInput type="number" value={productionForm.daily_production} onChange={v => setProductionForm(p=>({...p,daily_production:v}))} placeholder="0" /></Field>
+                                  <Field label="DATA"><TermInput type="date" value={productionForm.data_date} onChange={v => setProductionForm(p=>({...p,data_date:v}))} /></Field>
+                                </div>
                               </div>
                               <DialogFooter>
-                                <Button onClick={handleRespondToRequest} disabled={!responseForm.response} className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-black" style={{ background: ACCENT }}>
-                                  Enviar Resposta
-                                </Button>
+                                <button onClick={handleAddProduction} disabled={addProduction.isPending}
+                                  className="flex items-center gap-2 px-6 py-2.5 rounded text-[10px] font-bold tracking-widest w-full justify-center"
+                                  style={{ background: "linear-gradient(135deg, #4ade80, #16a34a)", color: "white" }}>
+                                  <Check className="w-3 h-3" /> GUARDAR REGISTO
+                                </button>
                               </DialogFooter>
-                            </DialogContent>
+                            </TermDialog>
                           </Dialog>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {(!requests || requests.length === 0) && (
-                    <div className="col-span-full py-20 text-center">
-                      <MessageSquare className="w-10 h-10 mx-auto mb-3 text-white/10" />
-                      <p className="text-sm text-white/20 font-medium">Nenhuma solicitação encontrada.</p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* ══ LOGS ══ */}
-              <TabsContent value="logs" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ background: PANEL_BG, border: `1px solid ${BORDER}` }}>
-                  <div className="px-6 py-5 border-b" style={{ borderColor: BORDER }}>
-                    <p className="font-black text-white">Histórico de Atividade</p>
-                    <p className="text-xs text-white/30 font-medium mt-0.5">Rastreamento de todas as alterações de dados</p>
-                  </div>
-                  <div className="divide-y" style={{ borderColor: BORDER }}>
-                    {dataUpdates?.map((update, i) => (
-                      <div
-                        key={update.id}
-                        className="flex items-center justify-between px-6 py-4 transition-colors"
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        }
                       >
-                        <div className="flex items-center gap-4">
-                          {/* timeline dot */}
-                          <div className="relative flex items-center justify-center">
-                            <div className="w-2 h-2 rounded-full" style={{ background: ACCENT }} />
-                            {i < (dataUpdates.length - 1) && (
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 w-px h-4 mt-0.5" style={{ background: BORDER }} />
-                            )}
-                          </div>
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.04)" }}>
-                            <Database className="w-4 h-4 text-white/30" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-white capitalize">
-                              {update.data_type} <span className="text-white/30 font-normal">atualizado</span>
-                            </p>
-                            <p className="text-[10px] text-white/20 uppercase tracking-widest font-medium mt-0.5">{update.source}</p>
-                          </div>
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["OPERADORA","BLOCO / CAMPO","PROD. DIÁRIA","DATA",""].map((h,i) => (
+                                <th key={i} className={`${TH} ${i===4?"text-right":""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {productionData?.slice(0,15).map(item => (
+                              <tr key={item.id} className="group"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="rgba(255,255,255,0.02)")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                              >
+                                <td className={`${TD} font-bold tracking-wider`} style={{ color: "hsl(var(--foreground))" }}>{item.operator?.toUpperCase()}</td>
+                                <td className={TD}>
+                                  <p className="text-[11px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{item.block}</p>
+                                  <p className="text-[9px] tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>{item.field || "N/A"}</p>
+                                </td>
+                                <td className={TD}>
+                                  <div className="flex items-center gap-2">
+                                    <Activity className="w-3 h-3" style={{ color: "#4ade80" }} />
+                                    <span className="font-mono font-bold tabular-nums" style={{ color: "hsl(var(--foreground))" }}>{Number(item.daily_production).toLocaleString()}</span>
+                                    <span className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>BPD</span>
+                                  </div>
+                                </td>
+                                <td className={`${TD} tabular-nums text-[10px]`} style={{ color: "hsl(var(--muted-foreground))" }}>{format(new Date(item.data_date), "dd/MM/yyyy")}</td>
+                                <td className={`${TD} text-right`}>
+                                  <button className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center transition-all ml-auto"
+                                    style={{ color: "#f87171" }}
+                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                    onClick={() => deleteProduction.mutate(item.id)}
+                                  ><Trash2 className="w-3 h-3" /></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+                    </motion.div>
+                  )}
+
+                  {/* PRICES */}
+                  {activeTab === "prices" && (
+                    <motion.div key="prices" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <TablePanel title="DADOS DE PREÇO" sig="PRC" desc="COTAÇÕES DO MERCADO PETROLÍFERO" accentColor="#38bdf8"
+                        action={
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button className="flex items-center gap-1.5 h-8 px-3 rounded text-[10px] font-bold tracking-widest transition-all"
+                                style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8" }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(56,189,248,0.2)"}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(56,189,248,0.1)"}
+                              >
+                                <Plus className="w-3 h-3" /> ADICIONAR PREÇO
+                              </button>
+                            </DialogTrigger>
+                            <TermDialog title="NOVA COTAÇÃO" sig="INSERIR PREÇO">
+                              <div className="grid gap-4 py-4">
+                                <Field label="TIPO DE CRUDE">
+                                  <Select value={priceForm.crude_type} onValueChange={v => setPriceForm(p=>({...p,crude_type:v}))}>
+                                    <SelectTrigger style={{ ...inpStyle, display:"flex", alignItems:"center" }}><SelectValue placeholder="SELECIONE O TIPO" /></SelectTrigger>
+                                    <SelectContent style={{ background:"hsl(var(--card))", border:"1px solid rgba(255,255,255,0.08)", fontFamily:"'IBM Plex Mono',monospace" }}>
+                                      {["Brent","Cabinda","Girassol","Dalia","Nemba"].map(t => <SelectItem key={t} value={t} className="text-[11px]">{t.toUpperCase()}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </Field>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Field label="PREÇO (USD)"><TermInput type="number" value={priceForm.price} onChange={v => setPriceForm(p=>({...p,price:v}))} placeholder="0.00" /></Field>
+                                  <Field label="VARIAÇÃO (%)"><TermInput type="number" value={priceForm.change_percent} onChange={v => setPriceForm(p=>({...p,change_percent:v}))} placeholder="0.00" /></Field>
+                                </div>
+                                <Field label="DATA"><TermInput type="date" value={priceForm.data_date} onChange={v => setPriceForm(p=>({...p,data_date:v}))} /></Field>
+                              </div>
+                              <DialogFooter>
+                                <button onClick={handleAddPrice} disabled={addPrice.isPending}
+                                  className="flex items-center gap-2 px-6 py-2.5 rounded text-[10px] font-bold tracking-widest w-full justify-center"
+                                  style={{ background: "linear-gradient(135deg, #38bdf8, #0284c7)", color: "white" }}>
+                                  <Check className="w-3 h-3" /> ACTUALIZAR COTAÇÃO
+                                </button>
+                              </DialogFooter>
+                            </TermDialog>
+                          </Dialog>
+                        }
+                      >
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["TIPO DE CRUDE","PREÇO ACTUAL","VARIAÇÃO","DATA",""].map((h,i) => (
+                                <th key={i} className={`${TH} ${i===4?"text-right":""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {priceData?.slice(0,15).map(item => {
+                              const up = Number(item.change_percent) >= 0;
+                              return (
+                                <tr key={item.id} className="group"
+                                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                  onMouseEnter={e => (e.currentTarget.style.background="rgba(255,255,255,0.02)")}
+                                  onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                                >
+                                  <td className={`${TD} font-bold tracking-wider`} style={{ color: "hsl(var(--foreground))" }}>{item.crude_type?.toUpperCase()}</td>
+                                  <td className={TD}>
+                                    <span className="font-mono font-bold text-xl tabular-nums" style={{ color: "hsl(var(--foreground))" }}>${Number(item.price).toFixed(2)}</span>
+                                  </td>
+                                  <td className={TD}>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded"
+                                      style={{ background: up?"rgba(74,222,128,0.1)":"rgba(248,113,113,0.1)", color: up?"#4ade80":"#f87171" }}>
+                                      <TrendingUp className={`w-3 h-3 ${!up?"rotate-180":""}`} />
+                                      {up?"+":""}{Number(item.change_percent).toFixed(2)}%
+                                    </span>
+                                  </td>
+                                  <td className={`${TD} tabular-nums text-[10px]`} style={{ color: "hsl(var(--muted-foreground))" }}>{format(new Date(item.data_date),"dd/MM/yyyy")}</td>
+                                  <td className={`${TD} text-right`}>
+                                    <button className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center transition-all ml-auto"
+                                      style={{ color: "#f87171" }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                      onClick={() => deletePrice.mutate(item.id)}
+                                    ><Trash2 className="w-3 h-3" /></button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+                    </motion.div>
+                  )}
+
+                  {/* EXPORTS */}
+                  {activeTab === "exports" && (
+                    <motion.div key="exports" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <TablePanel title="DADOS DE EXPORTAÇÃO" sig="EXP" desc="EMBARQUES E DESTINOS DE EXPORTAÇÃO" accentColor="#fb923c">
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["DESTINO","VOLUME","VALOR (USD)","STATUS","DATA",""].map((h,i) => (
+                                <th key={i} className={`${TH} ${i===5?"text-right":""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {exportData?.slice(0,15).map(item => (
+                              <tr key={item.id} className="group"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="rgba(255,255,255,0.02)")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                              >
+                                <td className={`${TD} font-bold tracking-wider`} style={{ color: "hsl(var(--foreground))" }}>{item.destination?.toUpperCase()}</td>
+                                <td className={`${TD} font-mono tabular-nums`} style={{ color: "hsl(var(--foreground))" }}>
+                                  {Number(item.volume).toLocaleString()} <span className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>BBL</span>
+                                </td>
+                                <td className={`${TD} font-mono tabular-nums`} style={{ color: "hsl(var(--foreground))" }}>${Number(item.value_usd).toLocaleString()}</td>
+                                <td className={TD}>
+                                  <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded"
+                                    style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", color:"hsl(var(--muted-foreground))" }}>
+                                    {item.status?.toUpperCase()}
+                                  </span>
+                                </td>
+                                <td className={`${TD} tabular-nums text-[10px]`} style={{ color: "hsl(var(--muted-foreground))" }}>{format(new Date(item.data_date),"dd/MM/yyyy")}</td>
+                                <td className={`${TD} text-right`}>
+                                  <button className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center transition-all ml-auto"
+                                    style={{ color: "#f87171" }}
+                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                    onClick={() => deleteExport.mutate(item.id)}
+                                  ><Trash2 className="w-3 h-3" /></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+                    </motion.div>
+                  )}
+
+                  {/* RISKS */}
+                  {activeTab === "risks" && (
+                    <motion.div key="risks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      {/* Risk indices */}
+                      <TablePanel title="ÍNDICES DE RISCO" sig="IDX" accentColor="#f87171">
+                        <table className="w-full">
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              {["CATEGORIA","SCORE","TENDÊNCIA",""].map((h,i) => (
+                                <th key={i} className={`${TH} ${i===3?"text-right":""}`} style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {riskData?.slice(0,10).map(item => (
+                              <tr key={item.id} className="group"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="rgba(255,255,255,0.02)")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                              >
+                                <td className={`${TD} capitalize font-bold tracking-wider text-[10px]`} style={{ color: "hsl(var(--foreground))" }}>{item.category?.toUpperCase()}</td>
+                                <td className={TD}><ScorePill score={item.score} /></td>
+                                <td className={TD}>
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                    {item.trend === "up"
+                                      ? <TrendingUp className="w-3 h-3" style={{ color: "#f87171" }} />
+                                      : item.trend === "down"
+                                      ? <TrendingUp className="w-3 h-3 rotate-180" style={{ color: "#4ade80" }} />
+                                      : <div className="w-3 h-0.5 rounded" style={{ background: "rgba(255,255,255,0.2)" }} />}
+                                    <span style={{ color: "hsl(var(--muted-foreground))" }}>{item.trend?.toUpperCase()}</span>
+                                  </div>
+                                </td>
+                                <td className={`${TD} text-right`}>
+                                  <button className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center transition-all ml-auto"
+                                    style={{ color: "#f87171" }}
+                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                    onClick={() => deleteRisk.mutate(item.id)}
+                                  ><Trash2 className="w-3 h-3" /></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </TablePanel>
+
+                      {/* Alerts */}
+                      <div className="relative rounded overflow-hidden group" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="absolute top-0 right-0 text-[8px] font-bold px-2.5 py-1 tracking-widest"
+                          style={{ background: "rgba(248,113,113,0.12)", color: "#f87171", borderBottomLeftRadius: "4px" }}>ALR</div>
+                        <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+                          style={{ background: "linear-gradient(90deg, #f87171, transparent)" }} />
+
+                        <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+                          <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-red-500" />
+                          <p className="text-[11px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--foreground))" }}>ALERTAS ACTIVOS</p>
                         </div>
-                        <div className="text-right">
-                          <span
-                            className="inline-block px-2 py-0.5 rounded-lg text-[10px] font-black mb-1"
-                            style={{ background: `${ACCENT}12`, color: ACCENT }}
-                          >
-                            +{update.records_updated} registros
-                          </span>
-                          <p className="text-[10px] text-white/20 font-medium">{format(new Date(update.created_at), "dd/MM/yyyy HH:mm")}</p>
+
+                        <div className="p-4 space-y-2">
+                          {riskAlerts?.slice(0,5).map(alert => (
+                            <div key={alert.id}
+                              className="flex items-start justify-between p-3 rounded group/a transition-all"
+                              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.1)"}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.05)"}
+                            >
+                              <div className="flex gap-3">
+                                <div className="w-7 h-7 rounded flex items-center justify-center shrink-0 mt-0.5"
+                                  style={{ background: alert.impact==="high"?"rgba(248,113,113,0.12)":"rgba(251,191,36,0.12)", color: alert.impact==="high"?"#f87171":"#fbbf24" }}>
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{alert.title?.toUpperCase()}</p>
+                                  <p className="text-[10px] mt-0.5 line-clamp-1" style={{ color: "hsl(var(--muted-foreground))" }}>{alert.description}</p>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded"
+                                      style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", color:"hsl(var(--muted-foreground))" }}>
+                                      {(alert.region || "GLOBAL").toUpperCase()}
+                                    </span>
+                                    <span className="text-[9px] font-bold tracking-widest"
+                                      style={{ color: alert.impact==="high"?"#f87171":"#fbbf24" }}>
+                                      {alert.impact?.toUpperCase()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                className="w-6 h-6 rounded flex items-center justify-center opacity-0 group-hover/a:opacity-100 transition-all shrink-0"
+                                style={{ color: "#f87171" }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(220,38,38,0.1)"}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                                onClick={() => deleteRiskAlertMutation.mutate(alert.id)}
+                              ><Trash2 className="w-3 h-3" /></button>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                    {(!dataUpdates || dataUpdates.length === 0) && (
-                      <div className="py-12 text-center text-white/20 text-sm font-medium">Nenhum log registado.</div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </main>
+                    </motion.div>
+                  )}
+
+                  {/* NOTIFICATIONS */}
+                  {activeTab === "notifications" && (
+                    <motion.div key="notifications" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="max-w-2xl">
+                      <div className="relative rounded overflow-hidden group" style={{ background: "hsl(var(--card))", border: "1px solid rgba(167,139,250,0.2)" }}>
+                        <div className="absolute top-0 right-0 text-[8px] font-bold px-2.5 py-1 tracking-widest"
+                          style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", borderBottomLeftRadius: "4px" }}>NTF</div>
+                        <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+                          style={{ background: "linear-gradient(90deg, #a78bfa, transparent)" }} />
+
+                        <div className="px-6 py-5 flex items-center gap-4"
+                          style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(167,139,250,0.03)" }}>
+                          <div className="w-8 h-8 flex items-center justify-center rounded shrink-0" style={{ background: "rgba(167,139,250,0.12)" }}>
+                            <Bell className="w-4 h-4" style={{ color: "#a78bfa" }} />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--foreground))" }}>ENVIAR NOTIFICAÇÃO</p>
+                            <p className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>COMUNICAR COM TODOS OU UTILIZADORES ESPECÍFICOS</p>
+                          </div>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                          <Field label="TÍTULO">
+                            <TermInput value={notificationForm.title} onChange={v => setNotificationForm(p=>({...p,title:v}))} placeholder="EX: MANUTENÇÃO DO SISTEMA" />
+                          </Field>
+                          <Field label="CONTEÚDO">
+                            <TermArea value={notificationForm.message} onChange={v => setNotificationForm(p=>({...p,message:v}))} placeholder="MENSAGEM PARA OS UTILIZADORES…" rows={4} />
+                          </Field>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Field label="TIPO">
+                              <Select value={notificationForm.type} onValueChange={v => setNotificationForm(p=>({...p,type:v}))}>
+                                <SelectTrigger style={{ ...inpStyle, display:"flex", alignItems:"center" }}><SelectValue /></SelectTrigger>
+                                <SelectContent style={{ background:"hsl(var(--card))", border:"1px solid rgba(255,255,255,0.08)", fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  {[["info","INFORMAÇÃO"],["warning","AVISO"],["alert","CRÍTICO"],["success","SUCESSO"]].map(([v,l]) => <SelectItem key={v} value={v} className="text-[11px]">{l}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <Field label="DESTINATÁRIOS">
+                              <Select value={notificationForm.isGlobal?"global":"specific"} onValueChange={v => setNotificationForm(p=>({...p,isGlobal:v==="global"}))}>
+                                <SelectTrigger style={{ ...inpStyle, display:"flex", alignItems:"center" }}><SelectValue /></SelectTrigger>
+                                <SelectContent style={{ background:"hsl(var(--card))", border:"1px solid rgba(255,255,255,0.08)", fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  <SelectItem value="global" className="text-[11px]">TODOS OS UTILIZADORES</SelectItem>
+                                  <SelectItem value="specific" className="text-[11px]">UTILIZADOR ESPECÍFICO</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                          </div>
+                          <button
+                            onClick={handleSendNotification}
+                            disabled={sendNotification.isPending}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded text-[10px] font-bold tracking-widest transition-all"
+                            style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "white", boxShadow: "0 0 16px rgba(167,139,250,0.25)", opacity: sendNotification.isPending?0.7:1 }}
+                          >
+                            <Send className="w-3 h-3" /> DISPARAR NOTIFICAÇÃO
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* REQUESTS */}
+                  {activeTab === "requests" && (
+                    <motion.div key="requests" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {requests?.map(request => (
+                        <div key={request.id}
+                          className="relative rounded overflow-hidden flex flex-col group transition-all"
+                          style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.12)"}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.06)"}
+                        >
+                          <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+                            style={{ background: "linear-gradient(90deg, #fbbf24, transparent)" }} />
+
+                          <div className="px-4 py-3 flex items-center justify-between"
+                            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+                            <StatusBadge approved={request.status !== "pending"} />
+                            <span className="text-[9px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+                              {format(new Date(request.created_at), "dd/MM HH:mm")}
+                            </span>
+                          </div>
+
+                          <div className="p-4 flex-1">
+                            <p className="text-[11px] font-bold tracking-wider mb-2 line-clamp-1" style={{ color: "hsl(var(--foreground))" }}>
+                              {request.subject?.toUpperCase()}
+                            </p>
+                            <p className="text-[10px] leading-relaxed line-clamp-3" style={{ color: "hsl(var(--muted-foreground))" }}>{request.message}</p>
+                            {request.admin_response && (
+                              <div className="mt-3 p-2.5 rounded"
+                                style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.15)" }}>
+                                <p className="text-[8px] font-bold tracking-widest mb-1" style={{ color: "#fbbf24" }}>RESPOSTA ADMIN</p>
+                                <p className="text-[10px] italic line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>{request.admin_response}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {request.status === "pending" && (
+                            <div className="p-4 pt-0">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    className="w-full h-8 rounded text-[10px] font-bold tracking-widest transition-all flex items-center justify-center gap-1.5"
+                                    style={{ background: "rgba(255,255,255,0.04)", color: "hsl(var(--muted-foreground))", border: "1px solid rgba(255,255,255,0.07)" }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="rgba(251,191,36,0.08)"; (e.currentTarget as HTMLElement).style.borderColor="rgba(251,191,36,0.3)"; (e.currentTarget as HTMLElement).style.color="#fbbf24"; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.07)"; (e.currentTarget as HTMLElement).style.color="hsl(var(--muted-foreground))"; }}
+                                  >
+                                    RESPONDER <ChevronRight className="w-3 h-3" />
+                                  </button>
+                                </DialogTrigger>
+                                <TermDialog title="RESPONDER SOLICITAÇÃO" sig="REPLY">
+                                  <div className="py-4 space-y-4">
+                                    <div className="p-3 rounded text-[10px]"
+                                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "hsl(var(--muted-foreground))" }}>
+                                      {request.message}
+                                    </div>
+                                    <Field label="RESPOSTA OFICIAL">
+                                      <TermArea
+                                        rows={4}
+                                        placeholder="RESPOSTA OFICIAL…"
+                                        value={responseForm.requestId === request.id ? responseForm.response : ""}
+                                        onChange={v => setResponseForm(p=>({...p, requestId: request.id, response: v}))}
+                                      />
+                                    </Field>
+                                  </div>
+                                  <DialogFooter>
+                                    <button onClick={handleRespondToRequest} disabled={!responseForm.response}
+                                      className="flex items-center gap-2 px-6 py-2.5 rounded text-[10px] font-bold tracking-widest w-full justify-center"
+                                      style={{ background: "linear-gradient(135deg, #fbbf24, #d97706)", color: "black", opacity: !responseForm.response?0.5:1 }}>
+                                      <Send className="w-3 h-3" /> ENVIAR RESPOSTA
+                                    </button>
+                                  </DialogFooter>
+                                </TermDialog>
+                              </Dialog>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {(!requests || requests.length === 0) && (
+                        <div className="col-span-full py-20 flex flex-col items-center gap-4" style={{ border: "1px dashed rgba(255,255,255,0.07)", borderRadius: "4px" }}>
+                          <MessageSquare className="w-8 h-8 opacity-20" style={{ color: "hsl(var(--muted-foreground))" }} />
+                          <p className="text-[10px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>// NENHUMA SOLICITAÇÃO ENCONTRADA</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* LOGS */}
+                  {activeTab === "logs" && (
+                    <motion.div key="logs" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <div className="relative rounded overflow-hidden group" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="absolute top-0 right-0 text-[8px] font-bold px-2.5 py-1 tracking-widest"
+                          style={{ background: "rgba(148,163,184,0.1)", color: "#94a3b8", borderBottomLeftRadius: "4px" }}>LOG</div>
+                        <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+                          style={{ background: "linear-gradient(90deg, #94a3b8, transparent)" }} />
+
+                        <div className="px-5 py-4 flex items-center gap-2"
+                          style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+                          <p className="text-[11px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--foreground))" }}>HISTÓRICO DE ACTIVIDADE</p>
+                        </div>
+
+                        <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                          {dataUpdates?.map((update, i) => (
+                            <div key={update.id}
+                              className="flex items-center justify-between px-5 py-4 transition-colors"
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.02)"}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="relative flex items-center justify-center">
+                                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                                </div>
+                                <div className="w-8 h-8 flex items-center justify-center rounded shrink-0"
+                                  style={{ background: "rgba(255,255,255,0.04)" }}>
+                                  <Database className="w-3.5 h-3.5" style={{ color: "hsl(var(--muted-foreground))" }} />
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>
+                                    {update.data_type?.toUpperCase()} <span className="font-normal" style={{ color: "hsl(var(--muted-foreground))" }}>ACTUALIZADO</span>
+                                  </p>
+                                  <p className="text-[9px] tracking-widest mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{update.source?.toUpperCase()}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest mb-1"
+                                  style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}>
+                                  +{update.records_updated} REG.
+                                </span>
+                                <p className="text-[9px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                  {format(new Date(update.created_at), "dd/MM/yyyy HH:mm")}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          {(!dataUpdates || dataUpdates.length === 0) && (
+                            <div className="py-12 text-center text-[10px] font-bold tracking-[0.3em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                              // NENHUM LOG REGISTADO
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                </AnimatePresence>
+              </motion.div>
+            </div>
+          </main>
+        </div>
       </div>
 
-      {/* Tab active style override */}
       <MobileBottomNav />
-
-      <style>{`
-        [role="tab"][data-state="active"] {
-          background: hsl(var(--accent)) !important;
-          color: hsl(var(--accent-foreground)) !important;
-        }
-        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 8px; }
-      `}</style>
     </div>
   );
 };

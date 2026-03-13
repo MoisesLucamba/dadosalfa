@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import {
   Brain, TrendingUp, TrendingDown, Target, Sparkles,
   AlertCircle, CheckCircle, RefreshCw, Loader2, Shield,
-  ArrowUpRight, Info, Zap, Activity,
+  ArrowUpRight, Info, Zap, Activity, Terminal, ChevronRight,
+  Radio, Lock, Cpu,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,7 +18,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 
-/* ─── Types ──────────────────────────────────────────── */
+/* ─── Types ──────────────────────────────────────────────────────────────── */
 interface PredictionModel {
   value: number;
   change_percent: number;
@@ -59,60 +60,88 @@ interface PredictionsData {
   generated_at?: string;
 }
 
-/* ─── Tokens ─────────────────────────────────────────── */
-const C = {
-  bg:       "#070a0f",
-  surface:  "#0d1117",
-  surface2: "#111722",
-  border:   "rgba(255,255,255,0.06)",
-  borderHi: "rgba(220,38,38,0.3)",
-  red:      "#dc2626",
-  redSoft:  "rgba(220,38,38,0.12)",
-  green:    "#22c55e",
-  greenSoft:"rgba(34,197,94,0.1)",
-  amber:    "#f59e0b",
-  blue:     "#3b82f6",
-  text:     "#e2e8f0",
-  textMid:  "#64748b",
-  textDim:  "#334155",
-  mono:     "'IBM Plex Mono', monospace",
-  sans:     "'Plus Jakarta Sans', sans-serif",
-};
+/* ─── Scanline ────────────────────────────────────────────────────────────── */
+const ScanlineOverlay = () => (
+  <div
+    className="pointer-events-none fixed inset-0 z-50 opacity-[0.022]"
+    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)" }}
+  />
+);
 
-/* ─── Custom tooltip ─────────────────────────────────── */
+/* ─── Radar Pulse ─────────────────────────────────────────────────────────── */
+const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
+  <span className="relative inline-flex h-2 w-2">
+    <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ background: color }} />
+    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: color }} />
+  </span>
+);
+
+/* ─── Custom Tooltip ──────────────────────────────────────────────────────── */
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontFamily: C.mono, fontSize: 11 }}>
-      <p style={{ color: C.textMid, marginBottom: 6, letterSpacing: "0.1em", textTransform: "uppercase", fontSize: 9 }}>{label}</p>
-      {payload.map((p: any, i: number) => p.value != null && (
-        <p key={i} style={{ color: p.color, margin: "2px 0" }}>
-          {p.name}: <span style={{ color: C.text, fontWeight: 700 }}>{typeof p.value === 'number' ? p.value.toFixed(2) : p.value}</span>
-        </p>
-      ))}
+    <div
+      className="px-3 py-2 text-[10px] font-bold"
+      style={{
+        background: "hsl(var(--card))",
+        border: "1px solid rgba(220,38,38,0.3)",
+        borderRadius: "4px",
+        fontFamily: "'IBM Plex Mono', monospace",
+      }}
+    >
+      <p className="text-[9px] mb-2 tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</p>
+      {payload.map((p: any, i: number) =>
+        p.value != null && (
+          <p key={i} style={{ color: p.color, margin: "2px 0" }}>
+            {p.name}:{" "}
+            <span style={{ color: "hsl(var(--foreground))", fontWeight: 700 }}>
+              {typeof p.value === "number" ? p.value.toFixed(2) : p.value}
+            </span>
+          </p>
+        )
+      )}
     </div>
   );
 };
 
-/* ─── Stat card ──────────────────────────────────────── */
-const MetricCard = ({ label, value, color, sub, icon: Icon }: any) => (
-  <div style={{ borderLeft: `2px solid ${color}`, paddingLeft: 16 }}>
-    <p style={{ fontFamily: C.mono, fontSize: 8, fontWeight: 700, color: C.textMid, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 8 }}>{label}</p>
-    <div className="flex items-center gap-2">
-      <span style={{ fontFamily: C.mono, fontSize: 24, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
-      {Icon && <Icon style={{ width: 16, height: 16, color }} />}
-    </div>
-    <p style={{ fontFamily: C.sans, fontSize: 11, color: C.textMid, marginTop: 4 }}>{sub}</p>
-  </div>
-);
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+const formatValue = (key: string, value: number) => {
+  switch (key) {
+    case "brent_30d":      return `$${value.toFixed(2)}`;
+    case "production_30d": return `${(value / 1000).toFixed(2)}M BPD`;
+    case "exports_30d":    return `${value.toFixed(1)}M BBL`;
+    case "revenue_30d":    return `$${value.toFixed(2)}B`;
+    default:               return value.toString();
+  }
+};
 
-/* ═══════════════════════════════════════════════════════
+const getModelLabel = (key: string) => ({
+  brent_30d:      "BRENT 30D",
+  production_30d: "PRODUÇÃO AO",
+  exports_30d:    "EXPORTAÇÕES",
+  revenue_30d:    "RECEITA EST.",
+}[key] ?? key.toUpperCase());
+
+const getModelIndex = (key: string) => ({
+  brent_30d: "01", production_30d: "02", exports_30d: "03", revenue_30d: "04",
+}[key] ?? "00");
+
+const impactColor = (lvl: string) =>
+  lvl === "alto" ? "#ef4444" : lvl === "médio" ? "#f59e0b" : "#3b82f6";
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN
-   ═══════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const Predictions = () => {
   const [predictions, setPredictions] = useState<PredictionsData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]         = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [now, setNow]                 = useState(new Date());
+  const [bootDone, setBootDone]       = useState(false);
+  const [activeModel, setActiveModel] = useState<string | null>(null);
+
+  useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { setTimeout(() => setBootDone(true), 950); fetchPredictions(); }, []);
 
   const fetchPredictions = async () => {
     setLoading(true);
@@ -121,39 +150,14 @@ const Predictions = () => {
       if (error) throw error;
       if (data?.success && data?.predictions) {
         setPredictions(data.predictions);
-        setLastUpdated(new Date().toLocaleString("pt-AO"));
-        toast.success("Previsões IA atualizadas!");
-      } else throw new Error(data?.error || "Erro ao gerar previsões");
-    } catch (error) {
-      toast.error("Erro ao gerar previsões. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
+        setLastUpdated(new Date().toLocaleTimeString("pt-AO", { hour12: false }));
+        toast.success("PREVISÕES IA SINCRONIZADAS // OK");
+      } else throw new Error(data?.error || "Erro");
+    } catch { toast.error("FALHA NA SINCRONIZAÇÃO — Tentar novamente"); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchPredictions(); }, []);
-
-  const formatValue = (key: string, value: number) => {
-    switch (key) {
-      case "brent_30d":      return `$${value.toFixed(2)}`;
-      case "production_30d": return `${(value / 1000).toFixed(2)}M bpd`;
-      case "exports_30d":    return `${value.toFixed(1)}M bbl`;
-      case "revenue_30d":    return `$${value.toFixed(2)}B`;
-      default:               return value.toString();
-    }
-  };
-
-  const getModelLabel = (key: string) => ({
-    brent_30d:      "Preço Brent",
-    production_30d: "Produção Angola",
-    exports_30d:    "Exportações",
-    revenue_30d:    "Receita Est.",
-  }[key] || key);
-
-  const getModelIndex = (key: string) => ({
-    brent_30d: "01", production_30d: "02", exports_30d: "03", revenue_30d: "04",
-  }[key] || "00");
-
+  /* ── Forecast data ──────────────────────────────────────────────────────── */
   const priceForecastData = useMemo(() => {
     if (predictions?.price_forecast) return predictions.price_forecast;
     const base = predictions?.predictions?.brent_30d?.value || 78;
@@ -162,7 +166,7 @@ const Predictions = () => {
       const i = idx - 5;
       const d = new Date(today);
       d.setDate(d.getDate() + i * 3);
-      const dateStr = d.toLocaleDateString("pt-AO", { day: "numeric", month: "short" });
+      const dateStr = d.toLocaleDateString("pt-AO", { day: "numeric", month: "short" }).toUpperCase();
       if (i <= 0) return { date: dateStr, actual: base + (Math.random() - 0.5) * 2, predicted: null, lower: null, upper: null };
       const p = base + i * 0.2 + (Math.random() - 0.5);
       return { date: dateStr, actual: null, predicted: p, lower: p - 2, upper: p + 2 };
@@ -172,7 +176,7 @@ const Predictions = () => {
   const productionForecastData = useMemo(() => {
     if (predictions?.production_forecast) return predictions.production_forecast;
     const base = predictions?.predictions?.production_30d?.value || 1100;
-    const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez","Jan'25","Fev'25"];
+    const months = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ","JAN'25","FEV'25"];
     const cur = new Date().getMonth();
     return months.map((month, i) => ({
       month,
@@ -181,382 +185,536 @@ const Predictions = () => {
     }));
   }, [predictions]);
 
+  /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        .pred-scroll::-webkit-scrollbar { width: 3px; }
-        .pred-scroll::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 99px; }
-        @keyframes spin-slow { to { transform: rotate(360deg); } }
-        .spin-slow { animation: spin-slow 3s linear infinite; }
-        @keyframes pulse-r {
-          0%,100% { box-shadow: 0 0 4px 1px rgba(220,38,38,.5); }
-          50%      { box-shadow: 0 0 12px 4px rgba(220,38,38,.2); }
-        }
-        .pulse-r { animation: pulse-r 2.5s ease-in-out infinite; }
-      `}</style>
+    <div
+      className="min-h-screen text-foreground"
+      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
+    >
+      <Helmet>
+        <title>ALPHADAT-OS // PREVISÕES IA</title>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      </Helmet>
 
-      <div className="min-h-screen" style={{ background: C.bg, fontFamily: C.sans }}>
-        <Helmet>
-          <title>Previsões IA | AlphaData</title>
-          <meta name="description" content="Previsões baseadas em IA para o setor petrolífero angolano." />
-        </Helmet>
+      <ScanlineOverlay />
 
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar activeItem="/predictions" />
+      {/* Boot */}
+      <AnimatePresence>
+        {!bootDone && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
+            exit={{ opacity: 0, transition: { duration: 0.35 } }}
+          >
+            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
+              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
+              <p className="opacity-70">INITIALISING NEURAL PREDICTION ENGINE..... OK</p>
+              <p className="opacity-70">LOADING HISTORICAL BRENT DATASET.......... OK</p>
+              <p className="text-red-500 animate-pulse">CALIBRATING AI FORECAST MODELS............ ■</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Ambient glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] pointer-events-none" style={{
-              background: "radial-gradient(ellipse at top, rgba(220,38,38,0.04) 0%, transparent 70%)",
-            }} />
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar activeItem="/predictions" />
 
-            <Header activeItem="/predictions" />
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Ambient glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[35%] pointer-events-none" style={{ background: "radial-gradient(ellipse at top, rgba(220,38,38,0.04) 0%, transparent 70%)" }} />
+          <div className="absolute bottom-0 right-0 w-[30%] h-[25%] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(167,139,250,0.03) 0%, transparent 70%)" }} />
 
-            <main className="pred-scroll flex-1 overflow-y-auto pb-24 lg:pb-8" style={{ padding: "28px 32px" }}>
-              <div className="max-w-7xl mx-auto space-y-8">
+          <Header activeItem="/predictions" />
 
-                {/* ── Page header ───────────────────────── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-                    {/* Breadcrumb */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-                        AlphaData
-                      </span>
-                      <span style={{ color: C.textDim, fontSize: 10 }}>/</span>
-                      <span style={{ fontFamily: C.mono, fontSize: 8, color: C.red, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-                        Previsões IA
-                      </span>
-                    </div>
+          {/* Status Bar */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: bootDone ? 1 : 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center justify-between px-6 py-2 border-b shrink-0"
+            style={{ borderColor: "rgba(220,38,38,0.12)", background: "rgba(220,38,38,0.03)" }}
+          >
+            <div className="flex items-center gap-4 text-[10px] font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <span className="flex items-center gap-1.5 text-violet-400">
+                <Pulse color="#a78bfa" />
+                AI ENGINE ONLINE
+              </span>
+              <span className="opacity-40">|</span>
+              <span>MÓDULO: PREVISÕES IA</span>
+              <span className="opacity-40">|</span>
+              <span className="flex items-center gap-1"><Cpu className="w-2.5 h-2.5" /> NEURAL v2.0</span>
+            </div>
+            <div className="text-[10px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+              {lastUpdated && <span className="mr-3 opacity-50">SYNC: {lastUpdated}</span>}
+              <span style={{ color: "hsl(var(--foreground))" }}>{now.toLocaleTimeString("pt-BR", { hour12: false })}</span>
+            </div>
+          </motion.div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: C.redSoft, border: `1px solid ${C.borderHi}` }}>
-                        <Brain style={{ width: 18, height: 18, color: C.red }} />
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full pulse-r" style={{ background: C.red }} />
-                      </div>
-                      <div>
-                        <h1 style={{ fontFamily: C.sans, fontSize: 22, fontWeight: 800, color: C.text, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                          Previsões Inteligentes
-                        </h1>
-                        <p style={{ fontFamily: C.mono, fontSize: 9, color: C.textMid, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 3 }}>
-                          AI Engine v2.0 · Projeções avançadas · Mercado angolano
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8 custom-scrollbar">
+            <div className="max-w-[1600px] mx-auto space-y-6">
 
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
-                    {lastUpdated && (
-                      <div className="hidden md:block text-right">
-                        <p style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                          Última Sincronização
-                        </p>
-                        <p style={{ fontFamily: C.mono, fontSize: 11, color: C.textMid, marginTop: 2 }}>{lastUpdated}</p>
-                      </div>
-                    )}
-                    <button
-                      onClick={fetchPredictions}
-                      disabled={loading}
-                      className="flex items-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
-                      style={{
-                        fontFamily: C.mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
-                        padding: "11px 20px", background: C.red, color: "#fff",
-                        border: "none", borderRadius: 8, cursor: loading ? "not-allowed" : "pointer",
-                        boxShadow: "0 4px 20px rgba(220,38,38,0.3)",
-                      }}
-                      onMouseEnter={e => !loading && ((e.currentTarget as HTMLElement).style.background = "#b91c1c")}
-                      onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = C.red)}
+              {/* ── Header ── */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: bootDone ? 1 : 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2"
+              >
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    <Terminal className="w-3 h-3 text-red-500" />
+                    <span>ALPHADAT-OS</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span>INTELLIGENCE</span>
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                    <span style={{ color: "hsl(var(--foreground))" }}>PREVISÕES IA</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {/* Brain icon with pulse */}
+                    <div
+                      className="relative w-12 h-12 flex items-center justify-center rounded shrink-0"
+                      style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.25)" }}
                     >
-                      {loading
-                        ? <><Loader2 style={{ width: 13, height: 13 }} className="spin-slow" /> Processando...</>
-                        : <><RefreshCw style={{ width: 13, height: 13 }} /> Atualizar</>
-                      }
-                    </button>
-                  </motion.div>
+                      <Brain className="w-5 h-5" style={{ color: "#a78bfa" }} />
+                      <span
+                        className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+                        style={{ background: "#dc2626", boxShadow: "0 0 8px rgba(220,38,38,0.6)" }}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold tracking-[0.3em] mb-1" style={{ color: "rgba(167,139,250,0.8)" }}>
+                        MÓDULO-03 // NEURAL PREDICTION ENGINE
+                      </div>
+                      <h1 className="font-bold leading-none" style={{ fontSize: "clamp(2rem,4vw,3.5rem)", letterSpacing: "-0.02em" }}>
+                        PREVISÕES IA
+                      </h1>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-3 ml-16">
+                    <div className="h-[1px] w-12 bg-red-600" />
+                    <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))", letterSpacing: "0.05em" }}>
+                      PROJEÇÕES AVANÇADAS · MERCADO PETROLÍFERO ANGOLANO
+                    </p>
+                  </div>
                 </div>
 
-                {/* ── Prediction cards ──────────────────── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <AnimatePresence mode="popLayout">
-                    {loading
-                      ? [...Array(4)].map((_, i) => (
-                          <Skeleton key={i} className="h-44 rounded-xl" style={{ background: C.surface }} />
-                        ))
-                      : predictions?.predictions && Object.entries(predictions.predictions).map(([key, model], idx) => {
-                          const isUp = model.trend === "up";
-                          return (
-                            <motion.div key={key}
-                              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.08 }}
-                              className="relative group overflow-hidden"
-                              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, transition: "border-color 0.2s" }}
-                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)"}
-                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = C.border}
-                            >
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={fetchPredictions}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded text-[11px] font-bold tracking-widest self-start md:self-auto"
+                  style={{
+                    background: loading ? "rgba(220,38,38,0.4)" : "linear-gradient(135deg, #dc2626, #991b1b)",
+                    color: "white",
+                    boxShadow: "0 0 20px rgba(220,38,38,0.3)",
+                    border: "1px solid rgba(220,38,38,0.5)",
+                    cursor: loading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {loading
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> PROCESSANDO...</>
+                    : <><RefreshCw className="w-3.5 h-3.5" /> SINCRONIZAR</>
+                  }
+                </motion.button>
+              </motion.div>
+
+              {/* ── Prediction Cards ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <AnimatePresence mode="popLayout">
+                  {loading
+                    ? [...Array(4)].map((_, i) => (
+                        <div key={i} className="h-44 rounded animate-pulse" style={{ background: "hsl(var(--card))", opacity: 1 - i * 0.15 }} />
+                      ))
+                    : predictions?.predictions && Object.entries(predictions.predictions).map(([key, model], idx) => {
+                        const isUp = model.trend === "up";
+                        const isActive = activeModel === key;
+
+                        return (
+                          <motion.div
+                            key={key}
+                            layout
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.08 }}
+                            onClick={() => setActiveModel(isActive ? null : key)}
+                            className="relative overflow-hidden rounded cursor-pointer group"
+                            style={{
+                              background: isActive ? "rgba(220,38,38,0.06)" : "hsl(var(--card))",
+                              border: `1px solid ${isActive ? "rgba(220,38,38,0.25)" : "rgba(255,255,255,0.06)"}`,
+                              transition: "border-color 0.2s, background 0.2s",
+                            }}
+                            onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+                            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"; }}
+                          >
+                            {isActive && <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: "#dc2626" }} />}
+
+                            <div className="p-5">
                               {/* Top row */}
                               <div className="flex items-center justify-between mb-5">
-                                <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                                <span className="text-[9px] font-bold tabular-nums" style={{ color: "hsl(var(--muted-foreground))", letterSpacing: "0.1em" }}>
                                   {getModelIndex(key)}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <span style={{ fontFamily: C.mono, fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.textMid }}>
+                                  <span className="text-[9px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>
                                     {getModelLabel(key)}
                                   </span>
-                                  <div style={{ padding: "4px 5px", borderRadius: 6, background: isUp ? C.greenSoft : C.redSoft }}>
+                                  <div
+                                    className="w-6 h-6 flex items-center justify-center rounded"
+                                    style={{ background: isUp ? "rgba(74,222,128,0.1)" : "rgba(220,38,38,0.1)" }}
+                                  >
                                     {isUp
-                                      ? <TrendingUp style={{ width: 12, height: 12, color: C.green }} />
-                                      : <TrendingDown style={{ width: 12, height: 12, color: C.red }} />
+                                      ? <TrendingUp className="w-3 h-3" style={{ color: "#4ade80" }} />
+                                      : <TrendingDown className="w-3 h-3" style={{ color: "#f87171" }} />
                                     }
                                   </div>
                                 </div>
                               </div>
 
                               {/* Value */}
-                              <div className="flex items-baseline gap-2 mb-1">
-                                <span style={{ fontFamily: C.mono, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1, letterSpacing: "-0.02em" }}>
+                              <div className="mb-1">
+                                <span
+                                  className="font-bold tabular-nums"
+                                  style={{ fontSize: "clamp(1.4rem,2.5vw,1.8rem)", letterSpacing: "-0.03em", color: "hsl(var(--foreground))" }}
+                                >
                                   {formatValue(key, model.value)}
                                 </span>
                               </div>
-                              <span style={{ fontFamily: C.mono, fontSize: 11, fontWeight: 700, color: isUp ? C.green : C.red }}>
+                              <span
+                                className="text-[11px] font-bold"
+                                style={{ color: isUp ? "#4ade80" : "#f87171" }}
+                              >
                                 {model.change_percent > 0 ? "+" : ""}{model.change_percent.toFixed(1)}%
                               </span>
 
-                              {/* Confidence */}
-                              <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
+                              {/* Confidence bar */}
+                              <div className="mt-5 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                                 <div className="flex items-center justify-between mb-2">
-                                  <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                                    Confiança
+                                  <span className="text-[9px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                    CONFIANÇA
                                   </span>
-                                  <span style={{ fontFamily: C.mono, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>
+                                  <span className="text-[10px] font-bold tabular-nums" style={{ color: "hsl(var(--foreground))" }}>
                                     {model.confidence.toFixed(0)}%
                                   </span>
                                 </div>
-                                <div style={{ height: 2, background: C.border, borderRadius: 99, overflow: "hidden" }}>
+                                <div className="h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                                   <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${model.confidence}%` }}
                                     transition={{ duration: 0.8, delay: idx * 0.1 }}
-                                    style={{ height: "100%", background: "rgba(255,255,255,0.45)", borderRadius: 99 }}
+                                    className="h-full rounded-full"
+                                    style={{ background: isUp ? "#4ade80" : "#f87171" }}
                                   />
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Subtle corner accent */}
-                              <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" style={{
-                                background: "radial-gradient(circle at top right, rgba(220,38,38,0.06) 0%, transparent 70%)",
-                              }} />
-                            </motion.div>
-                          );
-                        })
-                    }
-                  </AnimatePresence>
-                </div>
+                            {/* Expanded reasoning */}
+                            <AnimatePresence>
+                              {isActive && model.reasoning && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-5 pb-4" style={{ borderTop: "1px solid rgba(220,38,38,0.15)" }}>
+                                    <p className="text-[9px] font-bold tracking-widest mt-3 mb-1" style={{ color: "rgba(220,38,38,0.7)" }}>
+                                      // REASONING
+                                    </p>
+                                    <p className="text-[10px] leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                      {model.reasoning}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })
+                  }
+                </AnimatePresence>
+              </div>
 
-                {/* ── Charts ────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Brent forecast */}
-                  {[
-                    {
-                      title: "Projeção Preço Brent",
-                      sub: "Intervalo de confiança 95%",
-                      tag: "USD/bbl",
-                      data: priceForecastData,
-                      xKey: "date",
-                      chart: "area",
-                    },
-                    {
-                      title: "Tendência de Produção",
-                      sub: "Histórico vs Projeção IA",
-                      tag: "kbpd",
-                      data: productionForecastData,
-                      xKey: "month",
-                      chart: "line",
-                    },
-                  ].map((cfg, ci) => (
-                    <div key={ci} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
-                      {/* Card header */}
-                      <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${C.border}` }}>
-                        <div>
-                          <p style={{ fontFamily: C.sans, fontSize: 14, fontWeight: 700, color: C.text }}>{cfg.title}</p>
-                          <p style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: "0.12em", marginTop: 2 }}>{cfg.sub}</p>
-                        </div>
-                        <span style={{ fontFamily: C.mono, fontSize: 8, fontWeight: 700, color: C.red, letterSpacing: "0.16em", padding: "4px 10px", background: C.redSoft, border: `1px solid ${C.borderHi}`, borderRadius: 4 }}>
-                          {cfg.tag}
-                        </span>
-                      </div>
-
-                      {/* Chart */}
-                      <div style={{ height: 280, padding: "20px 8px 8px" }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          {cfg.chart === "area" ? (
-                            <AreaChart data={cfg.data}>
-                              <defs>
-                                <linearGradient id={`ga${ci}`} x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={C.blue} stopOpacity={0.25} />
-                                  <stop offset="95%" stopColor={C.blue} stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id={`gb${ci}`} x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={C.green} stopOpacity={0.2} />
-                                  <stop offset="95%" stopColor={C.green} stopOpacity={0} />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="2 4" stroke={C.border} vertical={false} />
-                              <XAxis dataKey={cfg.xKey} stroke={C.textDim} fontSize={9} tickLine={false} axisLine={false} fontFamily={C.mono} />
-                              <YAxis stroke={C.textDim} fontSize={9} tickLine={false} axisLine={false} domain={["auto","auto"]} fontFamily={C.mono} />
-                              <Tooltip content={<ChartTooltip />} />
-                              <Area type="monotone" dataKey="actual" name="Real" stroke={C.blue} strokeWidth={2} fill={`url(#ga${ci})`} dot={false} />
-                              <Area type="monotone" dataKey="predicted" name="Prev." stroke={C.green} strokeWidth={2} strokeDasharray="5 4" fill={`url(#gb${ci})`} dot={false} />
-                              <Area type="monotone" dataKey="upper" stroke="transparent" fill={C.green} fillOpacity={0.04} dot={false} />
-                              <Area type="monotone" dataKey="lower" stroke="transparent" fill={C.green} fillOpacity={0.04} dot={false} />
-                            </AreaChart>
-                          ) : (
-                            <LineChart data={cfg.data}>
-                              <CartesianGrid strokeDasharray="2 4" stroke={C.border} vertical={false} />
-                              <XAxis dataKey={cfg.xKey} stroke={C.textDim} fontSize={9} tickLine={false} axisLine={false} fontFamily={C.mono} />
-                              <YAxis stroke={C.textDim} fontSize={9} tickLine={false} axisLine={false} domain={["auto","auto"]} fontFamily={C.mono} />
-                              <Tooltip content={<ChartTooltip />} />
-                              <Line type="monotone" dataKey="actual" name="Real" stroke={C.blue} strokeWidth={2} dot={{ r: 3, fill: C.blue, strokeWidth: 0 }} />
-                              <Line type="monotone" dataKey="predicted" name="Prev." stroke="#a855f7" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: "#a855f7", strokeWidth: 0 }} />
-                            </LineChart>
-                          )}
-                        </ResponsiveContainer>
-                      </div>
-
-                      {/* Legend */}
-                      <div className="flex items-center gap-5 px-6 pb-5">
+              {/* ── Charts ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {[
+                  { title: "PROJECÇÃO BRENT", sub: "INTERVALO DE CONFIANÇA 95%", tag: "USD/BBL", data: priceForecastData, xKey: "date",  chart: "area" as const },
+                  { title: "TENDÊNCIA PRODUÇÃO AO", sub: "HISTÓRICO VS PROJECÇÃO IA", tag: "KBPD",    data: productionForecastData, xKey: "month", chart: "line" as const },
+                ].map((cfg, ci) => (
+                  <motion.div
+                    key={ci}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }}
+                    transition={{ delay: 0.45 + ci * 0.08 }}
+                    className="rounded overflow-hidden"
+                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="flex items-center justify-between px-5 py-4"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                    >
+                      <div>
                         <div className="flex items-center gap-2">
-                          <span style={{ width: 20, height: 2, background: C.blue, display: "inline-block", borderRadius: 99 }} />
-                          <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.12em", textTransform: "uppercase" }}>Real</span>
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            {cfg.title}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span style={{ width: 20, height: 2, background: cfg.chart === "area" ? C.green : "#a855f7", display: "inline-block", borderRadius: 99, borderTop: "2px dashed" }} />
-                          <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.12em", textTransform: "uppercase" }}>Projeção IA</span>
-                        </div>
+                        <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.25)", marginLeft: "16px" }}>{cfg.sub}</span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── Insights + Risks ──────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                  {/* Insights */}
-                  <div className="lg:col-span-2">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles style={{ width: 14, height: 14, color: C.red }} />
-                      <span style={{ fontFamily: C.mono, fontSize: 9, fontWeight: 700, color: C.text, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                        Insights Estratégicos
+                      <span
+                        className="text-[9px] font-bold px-2 py-1 rounded tracking-widest"
+                        style={{ background: "rgba(220,38,38,0.1)", color: "#f87171", border: "1px solid rgba(220,38,38,0.2)" }}
+                      >
+                        {cfg.tag}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Chart */}
+                    <div className="px-4 pt-5 pb-2" style={{ height: 270 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        {cfg.chart === "area" ? (
+                          <AreaChart data={cfg.data}>
+                            <defs>
+                              <linearGradient id={`ga${ci}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}   />
+                              </linearGradient>
+                              <linearGradient id={`gb${ci}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%"  stopColor="#4ade80" stopOpacity={0.15} />
+                                <stop offset="95%" stopColor="#4ade80" stopOpacity={0}    />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                            <XAxis dataKey={cfg.xKey} stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                            <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} domain={["auto","auto"]} fontFamily="IBM Plex Mono" />
+                            <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+                            <Area type="monotone" dataKey="actual"    name="REAL"  stroke="#3b82f6" strokeWidth={2} fill={`url(#ga${ci})`} dot={false} />
+                            <Area type="monotone" dataKey="predicted" name="PREV." stroke="#4ade80" strokeWidth={2} strokeDasharray="5 4" fill={`url(#gb${ci})`} dot={false} />
+                            <Area type="monotone" dataKey="upper"     stroke="transparent" fill="#4ade80" fillOpacity={0.03} dot={false} />
+                            <Area type="monotone" dataKey="lower"     stroke="transparent" fill="#4ade80" fillOpacity={0.03} dot={false} />
+                          </AreaChart>
+                        ) : (
+                          <LineChart data={cfg.data}>
+                            <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                            <XAxis dataKey={cfg.xKey} stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                            <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} domain={["auto","auto"]} fontFamily="IBM Plex Mono" />
+                            <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+                            <Line type="monotone" dataKey="actual"    name="REAL"  stroke="#3b82f6" strokeWidth={2} dot={{ r: 2.5, fill: "#3b82f6", strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="predicted" name="PREV." stroke="#a855f7" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#a855f7", strokeWidth: 0 }} />
+                          </LineChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-5 px-5 pb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-[2px] rounded-full bg-blue-400" />
+                        <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>REAL</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-[2px] rounded-full" style={{ background: cfg.chart === "area" ? "#4ade80" : "#a855f7" }} />
+                        <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>PROJECÇÃO IA</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* ── Insights + Risks ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                {/* Insights */}
+                <motion.div
+                  className="lg:col-span-2"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }}
+                  transition={{ delay: 0.55 }}
+                >
+                  <div
+                    className="rounded overflow-hidden"
+                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <div
+                      className="flex items-center gap-2 px-5 py-4"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                    >
+                      <Sparkles className="w-3 h-3 text-violet-400" />
+                      <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                        STRATEGIC INSIGHTS // ANÁLISE IA
+                      </span>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                       {predictions?.insights?.length ? (
                         predictions.insights.map((insight, i) => {
-                          const colors = {
-                            opportunity: { bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.2)", icon: C.green, IconEl: Zap },
-                            alert:       { bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.2)",  icon: C.red,   IconEl: AlertCircle },
-                            info:        { bg: "rgba(59,130,246,0.08)", border: "rgba(59,130,246,0.2)", icon: C.blue,  IconEl: Info },
-                          }[insight.type] || { bg: C.surface, border: C.border, icon: C.textMid, IconEl: Info };
-
-                          const impactColor = { alto: C.red, médio: C.amber, baixo: C.blue }[insight.impact];
+                          const cfg = {
+                            opportunity: { color: "#4ade80", bg: "rgba(74,222,128,0.07)",  border: "rgba(74,222,128,0.15)",  Icon: Zap         },
+                            alert:       { color: "#f87171", bg: "rgba(248,113,113,0.07)", border: "rgba(248,113,113,0.15)", Icon: AlertCircle  },
+                            info:        { color: "#60a5fa", bg: "rgba(96,165,250,0.07)",  border: "rgba(96,165,250,0.15)",  Icon: Info         },
+                          }[insight.type] ?? { color: "#64748b", bg: "rgba(100,116,139,0.07)", border: "rgba(100,116,139,0.15)", Icon: Info };
+                          const ic = impactColor(insight.impact);
 
                           return (
-                            <motion.div key={i}
-                              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.08 }}
-                              style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 18 }}
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.07 }}
+                              className="p-4 rounded"
+                              style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
                             >
                               <div className="flex items-start justify-between mb-3">
-                                <div style={{ width: 30, height: 30, borderRadius: 8, background: `${colors.icon}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <colors.IconEl style={{ width: 13, height: 13, color: colors.icon }} />
+                                <div className="w-7 h-7 flex items-center justify-center rounded" style={{ background: `${cfg.color}18` }}>
+                                  <cfg.Icon className="w-3.5 h-3.5" style={{ color: cfg.color }} />
                                 </div>
-                                <span style={{ fontFamily: C.mono, fontSize: 8, fontWeight: 700, color: impactColor, letterSpacing: "0.14em", textTransform: "uppercase", padding: "3px 8px", background: `${impactColor}15`, borderRadius: 4 }}>
-                                  {insight.impact}
+                                <span
+                                  className="text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded"
+                                  style={{ background: `${ic}18`, color: ic }}
+                                >
+                                  {insight.impact.toUpperCase()}
                                 </span>
                               </div>
-                              <p style={{ fontFamily: C.sans, fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 6 }}>{insight.title}</p>
-                              <p style={{ fontFamily: C.sans, fontSize: 11.5, color: C.textMid, lineHeight: 1.65 }}>{insight.description}</p>
+                              <p className="text-[11px] font-bold mb-1.5" style={{ color: "hsl(var(--foreground))" }}>{insight.title}</p>
+                              <p className="text-[10px] leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>{insight.description}</p>
                             </motion.div>
                           );
                         })
                       ) : (
-                        <div className="col-span-2 flex items-center justify-center py-14"
-                          style={{ background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 10 }}>
-                          <p style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                            Nenhum insight disponível
-                          </p>
+                        <div
+                          className="col-span-2 flex items-center justify-center py-14 text-[10px] font-bold tracking-[0.2em]"
+                          style={{ color: "hsl(var(--muted-foreground))", border: "1px dashed rgba(255,255,255,0.06)", borderRadius: "4px" }}
+                        >
+                          // NENHUM INSIGHT DISPONÍVEL
                         </div>
                       )}
                     </div>
                   </div>
+                </motion.div>
 
-                  {/* Risks */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Shield style={{ width: 14, height: 14, color: C.amber }} />
-                      <span style={{ fontFamily: C.mono, fontSize: 9, fontWeight: 700, color: C.text, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                        Matriz de Riscos
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {predictions?.risks?.map((risk, i) => {
-                        const lvlColor = { alto: C.red, médio: C.amber, baixo: C.blue }[risk.impact_level];
-                        return (
-                          <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16, borderLeft: `2px solid ${lvlColor}` }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                                {risk.category}
-                              </span>
-                              <span style={{ fontFamily: C.mono, fontSize: 8, fontWeight: 700, color: lvlColor, padding: "2px 7px", background: `${lvlColor}15`, borderRadius: 3 }}>
-                                {risk.impact_level}
-                              </span>
-                            </div>
-                            <p style={{ fontFamily: C.sans, fontSize: 12, color: C.textMid, lineHeight: 1.6, marginBottom: 10 }}>{risk.description}</p>
-                            <div className="flex items-center justify-between">
-                              <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim }}>Prob.</span>
-                              <span style={{ fontFamily: C.mono, fontSize: 11, fontWeight: 700, color: lvlColor }}>{risk.probability}%</span>
-                            </div>
-                            <div style={{ height: 2, background: C.border, borderRadius: 99, overflow: "hidden", marginTop: 6 }}>
-                              <motion.div
-                                initial={{ width: 0 }} whileInView={{ width: `${risk.probability}%` }}
-                                viewport={{ once: true }} transition={{ duration: 0.7 }}
-                                style={{ height: "100%", background: lvlColor, borderRadius: 99 }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Model performance ─────────────────── */}
-                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
-                  <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <Activity style={{ width: 14, height: 14, color: C.red }} />
-                    <span style={{ fontFamily: C.mono, fontSize: 9, fontWeight: 700, color: C.text, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                      Performance do Modelo
+                {/* Risk Matrix */}
+                <motion.div
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: bootDone ? 1 : 0, x: bootDone ? 0 : 12 }}
+                  transition={{ delay: 0.58 }}
+                  className="rounded overflow-hidden"
+                  style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <div
+                    className="flex items-center gap-2 px-5 py-4"
+                    style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                  >
+                    <Shield className="w-3 h-3 text-amber-400" />
+                    <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      RISK MATRIX // FACTORES
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 p-6">
-                    <MetricCard label="MAPE" value={`${predictions?.model_performance?.mape?.toFixed(1) ?? "—"}%`} color={C.green} sub="Erro Médio Absoluto" />
-                    <MetricCard label="Precisão (30d)" value={`${predictions?.model_performance?.accuracy_30d?.toFixed(1) ?? "—"}%`} color={C.red} sub="Taxa de Acerto" />
-                    <MetricCard label="R² Score" value={predictions?.model_performance?.r2_score?.toFixed(2) ?? "—"} color={C.amber} sub="Coef. de Correlação" />
-                    <MetricCard label="Status" value="Operacional" color={C.green} sub="Sistema Ativo" icon={CheckCircle} />
+                  <div className="p-4 space-y-2">
+                    {predictions?.risks?.map((risk, i) => {
+                      const lc = impactColor(risk.impact_level);
+                      return (
+                        <div
+                          key={i}
+                          className="p-3 rounded"
+                          style={{
+                            background: "rgba(255,255,255,0.02)",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                            borderLeft: `2px solid ${lc}`,
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>
+                              {risk.category.toUpperCase()}
+                            </span>
+                            <span
+                              className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: `${lc}15`, color: lc }}
+                            >
+                              {risk.impact_level.toUpperCase()}
+                            </span>
+                          </div>
+                          <p className="text-[10px] leading-relaxed mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            {risk.description}
+                          </p>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.25)" }}>PROB.</span>
+                            <span className="text-[10px] font-bold tabular-nums" style={{ color: lc }}>{risk.probability}%</span>
+                          </div>
+                          <div className="h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <motion.div
+                              className="h-full rounded-full"
+                              initial={{ width: 0 }}
+                              whileInView={{ width: `${risk.probability}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.7 }}
+                              style={{ background: lc }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* ── Model Performance ── */}
+              <motion.div
+                className="rounded overflow-hidden"
+                style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }}
+                transition={{ delay: 0.62 }}
+              >
+                <div
+                  className="flex items-center gap-2 px-5 py-4"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                >
+                  <Activity className="w-3 h-3 text-red-500" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    MODEL DIAGNOSTICS // PERFORMANCE DO MOTOR IA
+                  </span>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <Pulse color="#4ade80" />
+                    <span className="text-[9px] font-bold text-green-400 tracking-widest">OPERACIONAL</span>
                   </div>
                 </div>
 
-              </div>
-            </main>
-          </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-0">
+                  {[
+                    { label: "MAPE",           value: `${predictions?.model_performance?.mape?.toFixed(1) ?? "—"}%`, color: "#4ade80", sub: "ERRO MÉDIO ABSOLUTO",   tag: "ERR" },
+                    { label: "PRECISÃO (30D)", value: `${predictions?.model_performance?.accuracy_30d?.toFixed(1) ?? "—"}%`, color: "#f87171", sub: "TAXA DE ACERTO",  tag: "ACC" },
+                    { label: "R² SCORE",       value: predictions?.model_performance?.r2_score?.toFixed(2) ?? "—", color: "#fb923c", sub: "COEF. CORRELAÇÃO",         tag: "COR" },
+                    { label: "STATUS",         value: "ONLINE", color: "#4ade80", sub: "SISTEMA ACTIVO",                                                              tag: "SYS" },
+                  ].map((m, i) => (
+                    <div
+                      key={i}
+                      className="p-6 relative"
+                      style={{
+                        borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                      }}
+                    >
+                      <div className="absolute top-0 right-0 text-[8px] font-bold px-2 py-0.5" style={{ background: `${m.color}12`, color: m.color, borderBottomLeftRadius: "4px" }}>
+                        {m.tag}
+                      </div>
+                      <div className="text-[9px] font-bold tracking-[0.2em] mb-3" style={{ color: "hsl(var(--muted-foreground))" }}>{m.label}</div>
+                      <div className="text-2xl font-bold tabular-nums" style={{ color: m.color, letterSpacing: "-0.02em" }}>{m.value}</div>
+                      <div className="text-[9px] mt-1 font-bold tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
 
-          <MobileBottomNav />
+            </div>
+          </main>
         </div>
+
+        <MobileBottomNav />
       </div>
-    </>
+    </div>
   );
 };
 

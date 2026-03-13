@@ -6,8 +6,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  AlertTriangle, 
+import {
+  AlertTriangle,
   Shield,
   Globe,
   Scale,
@@ -24,7 +24,10 @@ import {
   Activity,
   Zap,
   X,
-  Flame,
+  Terminal,
+  ChevronRight,
+  Radio,
+  Lock,
 } from "lucide-react";
 import {
   RadarChart,
@@ -34,9 +37,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
@@ -45,20 +46,20 @@ import { DataDepthBadge } from "@/components/dashboard/DataDepthBadge";
 import { DataSourcesPanel } from "@/components/dashboard/DataSourcesPanel";
 import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
-// --- Interfaces ---
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface RiskScore {
   category: string;
   score: number;
-  trend: 'up' | 'down' | 'stable';
+  trend: "up" | "down" | "stable";
   description: string;
 }
 
 interface RiskAlert {
   id: string;
-  alert_type: 'critical' | 'warning' | 'info';
+  alert_type: "critical" | "warning" | "info";
   title: string;
   description: string;
-  impact: 'high' | 'medium' | 'low';
+  impact: "high" | "medium" | "low";
   region: string;
   created_at: string;
 }
@@ -69,422 +70,627 @@ interface CountryRisk {
   trend: string;
 }
 
+// ─── Scanline ─────────────────────────────────────────────────────────────────
+const ScanlineOverlay = () => (
+  <div
+    className="pointer-events-none fixed inset-0 z-50 opacity-[0.022]"
+    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)" }}
+  />
+);
+
+// ─── Radar Pulse ──────────────────────────────────────────────────────────────
+const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
+  <span className="relative inline-flex h-2 w-2">
+    <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ background: color }} />
+    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: color }} />
+  </span>
+);
+
+// ─── Score color helpers ──────────────────────────────────────────────────────
+const scoreColor = (s: number) =>
+  s > 70 ? "#ef4444" : s > 50 ? "#f97316" : s > 30 ? "#f59e0b" : "#4ade80";
+
+const scoreLabel = (s: number) =>
+  s > 70 ? "CRÍTICO" : s > 50 ? "ELEVADO" : s > 30 ? "MODERADO" : "ESTÁVEL";
+
+// ─── Custom Radar Tooltip ─────────────────────────────────────────────────────
+const RadarTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const score = payload[0].value;
+  return (
+    <div
+      className="px-3 py-2 text-[10px] font-bold"
+      style={{ background: "hsl(var(--card))", border: `1px solid ${scoreColor(score)}44`, borderRadius: "4px", fontFamily: "'IBM Plex Mono', monospace" }}
+    >
+      <div style={{ color: "hsl(var(--muted-foreground))" }}>{payload[0].payload.category}</div>
+      <div style={{ color: scoreColor(score), fontSize: "18px", letterSpacing: "-0.03em" }}>{score}<span style={{ fontSize: "10px", opacity: 0.6 }}>/100</span></div>
+      <div style={{ color: scoreColor(score) }}>{scoreLabel(score)}</div>
+    </div>
+  );
+};
+
+// ─── Alert row ────────────────────────────────────────────────────────────────
+const alertConfig = {
+  critical: { color: "#ef4444", bg: "rgba(239,68,68,0.08)",  border: "rgba(239,68,68,0.2)",  icon: AlertTriangle, label: "CRÍTICO"  },
+  warning:  { color: "#f97316", bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.2)", icon: AlertCircle,   label: "AVISO"    },
+  info:     { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "rgba(96,165,250,0.2)", icon: Info,          label: "INFO"     },
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 const Risk = () => {
-  const [riskScores, setRiskScores] = useState<RiskScore[]>([]);
-  const [alerts, setAlerts] = useState<RiskAlert[]>([]);
+  const [riskScores, setRiskScores]   = useState<RiskScore[]>([]);
+  const [alerts, setAlerts]           = useState<RiskAlert[]>([]);
   const [countryRisks, setCountryRisks] = useState<CountryRisk[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [analyzing, setAnalyzing]     = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [showSimulator, setShowSimulator] = useState(false);
-  const [activeTab, setActiveTab] = useState<'risk' | 'transition'>('risk');
+  const [activeTab, setActiveTab]     = useState<"risk" | "transition">("risk");
+  const [now, setNow]                 = useState(new Date());
+  const [bootDone, setBootDone]       = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<string | null>(null);
 
+  useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { setTimeout(() => setBootDone(true), 950); }, []);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const getCategoryName = (cat: string) => ({
+    geopolitical: "GEOPOLÍTICO", regulatory: "REGULATÓRIO", fiscal: "FISCAL",
+    operational: "OPERACIONAL", currency: "CAMBIAL", environmental: "AMBIENTAL",
+  }[cat] ?? cat.toUpperCase());
+
+  const formatTimeAgo = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const h = Math.floor(diff / 3600000);
+    if (h > 24) return `${Math.floor(h / 24)}D AGO`;
+    if (h > 0)  return `${h}H AGO`;
+    return `${Math.floor((diff % 3600000) / 60000)}M AGO`;
+  };
+
+  // ── Data ──────────────────────────────────────────────────────────────────
   const fetchRiskData = async () => {
     setLoading(true);
     try {
       const [riskResult, alertsResult, countryResult] = await Promise.all([
-        supabase.from('risk_data').select('*').order('created_at', { ascending: false }),
-        supabase.from('risk_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false }),
-        supabase.from('country_risk').select('*').order('data_date', { ascending: false }),
+        supabase.from("risk_data").select("*").order("created_at", { ascending: false }),
+        supabase.from("risk_alerts").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+        supabase.from("country_risk").select("*").order("data_date", { ascending: false }),
       ]);
-
       if (riskResult.data?.length) {
-        const latestByCategory = riskResult.data.reduce((acc: Record<string, RiskScore>, item) => {
-          if (!acc[item.category]) {
-            acc[item.category] = {
-              category: getCategoryName(item.category),
-              score: item.score,
-              trend: item.trend as any,
-              description: item.description,
-            };
-          }
+        const latest = riskResult.data.reduce((acc: Record<string, RiskScore>, item) => {
+          if (!acc[item.category]) acc[item.category] = { category: getCategoryName(item.category), score: item.score, trend: item.trend as any, description: item.description };
           return acc;
         }, {});
-        setRiskScores(Object.values(latestByCategory));
+        setRiskScores(Object.values(latest));
         setLastUpdated(riskResult.data[0]?.updated_at);
       }
-
       if (alertsResult.data?.length) setAlerts(alertsResult.data as any);
       if (countryResult.data?.length) {
-        const latestByCountry = countryResult.data.reduce((acc: Record<string, CountryRisk>, item) => {
-          if (!acc[item.country]) {
-            acc[item.country] = { country: item.country, score: item.score, trend: item.trend };
-          }
+        const latest = countryResult.data.reduce((acc: Record<string, CountryRisk>, item) => {
+          if (!acc[item.country]) acc[item.country] = { country: item.country, score: item.score, trend: item.trend };
           return acc;
         }, {});
-        setCountryRisks(Object.values(latestByCountry));
+        setCountryRisks(Object.values(latest));
       }
-    } catch (error) {
-      console.error('Error fetching risk data:', error);
-      toast.error("Erro ao carregar dados de risco");
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error("FALHA — Dados de risco indisponíveis"); }
+    finally { setLoading(false); }
   };
 
   const analyzeRisks = async () => {
     setAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-risks');
+      const { data, error } = await supabase.functions.invoke("analyze-risks");
       if (error) throw error;
-      if (data?.success) {
-        toast.success("Análise de riscos atualizada!");
-        fetchRiskData();
-      }
-    } catch (error) {
-      toast.error("Erro ao processar análise");
-    } finally {
-      setAnalyzing(false);
-    }
+      if (data?.success) { toast.success("INTELIGÊNCIA ACTUALIZADA // SYS OK"); fetchRiskData(); }
+    } catch { toast.error("ANÁLISE FALHOU — Tentar novamente"); }
+    finally { setAnalyzing(false); }
   };
 
   useEffect(() => { fetchRiskData(); }, []);
 
-  const getCategoryName = (category: string) => {
-    const names: Record<string, string> = {
-      geopolitical: "Geopolítico",
-      regulatory: "Regulatório",
-      fiscal: "Fiscal",
-      operational: "Operacional",
-      currency: "Cambial",
-      environmental: "Ambiental",
-    };
-    return names[category] || category;
-  };
-
   const globalRiskIndex = useMemo(() => {
-    if (riskScores.length === 0) return 0;
-    const weights: Record<string, number> = {
-      "Geopolítico": 0.25, "Regulatório": 0.2, "Fiscal": 0.2,
-      "Operacional": 0.15, "Cambial": 0.1, "Ambiental": 0.1,
-    };
-    return Math.round(riskScores.reduce((sum, r) => sum + (r.score * (weights[r.category] || 0.15)), 0));
+    if (!riskScores.length) return 0;
+    const weights: Record<string, number> = { "GEOPOLÍTICO": 0.25, "REGULATÓRIO": 0.2, "FISCAL": 0.2, "OPERACIONAL": 0.15, "CAMBIAL": 0.1, "AMBIENTAL": 0.1 };
+    return Math.round(riskScores.reduce((s, r) => s + r.score * (weights[r.category] ?? 0.15), 0));
   }, [riskScores]);
 
-  const formatTimeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const hours = Math.floor(diff / 3600000);
-    if (hours > 24) return `há ${Math.floor(hours / 24)} dias`;
-    if (hours > 0) return `há ${hours}h`;
-    return `há ${Math.floor((diff % 3600000) / 60000)}m`;
-  };
+  const criticalCount = alerts.filter(a => a.alert_type === "critical").length;
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
+    <div
+      className="flex h-screen overflow-hidden text-foreground"
+      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
+    >
       <Helmet>
-        <title>Risk Intelligence | AlphaData</title>
+        <title>ALPHADAT-OS // RISCO & GEOPOLÍTICA</title>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Helmet>
+
+      <ScanlineOverlay />
+
+      {/* Boot */}
+      <AnimatePresence>
+        {!bootDone && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
+            exit={{ opacity: 0, transition: { duration: 0.35 } }}
+          >
+            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
+              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
+              <p className="opacity-70">MOUNTING GEOPOLITICAL THREAT ENGINE....... OK</p>
+              <p className="opacity-70">CALIBRATING RISK VECTORS.................. OK</p>
+              <p className="text-red-500 animate-pulse">LOADING RISK INTELLIGENCE MODULE.......... ■</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Sidebar activeItem="/risk" />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Glow */}
+        <div className="absolute top-0 right-0 w-[45%] h-[40%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(239,68,68,0.04) 0%, transparent 70%)" }} />
+        <div className="absolute bottom-0 left-0 w-[35%] h-[30%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(249,115,22,0.03) 0%, transparent 70%)" }} />
+
         <Header activeItem="/risk" />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-none">
-          <div className="max-w-[1600px] mx-auto space-y-8">
-            
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="space-y-2">
-                {/* Sector badge */}
-                <div className="flex items-center gap-2 font-semibold text-xs tracking-[0.15em] uppercase text-red-600 dark:text-red-500">
-                  <Flame className="w-3.5 h-3.5 fill-current" />
-                  Petroleum Risk Intelligence
+        {/* Status Bar */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: bootDone ? 1 : 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center justify-between px-6 py-2 border-b shrink-0"
+          style={{ borderColor: "rgba(220,38,38,0.12)", background: "rgba(220,38,38,0.03)" }}
+        >
+          <div className="flex items-center gap-4 text-[10px] font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
+            <span className="flex items-center gap-1.5" style={{ color: criticalCount > 0 ? "#f87171" : "#4ade80" }}>
+              <Pulse color={criticalCount > 0 ? "#ef4444" : "#4ade80"} />
+              {criticalCount > 0 ? `${criticalCount} ALERTA(S) CRÍTICO(S)` : "SISTEMA ESTÁVEL"}
+            </span>
+            <span className="opacity-40">|</span>
+            <span>MÓDULO: RISCO & GEOPOLÍTICA</span>
+            <span className="opacity-40">|</span>
+            <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> CLASSIFICAÇÃO: RESTRITO</span>
+          </div>
+          <div className="text-[10px] tabular-nums" style={{ color: "hsl(var(--muted-foreground))" }}>
+            {lastUpdated && <span className="mr-3 opacity-50">UPD: {formatTimeAgo(lastUpdated)}</span>}
+            <span style={{ color: "hsl(var(--foreground))" }}>{now.toLocaleTimeString("pt-BR", { hour12: false })}</span>
+          </div>
+        </motion.div>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8 custom-scrollbar">
+          <div className="max-w-[1600px] mx-auto space-y-6">
+
+            {/* ── Header ── */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: bootDone ? 1 : 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2"
+            >
+              <div>
+                <div className="flex items-center gap-2 text-[10px] mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  <Terminal className="w-3 h-3 text-red-500" />
+                  <span>ALPHADAT-OS</span>
+                  <ChevronRight className="w-3 h-3 opacity-40" />
+                  <span>INTELLIGENCE</span>
+                  <ChevronRight className="w-3 h-3 opacity-40" />
+                  <span style={{ color: "hsl(var(--foreground))" }}>RISCO</span>
                 </div>
-                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Risco & Geopolítica</h1>
-                <p className="text-muted-foreground text-base max-w-2xl leading-relaxed">
-                  Monitorização avançada de ameaças regulatórias e dinâmicas de poder no setor energético.
-                </p>
+                <div className="text-[10px] font-bold tracking-[0.3em] mb-1" style={{ color: "rgba(220,38,38,0.8)" }}>
+                  MÓDULO-06 // THREAT INTELLIGENCE
+                </div>
+                <h1 className="font-bold leading-none" style={{ fontSize: "clamp(2rem,4vw,3.5rem)", letterSpacing: "-0.02em" }}>
+                  RISCO & GEOPOLÍTICA
+                </h1>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="h-[1px] w-12 bg-red-600" />
+                  <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))", letterSpacing: "0.05em" }}>
+                    MONITORIZAÇÃO AVANÇADA DE AMEAÇAS REGULATÓRIAS E DINÂMICAS DE PODER
+                  </p>
+                </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
-                {lastUpdated && (
-                  <span className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-                    <Clock className="w-3 h-3" />
-                    {formatTimeAgo(lastUpdated)}
-                  </span>
-                )}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="rounded-full px-6 border-2 hover:bg-secondary/50 transition-all"
-                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex, lastUpdated: lastUpdated || undefined })}>
-                  <FileDown className="w-4 h-4 mr-2" /> Exportar
-                </Button>
-                <Button
-                  size="lg"
-                  className="rounded-full px-6 bg-red-700 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-600 text-white border-0 shadow-lg shadow-red-900/30 hover:shadow-red-700/40 transition-all"
+                <button
+                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex, lastUpdated: lastUpdated || undefined })}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded text-[11px] font-bold tracking-widest transition-all border"
+                  style={{ borderColor: "rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))", background: "transparent" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(220,38,38,0.3)"; (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))"; }}
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  EXPORTAR
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={analyzeRisks}
-                  disabled={analyzing}>
-                  {analyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  {analyzing ? "A processar..." : "Atualizar Inteligência"}
-                </Button>
+                  disabled={analyzing}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded text-[11px] font-bold tracking-widest"
+                  style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", color: "white", boxShadow: "0 0 20px rgba(220,38,38,0.3)", border: "1px solid rgba(220,38,38,0.5)", opacity: analyzing ? 0.7 : 1 }}
+                >
+                  {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  {analyzing ? "PROCESSANDO..." : "ACTUALIZAR INTEL"}
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Tab Navigation */}
-            <div className="flex items-center gap-1 bg-secondary/50 dark:bg-white/[0.04] p-1 rounded-xl border border-border/50 w-fit">
-              <button
-                onClick={() => setActiveTab('risk')}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                  activeTab === 'risk'
-                    ? 'bg-background dark:bg-white/10 text-foreground shadow-sm border border-border/50'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Risco & Geopolítica
-              </button>
-              <button
-                onClick={() => setActiveTab('transition')}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
-                  activeTab === 'transition'
-                    ? 'bg-background dark:bg-white/10 text-foreground shadow-sm border border-border/50'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Transition Risk
-                <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-black uppercase px-1.5 py-0">
-                  NEW
-                </Badge>
-              </button>
-            </div>
+            {/* ── Tab Toggle ── */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: bootDone ? 1 : 0 }}
+              transition={{ delay: 0.25 }}
+              className="flex rounded overflow-hidden text-[10px] font-bold tracking-widest w-fit"
+              style={{ border: "1px solid rgba(255,255,255,0.07)", background: "hsl(var(--card))" }}
+            >
+              {(["risk", "transition"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="flex items-center gap-2 px-5 py-2.5 transition-all duration-150"
+                  style={activeTab === tab ? { background: "rgba(255,255,255,0.07)", color: "hsl(var(--foreground))" } : { color: "hsl(var(--muted-foreground))" }}
+                >
+                  {tab === "risk" ? "RISCO & GEOPOLÍTICA" : (
+                    <>
+                      TRANSITION RISK
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c", border: "1px solid rgba(251,146,60,0.25)" }}>NEW</span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </motion.div>
 
-            {activeTab === 'transition' ? (
+            {activeTab === "transition" ? (
               <EnergyTransitionRisk />
             ) : (
-            <>
-
-            {/* KPI Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              <KPICard 
-                title="Índice Global" 
-                value={globalRiskIndex} 
-                subtitle={
-                  globalRiskIndex > 70 ? "Crítico" :
-                  globalRiskIndex > 50 ? "Elevado" :
-                  globalRiskIndex > 30 ? "Moderado" : "Estável"
-                }
-                icon={<Shield className="w-5 h-5" />}
-                color={
-                  globalRiskIndex > 70 ? "destructive" :
-                  globalRiskIndex > 50 ? "warning" :
-                  globalRiskIndex > 30 ? "caution" : "success"
-                }
-                loading={loading}
-              />
-              <KPICard 
-                title="Geopolítico" 
-                value={riskScores.find(r => r.category === 'Geopolítico')?.score || 0} 
-                trend={riskScores.find(r => r.category === 'Geopolítico')?.trend}
-                icon={<Globe className="w-5 h-5" />}
-                loading={loading}
-              />
-              <KPICard 
-                title="Regulatório" 
-                value={riskScores.find(r => r.category === 'Regulatório')?.score || 0} 
-                subtitle="Impacto Médio"
-                icon={<Scale className="w-5 h-5" />}
-                loading={loading}
-              />
-              <KPICard 
-                title="Alertas Ativos" 
-                value={alerts.length} 
-                subtitle={`${alerts.filter(a => a.alert_type === 'critical').length} Críticos`}
-                icon={<AlertTriangle className="w-5 h-5" />}
-                color={
-                  alerts.filter(a => a.alert_type === 'critical').length > 0 ? "destructive" :
-                  alerts.length > 0 ? "warning" : "success"
-                }
-                loading={loading}
-              />
-            </div>
-
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
-              {/* Radar Chart Section */}
-              <div className="lg:col-span-7 space-y-8">
-                <Card className="border border-border/50 shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6">
-                    <div>
-                      <CardTitle className="text-xl font-bold">Perfil de Risco Multidimensional</CardTitle>
-                      <CardDescription>Análise vectorial por categoria de impacto</CardDescription>
-                    </div>
-                    <div className="p-2 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400">
-                      <Activity className="w-5 h-5" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-8">
-                    <div className="h-[400px] w-full">
-                      {loading ? <Skeleton className="w-full h-full rounded-xl" /> : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart data={riskScores.map(r => ({ category: r.category, value: r.score }))}>
-                            <PolarGrid stroke="hsl(var(--border))" strokeDasharray="4 4" />
-                            <PolarAngleAxis
-                              dataKey="category"
-                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 500 }}
-                            />
-                            <Radar
-                              name="Risco"
-                              dataKey="value"
-                              stroke="#dc2626"
-                              fill="#dc2626"
-                              fillOpacity={0.12}
-                              strokeWidth={2.5}
-                            />
-                            <Tooltip content={<CustomRadarTooltip />} />
-                          </RadarChart>
-                        </ResponsiveContainer>
+              <>
+                {/* ── KPI Grid ── */}
+                <motion.div
+                  className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {[
+                    {
+                      label: "ÍNDICE GLOBAL",
+                      value: globalRiskIndex,
+                      suffix: "/100",
+                      sub: scoreLabel(globalRiskIndex),
+                      icon: Shield,
+                      color: scoreColor(globalRiskIndex),
+                      tag: "GRI",
+                    },
+                    {
+                      label: "GEOPOLÍTICO",
+                      value: riskScores.find(r => r.category === "GEOPOLÍTICO")?.score ?? 0,
+                      suffix: "/100",
+                      sub: null,
+                      icon: Globe,
+                      color: scoreColor(riskScores.find(r => r.category === "GEOPOLÍTICO")?.score ?? 0),
+                      tag: "GEO",
+                      trend: riskScores.find(r => r.category === "GEOPOLÍTICO")?.trend,
+                    },
+                    {
+                      label: "REGULATÓRIO",
+                      value: riskScores.find(r => r.category === "REGULATÓRIO")?.score ?? 0,
+                      suffix: "/100",
+                      sub: "IMPACTO MÉDIO",
+                      icon: Scale,
+                      color: scoreColor(riskScores.find(r => r.category === "REGULATÓRIO")?.score ?? 0),
+                      tag: "REG",
+                    },
+                    {
+                      label: "ALERTAS ACTIVOS",
+                      value: alerts.length,
+                      suffix: "",
+                      sub: `${criticalCount} CRÍTICOS`,
+                      icon: AlertTriangle,
+                      color: criticalCount > 0 ? "#ef4444" : alerts.length > 0 ? "#f97316" : "#4ade80",
+                      tag: "ALT",
+                    },
+                  ].map((k, i) => (
+                    <motion.div
+                      key={k.label}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 10 }}
+                      transition={{ delay: 0.35 + i * 0.06 }}
+                      className="relative overflow-hidden rounded p-5 group cursor-default"
+                      style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)", transition: "border-color 0.2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = `${k.color}33`}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"}
+                    >
+                      <div className="absolute top-0 right-0 text-[8px] font-bold px-2 py-0.5" style={{ background: `${k.color}18`, color: k.color, borderBottomLeftRadius: "4px" }}>
+                        {k.tag}
+                      </div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <k.icon className="w-3.5 h-3.5" style={{ color: k.color }} />
+                        <span className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>{k.label}</span>
+                        {"trend" in k && k.trend && (
+                          <span className="ml-auto" style={{ color: k.trend === "up" ? "#ef4444" : "#4ade80" }}>
+                            {k.trend === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          </span>
+                        )}
+                      </div>
+                      {loading ? (
+                        <div className="h-8 w-16 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
+                      ) : (
+                        <div>
+                          <span className="text-3xl font-bold tabular-nums" style={{ color: k.color, letterSpacing: "-0.03em" }}>{k.value}</span>
+                          <span className="text-[10px] ml-1" style={{ color: "hsl(var(--muted-foreground))" }}>{k.suffix}</span>
+                        </div>
                       )}
+                      {k.sub && <div className="text-[9px] font-bold mt-1 tracking-wider" style={{ color: k.color }}>{k.sub}</div>}
+                      <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {/* ── Main Grid ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+                  {/* ── Radar + Score Matrix ── */}
+                  <motion.div
+                    className="lg:col-span-7 rounded overflow-hidden"
+                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: bootDone ? 1 : 0, x: bootDone ? 0 : -12 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div
+                      className="flex items-center justify-between px-5 py-4"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-3 h-3 text-red-500" />
+                        <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                          VECTOR ANALYSIS // PERFIL DE RISCO MULTIDIMENSIONAL
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
-                      {riskScores.map((risk, i) => {
-                        // Semantic risk colors for petroleum sector
-                        const scoreTextColor =
-                          risk.score > 70 ? "text-red-600 dark:text-red-400" :
-                          risk.score > 50 ? "text-orange-500 dark:text-orange-400" :
-                          risk.score > 30 ? "text-amber-500 dark:text-amber-400" :
-                          "text-emerald-600 dark:text-emerald-400";
-                        const barColor =
-                          risk.score > 70 ? "bg-red-600 dark:bg-red-500" :
-                          risk.score > 50 ? "bg-orange-500 dark:bg-orange-400" :
-                          risk.score > 30 ? "bg-amber-500 dark:bg-amber-400" :
-                          "bg-emerald-600 dark:bg-emerald-400";
-                        return (
-                          <div key={i} className="p-4 rounded-2xl bg-secondary/30 border border-border/50 hover:border-red-500/20 transition-colors group">
-                            <div className="flex justify-between items-start mb-3">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.12em]">{risk.category}</span>
-                              <span className={`text-sm font-black ${scoreTextColor}`}>{risk.score}</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
-                                style={{ width: `${risk.score}%` }}
+
+                    <div className="p-5">
+                      {/* Radar */}
+                      <div className="h-[340px]">
+                        {loading ? (
+                          <div className="w-full h-full rounded animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={riskScores.map(r => ({ category: r.category, value: r.score }))}>
+                              <PolarGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 5" />
+                              <PolarAngleAxis
+                                dataKey="category"
+                                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9, fontWeight: 700, fontFamily: "IBM Plex Mono" }}
                               />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                              <Radar
+                                name="Risco"
+                                dataKey="value"
+                                stroke="#dc2626"
+                                fill="#dc2626"
+                                fillOpacity={0.1}
+                                strokeWidth={2}
+                                dot={{ r: 3, fill: "#dc2626", strokeWidth: 0 }}
+                              />
+                              <Tooltip content={<RadarTooltip />} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
 
-              {/* Alerts & Simulator Section */}
-              <div className="lg:col-span-5 space-y-6">
-                <Card className="border border-border/50 shadow-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm">
-                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6">
-                    <div>
-                      <CardTitle className="text-xl font-bold">Alertas de Segurança</CardTitle>
-                      <CardDescription>Eventos críticos em tempo real</CardDescription>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="rounded-full border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5"
-                    >
-                      {alerts.length} Ativos
-                    </Badge>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="max-h-[400px] overflow-y-auto scrollbar-none">
-                      <AnimatePresence>
-                        {alerts.map((alert, i) => (
-                          <motion.div 
-                            key={alert.id}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.08 }}
-                            className="p-5 border-b border-border/40 last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer group"
-                          >
-                            <div className="flex gap-4">
-                              <div className={`mt-0.5 p-2 rounded-lg h-fit shrink-0 ${
-                                alert.alert_type === 'critical'
-                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                                  : alert.alert_type === 'warning'
-                                  ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                              }`}>
-                                {alert.alert_type === 'critical'
-                                  ? <AlertTriangle className="w-4 h-4" />
-                                  : alert.alert_type === 'warning'
-                                  ? <AlertCircle className="w-4 h-4" />
-                                  : <Info className="w-4 h-4" />}
+                      {/* Score matrix */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+                        {riskScores.map((r, i) => {
+                          const c = scoreColor(r.score);
+                          return (
+                            <div
+                              key={i}
+                              className="p-3 rounded group"
+                              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", transition: "border-color 0.2s" }}
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = `${c}33`}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.05)"}
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-[9px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>{r.category}</span>
+                                <span className="text-[11px] font-bold tabular-nums" style={{ color: c }}>{r.score}</span>
                               </div>
-                              <div className="flex-1 space-y-1 min-w-0">
-                                <div className="flex justify-between items-start gap-2">
-                                  <h4 className="font-bold text-sm group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">{alert.title}</h4>
-                                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0">{formatTimeAgo(alert.created_at)}</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{alert.description}</p>
-                                {alert.region && (
-                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 font-mono mt-1">
-                                    <MapPin className="w-2.5 h-2.5" />
-                                    {alert.region}
+                              <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                <motion.div
+                                  className="h-full rounded-full"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${r.score}%` }}
+                                  transition={{ delay: 0.5 + i * 0.07, duration: 0.8 }}
+                                  style={{ background: c }}
+                                />
+                              </div>
+                              <div className="text-[8px] font-bold mt-1 tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* ── Right Column ── */}
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+
+                    {/* Alerts Feed */}
+                    <motion.div
+                      className="rounded overflow-hidden flex-1"
+                      style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                      initial={{ opacity: 0, x: 12 }}
+                      animate={{ opacity: bootDone ? 1 : 0, x: bootDone ? 0 : 12 }}
+                      transition={{ delay: 0.42 }}
+                    >
+                      <div
+                        className="flex items-center justify-between px-5 py-4"
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-3 h-3 text-red-500" />
+                          <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            THREAT FEED // ALERTAS ACTIVOS
+                          </span>
+                        </div>
+                        <span
+                          className="text-[9px] font-bold px-2 py-0.5 rounded"
+                          style={{
+                            background: criticalCount > 0 ? "rgba(239,68,68,0.1)" : "rgba(74,222,128,0.1)",
+                            color: criticalCount > 0 ? "#f87171" : "#4ade80",
+                            border: `1px solid ${criticalCount > 0 ? "rgba(239,68,68,0.2)" : "rgba(74,222,128,0.2)"}`,
+                          }}
+                        >
+                          {alerts.length} ACTIVOS
+                        </span>
+                      </div>
+
+                      <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
+                        <AnimatePresence>
+                          {alerts.length > 0 ? alerts.map((alert, i) => {
+                            const cfg = alertConfig[alert.alert_type] ?? alertConfig.info;
+                            const Icon = cfg.icon;
+                            const isSelected = selectedAlert === alert.id;
+                            return (
+                              <motion.div
+                                key={alert.id}
+                                initial={{ opacity: 0, x: 12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.06 }}
+                                onClick={() => setSelectedAlert(isSelected ? null : alert.id)}
+                                className="px-5 py-4 cursor-pointer relative"
+                                style={{
+                                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                                  background: isSelected ? `${cfg.bg}` : "transparent",
+                                  transition: "background 0.15s",
+                                }}
+                              >
+                                {isSelected && <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: cfg.color }} />}
+                                <div className="flex gap-3">
+                                  <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                                    <Icon className="w-3.5 h-3.5" style={{ color: cfg.color }} />
                                   </div>
-                                )}
-                              </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                      <span className="text-[11px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{alert.title}</span>
+                                      <span className="text-[9px] tabular-nums shrink-0" style={{ color: "hsl(var(--muted-foreground))" }}>{formatTimeAgo(alert.created_at)}</span>
+                                    </div>
+                                    <p className={`text-[10px] leading-relaxed ${isSelected ? "" : "line-clamp-1"}`} style={{ color: "hsl(var(--muted-foreground))" }}>
+                                      {alert.description}
+                                    </p>
+                                    {alert.region && (
+                                      <div className="flex items-center gap-1 mt-1.5">
+                                        <MapPin className="w-2.5 h-2.5" style={{ color: cfg.color }} />
+                                        <span className="text-[9px] font-bold tracking-wider" style={{ color: cfg.color }}>{alert.region.toUpperCase()}</span>
+                                        <span className="text-[8px] ml-1 px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
+                                          {cfg.label}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          }) : (
+                            <div className="py-12 text-center text-[10px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>
+                              // NENHUM ALERTA ACTIVO
                             </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  </CardContent>
-                </Card>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
 
-                {/* SIMULATOR TRIGGER CARD */}
-                <Card className="border border-red-900/20 dark:border-red-900/30 shadow-xl overflow-hidden relative bg-gradient-to-br from-red-950/40 via-[#1a0808]/60 to-background dark:from-red-950/50">
-                  {/* Subtle noise texture overlay */}
-                  <div
-                    className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04]"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-                      backgroundSize: '128px',
-                    }}
-                  />
-                  <div className="absolute top-0 right-0 p-6 opacity-[0.07]">
-                    <Activity className="w-28 h-28 text-red-500" />
-                  </div>
-                  <CardHeader className="relative z-10">
-                    <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.15em] uppercase text-red-500 dark:text-red-400 mb-1">
-                      <Zap className="w-3 h-3 fill-current" />
-                      Motor de Simulação
-                    </div>
-                    <CardTitle className="text-lg">Simulador de Impacto</CardTitle>
-                    <CardDescription>Preveja mudanças regulatórias</CardDescription>
-                  </CardHeader>
-                  <CardContent className="relative z-10">
-                    <p className="text-sm mb-6 leading-relaxed text-muted-foreground">
-                      Utilize o nosso motor de simulação para calcular o impacto de novas taxas e royalties no seu portfólio.
-                    </p>
-                    <Button 
-                      className="w-full rounded-full font-bold bg-red-700 hover:bg-red-600 text-white border-0 shadow-md shadow-red-900/30 hover:shadow-red-700/40 transition-all group"
-                      onClick={() => setShowSimulator(true)}
+                    {/* Simulator CTA */}
+                    <motion.div
+                      className="rounded overflow-hidden relative"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(220,38,38,0.12) 0%, rgba(220,38,38,0.04) 50%, transparent 100%)",
+                        border: "1px solid rgba(220,38,38,0.2)",
+                      }}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 8 }}
+                      transition={{ delay: 0.5 }}
                     >
-                      Abrir Simulador
-                      <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                      <div className="absolute top-3 right-3 opacity-8">
+                        <Activity className="w-20 h-20 text-red-500 opacity-10" />
+                      </div>
 
-            {/* History Chart + Data Sources */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-9">
-                <div className="relative">
-                  <div className="absolute top-4 right-4 z-10">
-                    <DataDepthBadge startYear={2019} endYear={2025} source="ANPG Annual Reports, Sonangol Production Data, OPEC Statistical Bulletin" />
+                      <div className="p-5 relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Zap className="w-3 h-3 text-red-500" />
+                          <span className="text-[9px] font-bold tracking-[0.25em] text-red-500">MOTOR DE SIMULAÇÃO // ACTIVO</span>
+                        </div>
+                        <h3 className="text-[13px] font-bold mb-1" style={{ color: "hsl(var(--foreground))" }}>SIMULADOR DE IMPACTO REGULATÓRIO</h3>
+                        <p className="text-[10px] leading-relaxed mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                          Calcule o impacto de novas taxas e royalties no seu portfólio com o motor de simulação preditiva.
+                        </p>
+                        <button
+                          onClick={() => setShowSimulator(true)}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded text-[10px] font-bold tracking-widest transition-all"
+                          style={{
+                            background: "linear-gradient(135deg, #dc2626, #991b1b)",
+                            color: "white",
+                            boxShadow: "0 0 16px rgba(220,38,38,0.25)",
+                            border: "1px solid rgba(220,38,38,0.4)",
+                          }}
+                        >
+                          ABRIR SIMULADOR
+                          <ArrowUpRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </motion.div>
                   </div>
-                  <RiskHistoryChart />
                 </div>
-              </div>
-              <div className="lg:col-span-3">
-                <DataSourcesPanel />
-              </div>
-            </div>
 
-            </>
+                {/* ── History + Data Sources ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <motion.div
+                    className="lg:col-span-9 rounded overflow-hidden relative"
+                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: bootDone ? 1 : 0, y: bootDone ? 0 : 12 }}
+                    transition={{ delay: 0.55 }}
+                  >
+                    <div
+                      className="flex items-center gap-2 px-5 py-4"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                        HISTORICAL INTEL // EVOLUÇÃO DO ÍNDICE DE RISCO
+                      </span>
+                      <div className="ml-auto">
+                        <DataDepthBadge startYear={2019} endYear={2025} source="ANPG Annual Reports, Sonangol Production Data, OPEC Statistical Bulletin" />
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <RiskHistoryChart />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className="lg:col-span-3 rounded overflow-hidden"
+                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: bootDone ? 1 : 0, x: bootDone ? 0 : 12 }}
+                    transition={{ delay: 0.58 }}
+                  >
+                    <div
+                      className="flex items-center gap-2 px-5 py-4"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                        FONTES // DATA SOURCES
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <DataSourcesPanel />
+                    </div>
+                  </motion.div>
+                </div>
+              </>
             )}
 
           </div>
@@ -493,30 +699,50 @@ const Risk = () => {
         <MobileBottomNav />
       </div>
 
-      {/* --- MODAL DO SIMULADOR --- */}
+      {/* ── Simulator Modal ── */}
       <AnimatePresence>
         {showSimulator && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 md:p-8"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
+            style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}
           >
-            <motion.div 
-              initial={{ scale: 0.93, y: 20 }}
+            <motion.div
+              initial={{ scale: 0.94, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.93, y: 20 }}
-              transition={{ type: "spring", damping: 24, stiffness: 280 }}
-              className="bg-background w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl relative border border-border scrollbar-none"
+              exit={{ scale: 0.94, y: 20 }}
+              transition={{ type: "spring", damping: 26, stiffness: 300 }}
+              className="w-full max-w-6xl max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+              style={{
+                background: "hsl(var(--background))",
+                border: "1px solid rgba(220,38,38,0.25)",
+                borderRadius: "6px",
+                fontFamily: "'IBM Plex Mono', monospace",
+              }}
             >
-              {/* Close button */}
-              <button 
-                onClick={() => setShowSimulator(false)}
-                className="absolute top-5 right-5 p-2 rounded-full bg-secondary hover:bg-red-500/10 hover:text-red-500 text-muted-foreground transition-colors z-10"
+              {/* Modal header bar */}
+              <div
+                className="flex items-center justify-between px-5 py-3 sticky top-0 z-10"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "hsl(var(--background))" }}
               >
-                <X className="w-5 h-5" />
-              </button>
-
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3 h-3 text-red-500" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    SIMULADOR DE IMPACTO REGULATÓRIO // MODO ACTIVO
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowSimulator(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+                  style={{ color: "hsl(var(--muted-foreground))" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#f87171"; (e.currentTarget as HTMLElement).style.background = "rgba(220,38,38,0.1)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
               <div className="p-2">
                 <RegulatoryImpactSimulator />
               </div>
@@ -524,74 +750,6 @@ const Risk = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-};
-
-// --- Sub-components ---
-const KPICard = ({ title, value, subtitle, trend, icon, color = "primary", loading }: any) => {
-  // Semantic color map — petroleum risk perception
-  const colorMap: Record<string, { iconCls: string; valCls: string; bgCls: string }> = {
-    primary:     { iconCls: "text-primary",        valCls: "text-foreground",     bgCls: "bg-primary/10"      },
-    destructive: { iconCls: "text-red-600 dark:text-red-400",    valCls: "text-red-600 dark:text-red-400",    bgCls: "bg-red-500/10"     },
-    warning:     { iconCls: "text-orange-600 dark:text-orange-400", valCls: "text-orange-600 dark:text-orange-400", bgCls: "bg-orange-500/10" },
-    caution:     { iconCls: "text-amber-600 dark:text-amber-400",  valCls: "text-amber-600 dark:text-amber-400",  bgCls: "bg-amber-500/10"  },
-    success:     { iconCls: "text-emerald-600 dark:text-emerald-400", valCls: "text-emerald-600 dark:text-emerald-400", bgCls: "bg-emerald-500/10" },
-  };
-
-  const c = colorMap[color] || colorMap.primary;
-
-  return (
-    <Card className="border border-border/50 shadow-lg hover:shadow-xl transition-all bg-white/80 dark:bg-black/40 backdrop-blur-md group">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-5">
-          <div className={`p-3 rounded-2xl ${c.bgCls} ${c.iconCls}`}>
-            {icon}
-          </div>
-          {trend && (
-            <div className={`p-1.5 rounded-lg ${
-              trend === 'up'
-                ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-            }`}>
-              {trend === 'up'
-                ? <TrendingUp className="w-3.5 h-3.5" />
-                : <TrendingDown className="w-3.5 h-3.5" />}
-            </div>
-          )}
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
-          {loading ? <Skeleton className="h-9 w-16" /> : (
-            <div className="flex items-baseline gap-2">
-              <h3 className={`text-3xl font-black tracking-tighter ${c.valCls}`}>{value}</h3>
-              <span className="text-xs font-bold text-muted-foreground">/100</span>
-            </div>
-          )}
-          {subtitle && <p className="text-xs font-semibold text-muted-foreground/70">{subtitle}</p>}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const CustomRadarTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
-  const score = payload[0].value;
-  const color =
-    score > 70 ? "#dc2626" :
-    score > 50 ? "#f97316" :
-    score > 30 ? "#f59e0b" :
-    "#10b981";
-  return (
-    <div className="bg-background/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-2xl">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 font-mono">
-        {payload[0].payload.category}
-      </p>
-      <p className="text-2xl font-black" style={{ color }}>
-        {score}
-        <span className="text-xs ml-1 text-muted-foreground font-normal">Score</span>
-      </p>
     </div>
   );
 };

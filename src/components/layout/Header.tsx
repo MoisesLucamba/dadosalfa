@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Search, ChevronDown, LogOut, Sun, Moon,
   Settings, UserCircle, X, Check, AlertTriangle,
-  Info, CreditCard, ChevronRight, Radio, HelpCircle
+  Info, CreditCard, ChevronRight, Radio, HelpCircle, Terminal,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -15,40 +15,39 @@ import { formatDistanceToNow } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 
-/* ─────────────────────────────────────────────────
-   PALETTE
-───────────────────────────────────────────────── */
-const BG_NAVY  = "#080D1A";
-const BG_CARD  = "#0D1526";
-const BG_HOVER = "#111E33";
-const RED      = "#E8192C";
-const RED_DIM  = "rgba(232,25,44,0.12)";
-const RED_BDR  = "rgba(232,25,44,0.30)";
-const BLUE     = "#1A5CFF";
-const BLUE_MID = "#3B7BFF";
-const BLUE_DIM = "rgba(26,92,255,0.15)";
-const BLUE_BDR = "rgba(59,123,255,0.30)";
-const WHITE    = "#FFFFFF";
-const W60      = "rgba(255,255,255,0.60)";
-const W30      = "rgba(255,255,255,0.30)";
-const W10      = "rgba(255,255,255,0.08)";
-const BORDER   = "rgba(255,255,255,0.07)";
-
-/* ─── Severity map ───────────────────────────────── */
-const SEV: Record<string, { color: string; bg: string; icon: any }> = {
-  alert:   { color: RED,       bg: RED_DIM,                       icon: AlertTriangle },
-  warning: { color: "#FF6B1A", bg: "rgba(255,107,26,0.12)",       icon: AlertTriangle },
-  info:    { color: BLUE_MID,  bg: BLUE_DIM,                      icon: Info          },
-  success: { color: "#4ade80", bg: "rgba(74,222,128,0.12)",       icon: Check         },
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+const T = {
+  bg:       "#04080f",
+  card:     "#070d1a",
+  hover:    "#0a1220",
+  red:      "#ef4444",
+  redDim:   "rgba(220,38,38,0.1)",
+  redBdr:   "rgba(220,38,38,0.25)",
+  sky:      "#38bdf8",
+  skyDim:   "rgba(56,189,248,0.1)",
+  skyBdr:   "rgba(56,189,248,0.25)",
+  border:   "rgba(255,255,255,0.06)",
+  w60:      "rgba(255,255,255,0.60)",
+  w30:      "rgba(255,255,255,0.30)",
+  w08:      "rgba(255,255,255,0.08)",
+  mono:     "'IBM Plex Mono', monospace",
 };
 
-/* ─── Quick search suggestions ───────────────────── */
-const QUICK_SUGGESTIONS = [
-  { label: "Bloco 17 — TotalEnergies",  path: "/production", tag: "Produção"   },
-  { label: "Preço Brent hoje",           path: "/prices",     tag: "Preços"     },
-  { label: "Exportações Dezembro",       path: "/exports",    tag: "Exportações"},
-  { label: "Risco geopolítico Angola",   path: "/risk",       tag: "Risco"      },
-  { label: "Relatório mensal",           path: "/reports",    tag: "Relatórios" },
+/* ─── Severity map ───────────────────────────────────────────────────────── */
+const SEV: Record<string, { color: string; bg: string; icon: any }> = {
+  alert:   { color: T.red,    bg: T.redDim,                      icon: AlertTriangle },
+  warning: { color: "#fb923c",bg: "rgba(251,146,60,0.1)",        icon: AlertTriangle },
+  info:    { color: T.sky,    bg: T.skyDim,                      icon: Info          },
+  success: { color: "#4ade80",bg: "rgba(74,222,128,0.1)",        icon: Check         },
+};
+
+/* ─── Quick suggestions ──────────────────────────────────────────────────── */
+const QUICK: Array<{ label: string; sig: string; path: string; tag: string }> = [
+  { label: "BLOCO 17 — TOTALENERGIES", sig: "PRD", path: "/production", tag: "PRODUÇÃO"    },
+  { label: "PREÇO BRENT HOJE",         sig: "MKT", path: "/prices",     tag: "PREÇOS"      },
+  { label: "EXPORTAÇÕES DEZEMBRO",     sig: "EXP", path: "/exports",    tag: "EXPORTAÇÕES" },
+  { label: "RISCO GEOPOLÍTICO ANGOLA", sig: "RSK", path: "/risk",       tag: "RISCO"       },
+  { label: "RELATÓRIO MENSAL",         sig: "REP", path: "/reports",    tag: "RELATÓRIOS"  },
 ];
 
 interface HeaderProps { activeItem?: string; onHelpClick?: () => void; }
@@ -73,36 +72,29 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const unread      = notifications?.filter(n => !n.is_read) ?? [];
   const unreadCount = unread.length;
 
-  const displayName = user?.email?.split("@")[0] || "Utilizador";
-  const initials    = displayName.substring(0, 2).toUpperCase();
+  const displayName = user?.email?.split("@")[0]?.toUpperCase() || "OPERADOR";
+  const initials    = displayName.substring(0, 2);
 
-  /* ── Close dropdowns on outside click ── */
+  /* Close on outside click */
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const h = (e: MouseEvent) => {
       if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) setShowNotifs(false);
       if (userRef.current   && !userRef.current.contains(e.target as Node))   setShowUser(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* ── Keyboard shortcut ⌘K / Ctrl+K ── */
+  /* ⌘K shortcut */
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-      if (e.key === "Escape") {
-        setSearchOpen(false);
-        setSearchVal("");
-      }
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); }
+      if (e.key === "Escape") { setSearchOpen(false); setSearchVal(""); }
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
   }, []);
 
-  /* ── Focus search input on open ── */
   useEffect(() => {
     if (searchOpen) setTimeout(() => searchRef.current?.focus(), 50);
   }, [searchOpen]);
@@ -110,83 +102,74 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const handleSignOut = async () => {
     setShowUser(false);
     await signOut();
-    toast.success("Sessão terminada com sucesso");
+    toast.success("SESSÃO TERMINADA // ACK");
     navigate("/auth");
   };
 
-  const filtered = QUICK_SUGGESTIONS.filter(s =>
+  const filtered = QUICK.filter(s =>
     !searchVal || s.label.toLowerCase().includes(searchVal.toLowerCase())
   );
 
-  /* ── Shared hover helpers (avoids inline repetition) ── */
-  const hoverBlue = (el: HTMLElement) => {
-    el.style.background = BLUE_DIM;
-    el.style.color = BLUE_MID;
-    el.style.borderColor = BLUE_BDR;
-  };
-  const hoverReset = (el: HTMLElement, bg = "transparent", color = W30) => {
-    el.style.background = bg;
-    el.style.color = color;
-    el.style.borderColor = "transparent";
+  /* Shared input style for search overlay */
+  const inpCls: React.CSSProperties = {
+    background: "transparent",
+    color: "rgba(255,255,255,0.9)",
+    fontFamily: T.mono,
+    fontSize: "12px",
+    fontWeight: "bold",
+    letterSpacing: "0.08em",
+    outline: "none",
+    flex: 1,
   };
 
   return (
     <>
-      {/* ══════════════════════════════════════════════════
-          HEADER BAR
-      ══════════════════════════════════════════════════ */}
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');`}</style>
+
+      {/* ── Header bar ── */}
       <motion.header
         initial={{ y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="h-16 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-30"
+        transition={{ duration: 0.28, ease: "easeOut" }}
+        className="h-14 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-30"
         style={{
-          background: BG_NAVY,
-          borderBottom: `1px solid ${BORDER}`,
+          background: T.bg,
+          borderBottom: `1px solid ${T.border}`,
+          fontFamily: T.mono,
         }}
       >
-        {/* ── LEFT ── */}
+        {/* LEFT */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <MobileNav activeItem={activeItem} />
 
           {/* Search bar — desktop */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="relative hidden sm:flex items-center gap-2.5 h-9 px-3.5 rounded-xl transition-all flex-1 max-w-xs text-left"
-            style={{ background: W10, border: `1px solid ${BORDER}`, color: W30 }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.borderColor = BLUE_BDR;
-              el.style.color = W60;
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.borderColor = BORDER;
-              el.style.color = W30;
-            }}
+            className="relative hidden sm:flex items-center gap-2.5 h-8 px-3 rounded text-left flex-1 max-w-xs transition-all"
+            style={{ background: T.w08, border: `1px solid ${T.border}`, color: T.w30 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = T.redBdr; (e.currentTarget as HTMLElement).style.color = T.w60; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.w30; }}
           >
-            <Search className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-[11px] font-medium flex-1 truncate">Pesquisar blocos, operadores…</span>
-            <kbd
-              className="hidden md:flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0"
-              style={{ background: W10, color: W30 }}
-            >
+            <Search className="w-3 h-3 shrink-0" />
+            <span className="text-[10px] font-bold tracking-wider flex-1 truncate">PESQUISAR BLOCOS, OPERADORES…</span>
+            <kbd className="hidden md:flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0"
+              style={{ background: T.w08, color: T.w30, fontFamily: T.mono }}>
               ⌘K
             </kbd>
           </button>
 
-          {/* Search icon — mobile */}
+          {/* Search — mobile */}
           <button
-            className="sm:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-            style={{ background: W10, color: W60 }}
+            className="sm:hidden w-8 h-8 rounded flex items-center justify-center"
+            style={{ background: T.w08, color: T.w60 }}
             onClick={() => setSearchOpen(true)}
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* ── RIGHT ── */}
-        <div className="flex items-center gap-1 md:gap-1.5 ml-2">
+        {/* RIGHT */}
+        <div className="flex items-center gap-0.5 md:gap-1 ml-2">
 
           {/* Data sync */}
           <div className="hidden lg:block mr-1">
@@ -194,68 +177,46 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
           </div>
 
           {/* LIVE pill */}
-          <div
-            className="hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded-full mr-1"
-            style={{ background: RED_DIM, border: `1px solid ${RED_BDR}` }}
-          >
-            <Radio className="w-2.5 h-2.5 animate-pulse" style={{ color: RED }} />
-            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: RED }}>Live</span>
+          <div className="hidden md:flex items-center gap-1.5 h-6 px-2.5 rounded mr-1.5"
+            style={{ background: T.redDim, border: `1px solid ${T.redBdr}` }}>
+            <Radio className="w-2.5 h-2.5 animate-pulse" style={{ color: T.red }} />
+            <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: T.red }}>LIVE</span>
           </div>
 
-          {/* Help / Tour button */}
+          {/* Help */}
           {onHelpClick && (
-            <button
-              onClick={onHelpClick}
-              title="Tour Guiado"
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-              style={{ color: W30 }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = WHITE; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W30; }}
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
+            <IconBtn onClick={onHelpClick} title="TOUR GUIADO">
+              <HelpCircle className="w-3.5 h-3.5" />
+            </IconBtn>
           )}
 
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            title={theme === "dark" ? "Modo Claro" : "Modo Escuro"}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-            style={{ color: W30 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = WHITE; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W30; }}
-          >
+          {/* Theme */}
+          <IconBtn onClick={toggleTheme} title={theme === "dark" ? "MODO CLARO" : "MODO ESCURO"}>
             <motion.div animate={{ rotate: theme === "dark" ? 0 : 180 }} transition={{ duration: 0.3 }}>
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </motion.div>
-          </button>
+          </IconBtn>
 
           {/* ── Notifications ── */}
           <div className="relative" ref={notifsRef}>
             <button
               onClick={() => { setShowNotifs(p => !p); setShowUser(false); }}
-              className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+              className="relative w-8 h-8 rounded flex items-center justify-center transition-all"
               style={{
-                background: showNotifs ? RED_DIM : "transparent",
-                color: showNotifs ? RED : W30,
-                border: `1px solid ${showNotifs ? RED_BDR : "transparent"}`,
+                background: showNotifs ? T.redDim : "transparent",
+                color: showNotifs ? T.red : T.w30,
+                border: `1px solid ${showNotifs ? T.redBdr : "transparent"}`,
               }}
-              onMouseEnter={e => {
-                if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = WHITE; }
-              }}
-              onMouseLeave={e => {
-                if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W30; }
-              }}
+              onMouseEnter={e => { if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.color = "white"; } }}
+              onMouseLeave={e => { if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w30; } }}
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-3.5 h-3.5" />
               <AnimatePresence>
                 {unreadCount > 0 && (
                   <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
-                    style={{ background: RED }}
+                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                    className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                    style={{ background: T.red, fontFamily: T.mono }}
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </motion.span>
@@ -263,43 +224,43 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
               </AnimatePresence>
             </button>
 
-            {/* Notifications dropdown */}
+            {/* Notifs dropdown */}
             <AnimatePresence>
               {showNotifs && (
                 <motion.div
                   initial={{ opacity: 0, y: 6, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                  transition={{ duration: 0.14 }}
-                  className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden shadow-2xl z-50"
-                  style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}
+                  transition={{ duration: 0.13 }}
+                  className="absolute right-0 top-10 w-80 rounded overflow-hidden shadow-2xl z-50"
+                  style={{ background: T.card, border: `1px solid rgba(220,38,38,0.2)`, fontFamily: T.mono }}
                 >
-                  {/* header */}
-                  <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: BORDER }}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: T.border, background: "rgba(220,38,38,0.04)" }}>
                     <div className="flex items-center gap-2">
-                      <Bell className="w-3.5 h-3.5" style={{ color: RED }} />
-                      <span className="font-black text-white text-[13px]">Notificações</span>
+                      <Terminal className="w-3 h-3" style={{ color: T.red }} />
+                      <span className="text-[10px] font-bold tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.9)" }}>NOTIFICAÇÕES</span>
                       {unreadCount > 0 && (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full"
-                          style={{ background: RED_DIM, color: RED }}>
-                          {unreadCount} novas
+                        <span className="text-[8px] font-bold px-2 py-0.5 rounded tracking-widest"
+                          style={{ background: T.redDim, color: T.red }}>
+                          {unreadCount} NOVAS
                         </span>
                       )}
                     </div>
                     {unreadCount > 0 && (
                       <button
                         onClick={() => notifications?.filter(n => !n.is_read).forEach(n => markRead.mutate(n.id))}
-                        className="text-[9px] font-black uppercase tracking-widest transition-colors"
-                        style={{ color: W30 }}
-                        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = BLUE_MID)}
-                        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = W30)}
+                        className="text-[8px] font-bold tracking-widest transition-colors"
+                        style={{ color: T.w30 }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.sky}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.w30}
                       >
-                        Marcar lidas
+                        MARCAR LIDAS
                       </button>
                     )}
                   </div>
 
-                  {/* list */}
+                  {/* List */}
                   <div className="max-h-64 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
                     {notifications && notifications.length > 0 ? (
                       notifications.slice(0, 7).map(n => {
@@ -309,27 +270,26 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                           <div
                             key={n.id}
                             className="relative flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
-                            style={{ borderBottom: `1px solid ${BORDER}` }}
+                            style={{ borderBottom: `1px solid ${T.border}` }}
                             onClick={() => { markRead.mutate(n.id); setShowNotifs(false); navigate("/alerts"); }}
-                            onMouseEnter={e => (e.currentTarget.style.background = BG_HOVER)}
+                            onMouseEnter={e => (e.currentTarget.style.background = T.hover)}
                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
-                            {/* unread stripe */}
                             {!n.is_read && (
-                              <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full"
+                              <span className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r"
                                 style={{ background: sev.color }} />
                             )}
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                            <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5"
                               style={{ background: sev.bg }}>
-                              <SIcon className="w-3.5 h-3.5" style={{ color: sev.color }} />
+                              <SIcon className="w-3 h-3" style={{ color: sev.color }} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-[11px] font-bold text-white line-clamp-1">{n.title}</p>
+                                <p className="text-[10px] font-bold tracking-wider line-clamp-1" style={{ color: "rgba(255,255,255,0.9)" }}>{n.title?.toUpperCase()}</p>
                                 {!n.is_read && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sev.color }} />}
                               </div>
-                              <p className="text-[10px] mt-0.5 line-clamp-1" style={{ color: W30 }}>{n.message}</p>
-                              <p className="text-[9px] mt-1 font-medium" style={{ color: W30 }}>
+                              <p className="text-[9px] mt-0.5 line-clamp-1" style={{ color: T.w30 }}>{n.message}</p>
+                              <p className="text-[8px] mt-1 tabular-nums" style={{ color: T.w30 }}>
                                 {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: pt })}
                               </p>
                             </div>
@@ -338,64 +298,57 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                       })
                     ) : (
                       <div className="py-10 text-center">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-                          style={{ background: W10 }}>
-                          <Check className="w-5 h-5" style={{ color: W30 }} />
-                        </div>
-                        <p className="text-xs font-medium" style={{ color: W30 }}>Tudo em dia</p>
+                        <Check className="w-6 h-6 mx-auto mb-2" style={{ color: T.w30 }} />
+                        <p className="text-[9px] font-bold tracking-widest" style={{ color: T.w30 }}>// TUDO EM DIA</p>
                       </div>
                     )}
                   </div>
 
-                  {/* footer */}
+                  {/* Footer */}
                   <button
                     onClick={() => { setShowNotifs(false); navigate("/alerts"); }}
-                    className="w-full flex items-center justify-center gap-1.5 py-3 text-[10px] font-black uppercase tracking-widest transition-colors border-t"
-                    style={{ borderColor: BORDER, color: BLUE_MID }}
-                    onMouseEnter={e => (e.currentTarget.style.background = BLUE_DIM)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[9px] font-bold tracking-widest border-t transition-colors"
+                    style={{ borderColor: T.border, color: T.sky }}
+                    onMouseEnter={e => (e.currentTarget.style.background = T.skyDim)}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
-                    Ver central de alertas <ChevronRight className="w-3 h-3" />
+                    VER CENTRAL DE ALERTAS <ChevronRight className="w-3 h-3" />
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* ── Divider ── */}
-          <div className="hidden md:block w-px h-5 mx-0.5" style={{ background: BORDER }} />
+          {/* Divider */}
+          <div className="hidden md:block w-px h-4 mx-0.5" style={{ background: T.border }} />
 
           {/* ── User menu ── */}
           <div className="relative" ref={userRef}>
             <button
               onClick={() => { setShowUser(p => !p); setShowNotifs(false); }}
-              className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-xl transition-all"
+              className="flex items-center gap-2 h-8 pl-1 pr-2.5 rounded transition-all"
               style={{
-                background: showUser ? BLUE_DIM : "transparent",
-                border: `1px solid ${showUser ? BLUE_BDR : "transparent"}`,
+                background: showUser ? T.skyDim : "transparent",
+                border: `1px solid ${showUser ? T.skyBdr : "transparent"}`,
               }}
-              onMouseEnter={e => {
-                if (!showUser) { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.borderColor = BORDER; }
-              }}
-              onMouseLeave={e => {
-                if (!showUser) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; }
-              }}
+              onMouseEnter={e => { if (!showUser) { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.borderColor = T.border; } }}
+              onMouseLeave={e => { if (!showUser) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; } }}
             >
-              {/* avatar */}
+              {/* Avatar */}
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black text-white shrink-0"
-                style={{ background: showUser ? BLUE : `${BLUE}CC` }}
+                className="w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                style={{ background: showUser ? T.sky : "rgba(56,189,248,0.7)", fontFamily: T.mono }}
               >
                 {initials}
               </div>
-              {/* name */}
+              {/* Name */}
               <div className="hidden md:block text-left min-w-0">
-                <p className="text-[12px] font-black text-white leading-none truncate max-w-[90px]">{displayName}</p>
-                <p className="text-[9px] font-bold mt-0.5 leading-none" style={{ color: W30 }}>Conta Ativa</p>
+                <p className="text-[10px] font-bold tracking-wider leading-none truncate max-w-[80px]" style={{ color: "rgba(255,255,255,0.9)", fontFamily: T.mono }}>{displayName}</p>
+                <p className="text-[8px] font-bold mt-0.5 leading-none tracking-widest" style={{ color: T.w30, fontFamily: T.mono }}>ACTIVO</p>
               </div>
               <ChevronDown
-                className="hidden md:block w-3 h-3 transition-transform shrink-0"
-                style={{ color: W30, transform: showUser ? "rotate(180deg)" : "rotate(0)" }}
+                className="hidden md:block w-3 h-3 shrink-0 transition-transform"
+                style={{ color: T.w30, transform: showUser ? "rotate(180deg)" : "rotate(0)" }}
               />
             </button>
 
@@ -406,69 +359,64 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                   initial={{ opacity: 0, y: 6, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                  transition={{ duration: 0.14 }}
-                  className="absolute right-0 top-11 w-60 rounded-2xl overflow-hidden shadow-2xl z-50"
-                  style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}
+                  transition={{ duration: 0.13 }}
+                  className="absolute right-0 top-10 w-56 rounded overflow-hidden shadow-2xl z-50"
+                  style={{ background: T.card, border: `1px solid rgba(56,189,248,0.2)`, fontFamily: T.mono }}
                 >
-                  {/* user hero */}
-                  <div className="px-4 py-4 border-b relative overflow-hidden" style={{ borderColor: BORDER }}>
-                    <div className="absolute inset-0 opacity-[0.04]"
-                      style={{ background: `radial-gradient(ellipse at left, ${BLUE}, transparent 60%)` }} />
+                  {/* User hero */}
+                  <div className="px-4 py-3.5 border-b relative overflow-hidden" style={{ borderColor: T.border }}>
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at left, rgba(56,189,248,0.04), transparent 60%)" }} />
                     <div className="relative flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white shrink-0"
-                        style={{ background: BLUE }}
-                      >
+                      <div className="w-9 h-9 rounded flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                        style={{ background: T.sky, fontFamily: T.mono }}>
                         {initials}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-black text-white truncate">{displayName}</p>
-                        <p className="text-[10px] truncate" style={{ color: W30 }}>{user?.email}</p>
-                        <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full"
-                          style={{ background: "rgba(74,222,128,0.10)", color: "#4ade80" }}>
-                          <span className="w-1 h-1 rounded-full bg-[#4ade80] animate-pulse" />
-                          Ativa
+                        <p className="text-[11px] font-bold tracking-wider truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{displayName}</p>
+                        <p className="text-[9px] truncate mt-0.5" style={{ color: T.w30 }}>{user?.email}</p>
+                        <span className="inline-flex items-center gap-1 mt-1.5 text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+                          <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                          SESSÃO ACTIVA
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* nav items */}
-                  <div className="p-1.5 space-y-0.5">
+                  {/* Nav */}
+                  <div className="p-1.5 space-y-px">
                     {[
-                      { label: "Ver Perfil",    icon: UserCircle, path: "/settings"     },
-                      { label: "Configurações", icon: Settings,   path: "/settings"     },
-                      { label: "Subscrição",    icon: CreditCard, path: "/subscription" },
+                      { label: "VER PERFIL",    icon: UserCircle, path: "/settings"     },
+                      { label: "CONFIGURAÇÕES", icon: Settings,   path: "/settings"     },
+                      { label: "SUBSCRIÇÃO",    icon: CreditCard, path: "/subscription" },
                     ].map(({ label, icon: Icon, path }) => (
                       <button
                         key={label}
                         onClick={() => { setShowUser(false); navigate(path); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left group"
-                        style={{ color: W60 }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = BG_HOVER; (e.currentTarget as HTMLElement).style.color = WHITE; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W60; }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left group transition-all"
+                        style={{ color: T.w60 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w60; }}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {label}
-                        <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-[10px] font-bold tracking-wider">{label}</span>
+                        <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-30 transition-opacity" />
                       </button>
                     ))}
                   </div>
 
-                  {/* divider */}
-                  <div className="mx-3 h-px my-1" style={{ background: BORDER }} />
+                  <div className="mx-3 h-px my-1" style={{ background: T.border }} />
 
-                  {/* sign out */}
                   <div className="p-1.5">
                     <button
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all"
-                      style={{ color: RED }}
-                      onMouseEnter={e => (e.currentTarget.style.background = RED_DIM)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left transition-all"
+                      style={{ color: T.red }}
+                      onMouseEnter={e => (e.currentTarget.style.background = T.redDim)}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                     >
-                      <LogOut className="w-4 h-4 shrink-0" />
-                      Terminar Sessão
+                      <LogOut className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold tracking-wider">TERMINAR SESSÃO</span>
                     </button>
                   </div>
                 </motion.div>
@@ -478,9 +426,7 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
         </div>
       </motion.header>
 
-      {/* ══════════════════════════════════════════════════
-          SEARCH OVERLAY
-      ══════════════════════════════════════════════════ */}
+      {/* ── Search overlay ── */}
       <AnimatePresence>
         {searchOpen && (
           <motion.div
@@ -488,22 +434,22 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
-            style={{ background: "rgba(4,6,13,0.88)", backdropFilter: "blur(10px)" }}
+            className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4"
+            style={{ background: "rgba(2,4,10,0.92)", backdropFilter: "blur(12px)" }}
             onClick={() => { setSearchOpen(false); setSearchVal(""); }}
           >
             <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.96 }}
+              initial={{ opacity: 0, y: -20, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.97 }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl"
-              style={{ background: BG_CARD, border: `1px solid ${BLUE_BDR}` }}
+              exit={{ opacity: 0, y: -10, scale: 0.97 }}
+              transition={{ duration: 0.16 }}
+              className="w-full max-w-xl rounded overflow-hidden shadow-2xl"
+              style={{ background: T.card, border: `1px solid rgba(220,38,38,0.25)`, fontFamily: T.mono }}
               onClick={e => e.stopPropagation()}
             >
-              {/* input row */}
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b" style={{ borderColor: BORDER }}>
-                <Search className="w-4 h-4 shrink-0" style={{ color: BLUE_MID }} />
+              {/* Input row */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: T.border }}>
+                <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: T.red }} />
                 <input
                   ref={searchRef}
                   value={searchVal}
@@ -511,84 +457,75 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                   onKeyDown={e => {
                     if (e.key === "Enter" && searchVal.trim()) {
                       navigate(`/search?q=${encodeURIComponent(searchVal.trim())}`);
-                      setSearchOpen(false);
-                      setSearchVal("");
+                      setSearchOpen(false); setSearchVal("");
                     }
                   }}
-                  placeholder="Pesquisar blocos, operadores, análises…"
-                  className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+                  placeholder="PESQUISAR BLOCOS, OPERADORES, ANÁLISES…"
+                  style={{ ...inpCls, caretColor: T.red }}
                 />
                 {searchVal && (
-                  <button onClick={() => setSearchVal("")} style={{ color: W30 }}>
-                    <X className="w-4 h-4" />
+                  <button onClick={() => setSearchVal("")} style={{ color: T.w30 }}>
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
                 <button
                   onClick={() => { setSearchOpen(false); setSearchVal(""); }}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                  style={{ background: W10, color: W30 }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = BG_HOVER; (e.currentTarget as HTMLElement).style.color = WHITE; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = W10; (e.currentTarget as HTMLElement).style.color = W30; }}
+                  className="w-7 h-7 rounded flex items-center justify-center transition-all"
+                  style={{ background: T.w08, color: T.w30 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.color = T.w30; }}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
 
-              {/* results */}
+              {/* Results */}
               <div className="p-2">
-                <p className="text-[9px] font-black uppercase tracking-widest px-3 py-2" style={{ color: W30 }}>
-                  {searchVal ? `Resultados para "${searchVal}"` : "Sugestões rápidas"}
+                <p className="text-[8px] font-bold tracking-[0.25em] px-3 py-2" style={{ color: T.w30 }}>
+                  {searchVal ? `RESULTADOS PARA "${searchVal}"` : "// SUGESTÕES RÁPIDAS"}
                 </p>
-                <div className="space-y-0.5">
+                <div className="space-y-px">
                   {filtered.length > 0 ? (
                     filtered.map((s, i) => (
                       <button
                         key={i}
                         onClick={() => { navigate(s.path); setSearchOpen(false); setSearchVal(""); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left group"
-                        style={{ color: W60 }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = BG_HOVER; (e.currentTarget as HTMLElement).style.color = WHITE; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = W60; }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-left group"
+                        style={{ color: T.w60 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w60; }}
                       >
-                        <Search className="w-3.5 h-3.5 shrink-0" style={{ color: W30 }} />
-                        <span className="text-[12px] font-medium flex-1">{s.label}</span>
+                        <span className="text-[8px] font-bold w-8 shrink-0 tabular-nums" style={{ color: T.red }}>{s.sig}</span>
+                        <span className="text-[11px] font-bold tracking-wider flex-1">{s.label}</span>
                         <span
-                          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-                          style={{ background: BLUE_DIM, color: BLUE_MID }}
+                          className="text-[8px] font-bold tracking-widest px-2 py-0.5 rounded shrink-0 opacity-50 group-hover:opacity-90 transition-opacity"
+                          style={{ background: T.redDim, color: T.red, border: `1px solid ${T.redBdr}` }}
                         >
                           {s.tag}
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-40 transition-opacity" />
+                        <ChevronRight className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-30 transition-opacity" />
                       </button>
                     ))
                   ) : (
                     <div className="py-8 text-center">
-                      <p className="text-sm font-medium" style={{ color: W30 }}>
-                        Sem resultados para <span className="text-white">"{searchVal}"</span>
+                      <p className="text-[10px] font-bold tracking-wider" style={{ color: T.w30 }}>
+                        // SEM RESULTADOS PARA <span style={{ color: "white" }}>"{searchVal}"</span>
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* footer hints */}
-              <div
-                className="px-4 py-2.5 border-t flex items-center gap-4"
-                style={{ borderColor: BORDER, background: "rgba(255,255,255,0.02)" }}
-              >
-                {[
-                  ["Enter", "Pesquisar"],
-                  ["Esc",   "Fechar"],
-                  ["↑↓",   "Navegar"],
-                ].map(([key, label]) => (
+              {/* Footer hints */}
+              <div className="px-4 py-2 border-t flex items-center gap-5"
+                style={{ borderColor: T.border, background: "rgba(255,255,255,0.01)" }}>
+                {[["ENTER", "PESQUISAR"], ["ESC", "FECHAR"], ["↑↓", "NAVEGAR"]].map(([key, label]) => (
                   <div key={key} className="flex items-center gap-1.5">
-                    <kbd
-                      className="text-[9px] font-black px-1.5 py-0.5 rounded-md"
-                      style={{ background: W10, color: W30 }}
-                    >
+                    <kbd className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                      style={{ background: T.w08, color: T.w30, fontFamily: T.mono }}>
                       {key}
                     </kbd>
-                    <span className="text-[9px] font-medium" style={{ color: W30 }}>{label}</span>
+                    <span className="text-[8px] font-bold tracking-wider" style={{ color: T.w30 }}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -599,3 +536,17 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
     </>
   );
 }
+
+/* ─── Icon button helper ─────────────────────────────────────────────────── */
+const IconBtn = ({ children, onClick, title }: { children: React.ReactNode; onClick: () => void; title?: string }) => (
+  <button
+    onClick={onClick}
+    title={title}
+    className="w-8 h-8 rounded flex items-center justify-center transition-all"
+    style={{ color: "rgba(255,255,255,0.3)" }}
+    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color = "white"; }}
+    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+  >
+    {children}
+  </button>
+);
