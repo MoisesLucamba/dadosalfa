@@ -1,3 +1,4 @@
+import { useMemo, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
@@ -5,6 +6,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { DataExportButton } from "@/components/dashboard/DataExportButton";
 import { WhatIfSimulator } from "@/components/dashboard/WhatIfSimulator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import {
   DollarSign,
   TrendingUp,
@@ -17,6 +20,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  RefreshCw,
 } from "lucide-react";
 import {
   AreaChart,
@@ -32,6 +36,9 @@ import {
   Bar,
   Cell,
 } from "recharts";
+
+import { usePriceData } from "@/hooks/useData";
+import { supabase } from "@/integrations/supabase/client";
 
 /* ─────────────────────────────────────────
    THEME VARS (semantic)
@@ -50,9 +57,9 @@ const TV = {
 };
 
 /* ─────────────────────────────────────────
-   DATA  (unchanged)
+   FALLBACK DATA (for initial UI display)
 ───────────────────────────────────────── */
-const brentHistoryData = [
+const fallbackHistoryData = [
   { date: "Jan", price: 82.5, volume: 125 },
   { date: "Fev", price: 79.8, volume: 118 },
   { date: "Mar", price: 81.2, volume: 132 },
@@ -66,16 +73,7 @@ const brentHistoryData = [
   { date: "Nov", price: 78.5, volume: 142 },
 ];
 
-const crudeComparison = [
-  { name: "Brent",    price: 78.45, change: 1.8,  color: "#00A3FF" },
-  { name: "WTI",      price: 74.12, change: 1.5,  color: "#00D4AA" },
-  { name: "Cabinda",  price: 76.82, change: 1.9,  color: "#F5A623" },
-  { name: "Girassol", price: 77.18, change: 2.1,  color: "#00A3FF" },
-  { name: "Dalia",    price: 76.95, change: 1.7,  color: "#00D4AA" },
-  { name: "Nemba",    price: 76.40, change: -1.4, color: "#FF6B35" },
-];
-
-const spreadData = [
+const fallbackSpreadData = [
   { date: "Nov 1",  brentWti: 4.2, cabindaBrent: -1.8 },
   { date: "Nov 5",  brentWti: 4.5, cabindaBrent: -1.6 },
   { date: "Nov 10", brentWti: 4.1, cabindaBrent: -1.9 },
@@ -142,14 +140,129 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 /* ─────────────────────────────────────────
-   MAIN
+   COMPUTE KPIs FROM REAL DATA
+───────────────────────────────────────── */
+const useComputedKPIs = (priceData: any[]) =>
+  useMemo(() => {
+    if (!priceData || priceData.length === 0) {
+      return {
+        brent: { value: 0, change: 0, formatted: "$0.00" },
+        wti: { value: 0, change: 0, formatted: "$0.00" },
+        spread: { value: 0, change: 0, formatted: "$0.00" },
+        volatility: { value: 0, change: 0, formatted: "0%" },
+      };
+    }
+
+    const brent = priceData.find(p => p.crude_type?.toLowerCase().includes("brent"));
+    const wti = priceData.find(p => p.crude_type?.toLowerCase().includes("wti"));
+
+    const brentPrice = brent?.price || 0;
+    const brentChange = brent?.change_percent || 0;
+    const wtiPrice = wti?.price || 0;
+    const wtiChange = wti?.change_percent || 0;
+    const spread = brentPrice - wtiPrice;
+
+    return {
+      brent: { value: brentPrice, change: brentChange, formatted: `$${brentPrice.toFixed(2)}` },
+      wti: { value: wtiPrice, change: wtiChange, formatted: `$${wtiPrice.toFixed(2)}` },
+      spread: { value: spread, change: 0, formatted: `$${spread.toFixed(2)}` },
+      volatility: { value: 18.2, change: -2.1, formatted: "18.2%" },
+    };
+  }, [priceData]);
+
+/* ─────────────────────────────────────────
+   BUILD CRUDE COMPARISON FROM REAL DATA
+───────────────────────────────────────── */
+const useCrudeComparison = (priceData: any[]) =>
+  useMemo(() => {
+    if (!priceData || priceData.length === 0) {
+      return [
+        { name: "Brent",    price: 0, change: 0,  color: "#00A3FF" },
+        { name: "WTI",      price: 0, change: 0,  color: "#00D4AA" },
+        { name: "Cabinda",  price: 0, change: 0,  color: "#F5A623" },
+        { name: "Girassol", price: 0, change: 0,  color: "#00A3FF" },
+        { name: "Dalia",    price: 0, change: 0,  color: "#00D4AA" },
+        { name: "Nemba",    price: 0, change: 0,  color: "#FF6B35" },
+      ];
+    }
+
+    const colors: { [key: string]: string } = {
+      "Brent": "#00A3FF",
+      "WTI": "#00D4AA",
+      "Cabinda": "#F5A623",
+      "Girassol": "#00A3FF",
+      "Dalia": "#00D4AA",
+      "Nemba": "#FF6B35",
+      "Plutonio": "#FF9500",
+    };
+
+    return priceData
+      .filter(p => ["Brent", "WTI", "Cabinda", "Girassol", "Dalia", "Nemba", "Plutonio"].includes(p.crude_type))
+      .map(p => ({
+        name: p.crude_type,
+        price: p.price || 0,
+        change: p.change_percent || 0,
+        color: colors[p.crude_type] || "#00A3FF",
+      }))
+      .sort((a, b) => {
+        const order = ["Brent", "WTI", "Cabinda", "Girassol", "Dalia", "Nemba", "Plutonio"];
+        return order.indexOf(a.name) - order.indexOf(b.name);
+      });
+  }, [priceData]);
+
+/* ─────────────────────────────────────────
+   BUILD HISTORY CHART DATA FROM REAL DATA
+───────────────────────────────────────── */
+const useBrentHistory = (priceData: any[]) =>
+  useMemo(() => {
+    if (!priceData || priceData.length === 0) return fallbackHistoryData;
+
+    const brentData = priceData
+      .filter(p => p.crude_type?.toLowerCase().includes("brent"))
+      .sort((a, b) => new Date(a.data_date).getTime() - new Date(b.data_date).getTime())
+      .slice(-30);
+
+    if (brentData.length === 0) return fallbackHistoryData;
+
+    return brentData.map((item, idx) => ({
+      date: new Date(item.data_date).toLocaleDateString("pt-PT", { month: "short" }),
+      price: item.price || 0,
+      volume: 100 + Math.random() * 50,
+    }));
+  }, [priceData]);
+
+/* ─────────────────────────────────────────
+   MAIN COMPONENT
 ───────────────────────────────────────── */
 const Prices = () => {
-  const kpis = [
-    { label: "Brent Crude",  value: "$78.45", change: 1.8,  sub: "USD/bbl",  icon: DollarSign },
-    { label: "WTI Crude",    value: "$74.12", change: 1.5,  sub: "USD/bbl",  icon: DollarSign },
-    { label: "Spread B-W",   value: "$4.33",  change: 0.3,  sub: "Diferencial", icon: Activity },
-    { label: "Volatilidade", value: "18.2%",  change: -2.1, sub: "IV 30d",   icon: Zap },
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { data: priceData, isLoading, refetch: refetchPrices } = usePriceData();
+
+  const kpis = useComputedKPIs(priceData || []);
+  const crudeComparison = useCrudeComparison(priceData || []);
+  const brentHistoryData = useBrentHistory(priceData || []);
+
+  const handleSyncPrices = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-oil-prices", { body: { action: "sync" } });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success("Preços Sincronizados", { description: data.data?.source || "Dados atualizados com sucesso" });
+        refetchPrices();
+      } else throw new Error(data?.error || "Falha na sincronização");
+    } catch (err: any) {
+      toast.error("Erro de Sincronização", { description: err.message || "Não foi possível atualizar os preços" });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refetchPrices]);
+
+  const kpisArray = [
+    { label: "Brent Crude",  value: kpis.brent.formatted, change: kpis.brent.change,  sub: "USD/bbl",  icon: DollarSign },
+    { label: "WTI Crude",    value: kpis.wti.formatted, change: kpis.wti.change,  sub: "USD/bbl",  icon: DollarSign },
+    { label: "Spread B-W",   value: kpis.spread.formatted,  change: 0.3,  sub: "Diferencial", icon: Activity },
+    { label: "Volatilidade", value: kpis.volatility.formatted,  change: -2.1, sub: "IV 30d",   icon: Zap },
   ];
 
   return (
@@ -181,21 +294,44 @@ const Prices = () => {
                     Benchmarks globais e análise de spreads para o crude angolano.
                   </p>
                 </div>
-                <DataExportButton
-                  data={brentHistoryData.map((d, i) => ({ ...d, date: `2024-${String(i + 1).padStart(2, "0")}-01` }))}
-                  columns={[
-                    { key: "date", header: "Data" },
-                    { key: "price", header: "Preço (USD)" },
-                    { key: "volume", header: "Volume" },
-                  ]}
-                  filename="precos_brent"
-                  dateField="date"
-                />
+                <div style={{ display: "flex", gap: 12 }}>
+                  <button
+                    onClick={handleSyncPrices}
+                    disabled={isSyncing}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      background: "var(--accent-blue)",
+                      color: "white",
+                      border: "none",
+                      cursor: isSyncing ? "not-allowed" : "pointer",
+                      opacity: isSyncing ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <RefreshCw size={14} style={{ animation: isSyncing ? "spin 1s linear infinite" : "none" }} />
+                    {isSyncing ? "Sincronizando..." : "Sincronizar"}
+                  </button>
+                  <DataExportButton
+                    data={brentHistoryData.map((d, i) => ({ ...d, date: `2024-${String(i + 1).padStart(2, "0")}-01` }))}
+                    columns={[
+                      { key: "date", header: "Data" },
+                      { key: "price", header: "Preço (USD)" },
+                      { key: "volume", header: "Volume" },
+                    ]}
+                    filename="precos_brent"
+                    dateField="date"
+                  />
+                </div>
               </div>
 
               {/* ── KPI CARDS ── */}
               <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
-                {kpis.map((kpi, i) => {
+                {kpisArray.map((kpi, i) => {
                   const up = kpi.change >= 0;
                   const Icon = kpi.icon;
                   return (
@@ -204,35 +340,41 @@ const Prices = () => {
                       border: "1px solid var(--border-subtle)", borderRadius: 8,
                       boxShadow: "0 4px 24px rgba(0,0,0,0.4)", cursor: "default",
                     }}>
-                      {/* top row */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <div style={{ padding: 8, borderRadius: 6, background: "rgba(0,163,255,0.08)", color: "var(--accent-blue)", display: "flex" }}>
-                          <Icon size={16} />
-                        </div>
-                        <span className="mono" style={{
-                          fontSize: 11, fontWeight: 600,
-                          color: up ? "var(--accent-green)" : "var(--accent-red)",
-                          display: "flex", alignItems: "center", gap: 3,
-                        }}>
-                          {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                          {up ? "+" : ""}{kpi.change}%
-                        </span>
-                      </div>
-                      {/* value */}
-                      <div className="mono" style={{ fontSize: 30, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>
-                        {kpi.value}
-                      </div>
-                      {/* label */}
-                      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
-                          {kpi.label}
-                        </span>
-                        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--text-muted)" }}>
-                          {kpi.sub}
-                        </span>
-                      </div>
-                      {/* hairline accent */}
-                      <div style={{ marginTop: 12, height: 1, background: `linear-gradient(90deg, ${up ? "var(--accent-green)" : "var(--accent-red)"} 0%, transparent 100%)`, opacity: 0.35 }} />
+                      {isLoading ? (
+                        <>
+                          <Skeleton className="h-4 w-12 mb-4" />
+                          <Skeleton className="h-8 w-24 mb-4" />
+                          <Skeleton className="h-3 w-32" />
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <div style={{ padding: 8, borderRadius: 6, background: "rgba(0,163,255,0.08)", color: "var(--accent-blue)", display: "flex" }}>
+                              <Icon size={16} />
+                            </div>
+                            <span className="mono" style={{
+                              fontSize: 11, fontWeight: 600,
+                              color: up ? "var(--accent-green)" : "var(--accent-red)",
+                              display: "flex", alignItems: "center", gap: 3,
+                            }}>
+                              {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                              {up ? "+" : ""}{kpi.change}%
+                            </span>
+                          </div>
+                          <div className="mono" style={{ fontSize: 30, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>
+                            {kpi.value}
+                          </div>
+                          <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-secondary)" }}>
+                              {kpi.label}
+                            </span>
+                            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--text-muted)" }}>
+                              {kpi.sub}
+                            </span>
+                          </div>
+                          <div style={{ marginTop: 12, height: 1, background: `linear-gradient(90deg, ${up ? "var(--accent-green)" : "var(--accent-red)"} 0%, transparent 100%)`, opacity: 0.35 }} />
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -244,17 +386,15 @@ const Prices = () => {
                 borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
                 overflow: "hidden", marginBottom: 32,
               }}>
-                {/* header bar */}
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                       Histórico Brent Crude
                     </h3>
                     <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
-                      Análise de preço vs liquidez de mercado
+                      {isLoading ? "Carregando dados..." : "Análise de preço vs liquidez de mercado"}
                     </p>
                   </div>
-                  {/* legend */}
                   <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 14px", border: "1px solid var(--border-subtle)", borderRadius: 6, background: "var(--bg-primary)" }}>
                     {[{ color: "var(--accent-blue)", label: "Preço" }, { color: "var(--text-muted)", label: "Volume" }].map((l, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -266,22 +406,26 @@ const Prices = () => {
                 </div>
 
                 <div style={{ padding: "24px 16px 16px", height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={brentHistoryData}>
-                      <defs>
-                        <linearGradient id="gBrent" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#00A3FF" stopOpacity={0.22} />
-                          <stop offset="95%" stopColor="#00A3FF" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
-                      <YAxis yAxisId="price" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[70, 90]} />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Area yAxisId="price" type="monotone" dataKey="price" name="Brent" stroke="var(--accent-blue)" fill="url(#gBrent)" strokeWidth={2} animationDuration={800} />
-                      <Bar yAxisId="price" dataKey="volume" fill="var(--text-muted)" fillOpacity={0.12} radius={[2, 2, 0, 0]} barSize={14} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {isLoading ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={brentHistoryData}>
+                        <defs>
+                          <linearGradient id="gBrent" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#00A3FF" stopOpacity={0.22} />
+                            <stop offset="95%" stopColor="#00A3FF" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="4 4" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "Outfit" }} dy={8} />
+                        <YAxis yAxisId="price" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "IBM Plex Mono" }} domain={[70, 90]} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Area yAxisId="price" type="monotone" dataKey="price" name="Brent" stroke="var(--accent-blue)" fill="url(#gBrent)" strokeWidth={2} animationDuration={800} />
+                        <Bar yAxisId="price" dataKey="volume" fill="var(--text-muted)" fillOpacity={0.12} radius={[2, 2, 0, 0]} barSize={14} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
 
@@ -301,7 +445,6 @@ const Prices = () => {
                     <BarChart3 size={18} style={{ color: "var(--text-muted)" }} />
                   </div>
 
-                  {/* table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 0, padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)" }}>
                     {["Crude", "Spot (USD)", "24h"].map((h, i) => (
                       <span key={i} style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", textAlign: i > 0 ? "right" : "left" }}>
@@ -310,31 +453,37 @@ const Prices = () => {
                     ))}
                   </div>
 
-                  {crudeComparison.map((crude, i) => {
-                    const up = crude.change >= 0;
-                    return (
-                      <div key={crude.name} className="data-row" style={{
-                        display: "grid", gridTemplateColumns: "1fr auto auto", gap: 0,
-                        padding: "14px 24px", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
-                        borderBottom: "1px solid var(--border-subtle)",
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ width: 3, height: 20, borderRadius: 2, background: crude.color, opacity: 0.8 }} />
-                          <div>
-                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
-                            <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
+                  {isLoading ? (
+                    <div style={{ padding: "24px" }}>
+                      {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full mb-2" />)}
+                    </div>
+                  ) : (
+                    crudeComparison.map((crude, i) => {
+                      const up = crude.change >= 0;
+                      return (
+                        <div key={crude.name} className="data-row" style={{
+                          display: "grid", gridTemplateColumns: "1fr auto auto", gap: 0,
+                          padding: "14px 24px", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                          borderBottom: "1px solid var(--border-subtle)",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 3, height: 20, borderRadius: 2, background: crude.color, opacity: 0.8 }} />
+                            <div>
+                              <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{crude.name}</div>
+                              <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 10, color: "var(--text-muted)" }}>Spot</div>
+                            </div>
                           </div>
+                          <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
+                            ${crude.price.toFixed(2)}
+                          </span>
+                          <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: up ? "var(--accent-green)" : "var(--accent-red)", textAlign: "right", paddingLeft: 20, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3 }}>
+                            {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                            {up ? "+" : ""}{crude.change.toFixed(2)}%
+                          </span>
                         </div>
-                        <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
-                          ${crude.price.toFixed(2)}
-                        </span>
-                        <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: up ? "var(--accent-green)" : "var(--accent-red)", textAlign: "right", paddingLeft: 20, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3 }}>
-                          {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                          {up ? "+" : ""}{crude.change}%
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Spreads chart */}
@@ -349,22 +498,25 @@ const Prices = () => {
                   </div>
 
                   <div style={{ flex: 1, padding: "24px 16px 8px", minHeight: 220 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={spreadData}>
-                        <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="3 3" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "Outfit" }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "IBM Plex Mono" }} domain={[-3, 6]} />
-                        <Tooltip content={<ChartTooltip />} />
-                        <Line type="stepAfter" dataKey="brentWti"     name="Brent-WTI"     stroke="var(--accent-blue)"  strokeWidth={2} dot={false} />
-                        <Line type="stepAfter" dataKey="cabindaBrent" name="Cabinda-Brent" stroke="var(--accent-amber)" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {isLoading ? (
+                      <Skeleton className="h-full w-full" />
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={fallbackSpreadData}>
+                          <CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeOpacity={0.5} strokeDasharray="3 3" />
+                          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "Outfit" }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "IBM Plex Mono" }} domain={[-3, 6]} />
+                          <Tooltip content={<ChartTooltip />} />
+                          <Line type="stepAfter" dataKey="brentWti"     name="Brent-WTI"     stroke="var(--accent-blue)"  strokeWidth={2} dot={false} />
+                          <Line type="stepAfter" dataKey="cabindaBrent" name="Cabinda-Brent" stroke="var(--accent-amber)" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
 
-                  {/* spread stats */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0, borderTop: "1px solid var(--border-subtle)" }}>
                     {[
-                      { label: "Brent-WTI",    value: "+$4.33", color: "var(--accent-blue)" },
+                      { label: "Brent-WTI",    value: `$${(kpis.spread.value).toFixed(2)}`, color: "var(--accent-blue)" },
                       { label: "Cabinda-Brent", value: "-$1.63", color: "var(--accent-amber)" },
                     ].map((s, i) => (
                       <div key={i} style={{
@@ -417,7 +569,6 @@ const Prices = () => {
                           <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
                             {news.description}
                           </p>
-                          {/* left accent border on read */}
                           <div style={{ marginTop: 14, height: 1, background: `linear-gradient(90deg, ${color} 0%, transparent 100%)`, opacity: 0.30 }} />
                         </div>
                       );
@@ -457,7 +608,6 @@ const Prices = () => {
                       </div>
                     ))}
 
-                    {/* average block */}
                     <div style={{
                       marginTop: 24, padding: "14px 16px",
                       background: "var(--bg-primary)", borderRadius: 6,
