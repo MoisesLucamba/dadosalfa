@@ -1,53 +1,21 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calculator,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  Fuel,
-  RefreshCw,
-  Save,
-  Trash2,
-  Copy,
-  LineChart,
-  PieChart,
-  AlertTriangle,
-  ChevronRight,
-  Plus,
-  Layers,
-  Activity
+  Calculator, TrendingUp, TrendingDown, DollarSign, BarChart3,
+  Fuel, RefreshCw, Trash2, Copy, LineChart, PieChart,
+  AlertTriangle, Plus, Layers, Activity, Terminal, ChevronRight,
+  Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart as RechartsBarChart,
-  Bar,
-  Cell,
-  Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart as RechartsBarChart, Bar, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
 import { AngolaVariables } from "./AngolaVariables";
 
-/**
- * Simulador What-If Modernizado (Fixed Deep Dark):
- * 1. UI Imersiva: Fundo fixo #0a0a0a com bordas white/5.
- * 2. UX Intuitiva: Sliders personalizados, feedback visual imediato e tabs estilizadas.
- * 3. Cores Hardcoded: Independente do tema do sistema (Dark Mode Permanente).
- * 4. Micro-interações: Transições suaves com Framer Motion.
- */
-
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface ScenarioParams {
   name: string;
   brentPrice: number;
@@ -68,8 +36,9 @@ interface ScenarioResult {
   cashFlow: number[];
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const BASE_SCENARIO: ScenarioParams = {
-  name: "Base",
+  name: "BASE",
   brentPrice: 78,
   production: 1080,
   exchangeRate: 830,
@@ -79,89 +48,92 @@ const BASE_SCENARIO: ScenarioParams = {
 };
 
 const PRESET_SCENARIOS = {
-  optimistic: {
-    name: "Otimista",
-    brentPrice: 95,
-    production: 1150,
-    exchangeRate: 780,
-    operatingCost: 25,
-    taxRate: 48,
-    royaltyRate: 15,
-  },
-  pessimistic: {
-    name: "Pessimista",
-    brentPrice: 60,
-    production: 950,
-    exchangeRate: 950,
-    operatingCost: 32,
-    taxRate: 52,
-    royaltyRate: 18,
-  },
-  crisis: {
-    name: "Crise",
-    brentPrice: 45,
-    production: 850,
-    exchangeRate: 1100,
-    operatingCost: 35,
-    taxRate: 55,
-    royaltyRate: 20,
-  },
+  optimistic:  { name: "OTIMISTA",   brentPrice: 95,  production: 1150, exchangeRate: 780,  operatingCost: 25, taxRate: 48, royaltyRate: 15 },
+  pessimistic: { name: "PESSIMISTA", brentPrice: 60,  production: 950,  exchangeRate: 950,  operatingCost: 32, taxRate: 52, royaltyRate: 18 },
+  crisis:      { name: "CRISE",      brentPrice: 45,  production: 850,  exchangeRate: 1100, operatingCost: 35, taxRate: 55, royaltyRate: 20 },
 };
 
-const calculateResults = (params: ScenarioParams): ScenarioResult => {
-  const dailyRevenue = params.brentPrice * params.production * 1000;
-  const annualRevenue = dailyRevenue * 365;
-  const dailyCosts = params.operatingCost * params.production * 1000;
-  const annualCosts = dailyCosts * 365;
-  const grossProfit = annualRevenue - annualCosts;
-  const taxAmount = grossProfit * (params.taxRate / 100);
-  const royaltyAmount = annualRevenue * (params.royaltyRate / 100);
-  const netProfit = grossProfit - taxAmount - royaltyAmount;
-  const margin = (netProfit / annualRevenue) * 100;
-  const governmentTake = taxAmount + royaltyAmount;
-  const breakEven = params.operatingCost / (1 - (params.taxRate + params.royaltyRate) / 100);
-  const cashFlow = Array.from({ length: 12 }, (_, i) => {
-    const monthlyVariation = 1 + (Math.sin(i / 2) * 0.05);
-    return (netProfit / 12) * monthlyVariation;
-  });
-  return {
-    revenue: annualRevenue,
-    costs: annualCosts + governmentTake,
-    profit: netProfit,
-    margin,
-    governmentTake,
-    breakEven,
-    cashFlow,
-  };
+const SCENARIO_COLORS = ["#dc2626", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+
+const TABS = [
+  { id: "params",     label: "PARÂMETROS" },
+  { id: "results",    label: "RESULTADOS"  },
+  { id: "comparison", label: "COMPARATIVO" },
+  { id: "projection", label: "PROJECÇÃO"   },
+] as const;
+
+type TabId = typeof TABS[number]["id"];
+
+// ─── Calculator ───────────────────────────────────────────────────────────────
+const calculateResults = (p: ScenarioParams): ScenarioResult => {
+  const annualRevenue    = p.brentPrice * p.production * 1000 * 365;
+  const annualCosts      = p.operatingCost * p.production * 1000 * 365;
+  const grossProfit      = annualRevenue - annualCosts;
+  const taxAmount        = grossProfit * (p.taxRate / 100);
+  const royaltyAmount    = annualRevenue * (p.royaltyRate / 100);
+  const netProfit        = grossProfit - taxAmount - royaltyAmount;
+  const governmentTake   = taxAmount + royaltyAmount;
+  const breakEven        = p.operatingCost / (1 - (p.taxRate + p.royaltyRate) / 100);
+  const cashFlow         = Array.from({ length: 12 }, (_, i) => (netProfit / 12) * (1 + Math.sin(i / 2) * 0.05));
+  return { revenue: annualRevenue, costs: annualCosts + governmentTake, profit: netProfit, margin: (netProfit / annualRevenue) * 100, governmentTake, breakEven, cashFlow };
 };
 
-// Tooltip Moderno Fixo
-const ModernTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#111111]/95 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-2xl">
-        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">{label}</p>
-        <div className="space-y-1.5">
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
-                <span className="text-xs font-medium text-white/60">{entry.name}</span>
-              </div>
-              <span className="text-sm font-bold text-white">
-                {typeof entry.value === 'number' && entry.name.toLowerCase().includes('margem') 
-                  ? `${entry.value.toFixed(1)}%` 
-                  : `$${entry.value.toFixed(2)}B`}
-              </span>
-            </div>
-          ))}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fB  = (v: number) => `$${(v / 1e9).toFixed(2)}B`;
+const fPct = (v: number) => `${v.toFixed(1)}%`;
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="px-3 py-2.5 text-[10px] font-bold"
+      style={{
+        background: "hsl(var(--card))",
+        border: "1px solid rgba(220,38,38,0.3)",
+        borderRadius: "4px",
+        fontFamily: "'IBM Plex Mono', monospace",
+      }}
+    >
+      <p className="text-[9px] mb-2 tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-3 justify-between">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: entry.color || entry.fill }} />
+            <span style={{ color: "hsl(var(--muted-foreground))" }}>{entry.name}</span>
+          </div>
+          <span style={{ color: "hsl(var(--foreground))" }}>
+            {typeof entry.value === "number" && String(entry.name).toLowerCase().includes("margem")
+              ? fPct(entry.value)
+              : `${entry.value.toFixed(2)}B`}
+          </span>
         </div>
-      </div>
-    );
-  }
-  return null;
+      ))}
+    </div>
+  );
 };
 
+// ─── Slider Row ───────────────────────────────────────────────────────────────
+const SliderParam = ({ label, icon: Icon, color, value, min, max, unit, onChange }: any) => (
+  <div className="space-y-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 flex items-center justify-center" style={{ color }}>
+          <Icon className="w-3.5 h-3.5" />
+        </div>
+        <span className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+          {label}
+        </span>
+      </div>
+      <span className="text-[11px] font-bold tabular-nums" style={{ color, fontFamily: "'IBM Plex Mono', monospace" }}>
+        {unit === "$" || unit === "AOA" ? unit : ""}{value}{unit === "%" || unit === "k" ? unit : ""}
+      </span>
+    </div>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={1} className="py-1" />
+  </div>
+);
+
+// ═════════════════════════════════════════════════════════════════════════════
 export const WhatIfSimulator = () => {
   const [scenarios, setScenarios] = useState<ScenarioParams[]>([
     { ...BASE_SCENARIO },
@@ -169,26 +141,24 @@ export const WhatIfSimulator = () => {
     { ...PRESET_SCENARIOS.pessimistic },
   ]);
   const [activeScenario, setActiveScenario] = useState(0);
-  const [compareMode, setCompareMode] = useState(false);
+  const [activeTab, setActiveTab]           = useState<TabId>("params");
 
   const currentScenario = scenarios[activeScenario];
+  const results         = useMemo(() => scenarios.map(calculateResults), [scenarios]);
+  const currentResult   = results[activeScenario];
+
   const updateScenario = (key: keyof ScenarioParams, value: number | string) => {
     const updated = [...scenarios];
     updated[activeScenario] = { ...updated[activeScenario], [key]: value };
     setScenarios(updated);
   };
 
-  const results = useMemo(() => scenarios.map(calculateResults), [scenarios]);
-  const currentResult = results[activeScenario];
-
   const addScenario = () => {
-    if (scenarios.length >= 5) {
-      toast.error("Máximo de 5 cenários permitido");
-      return;
-    }
-    setScenarios([...scenarios, { ...BASE_SCENARIO, name: `Cenário ${scenarios.length + 1}` }]);
-    setActiveScenario(scenarios.length);
-    toast.success("Novo cenário adicionado");
+    if (scenarios.length >= 5) { toast.error("MÁXIMO 5 CENÁRIOS"); return; }
+    const next = [...scenarios, { ...BASE_SCENARIO, name: `SCN-0${scenarios.length + 1}` }];
+    setScenarios(next);
+    setActiveScenario(next.length - 1);
+    toast.success("NOVO CENÁRIO CRIADO");
   };
 
   const removeScenario = (index: number) => {
@@ -196,313 +166,514 @@ export const WhatIfSimulator = () => {
     const updated = scenarios.filter((_, i) => i !== index);
     setScenarios(updated);
     if (activeScenario >= updated.length) setActiveScenario(updated.length - 1);
-    toast.success("Cenário removido");
+    toast.success("CENÁRIO REMOVIDO");
   };
 
   const duplicateScenario = (index: number) => {
     if (scenarios.length >= 5) return;
-    const newScenario = { ...scenarios[index], name: `${scenarios[index].name} (cópia)` };
-    setScenarios([...scenarios, newScenario]);
-    toast.success("Cenário duplicado");
+    const dup = { ...scenarios[index], name: `${scenarios[index].name}-CPY` };
+    setScenarios([...scenarios, dup]);
+    toast.success("CENÁRIO DUPLICADO");
   };
 
-  const applyPreset = (presetKey: keyof typeof PRESET_SCENARIOS) => {
+  const applyPreset = (key: keyof typeof PRESET_SCENARIOS) => {
     const updated = [...scenarios];
-    updated[activeScenario] = { ...PRESET_SCENARIOS[presetKey] };
+    updated[activeScenario] = { ...PRESET_SCENARIOS[key] };
     setScenarios(updated);
-    toast.success(`Preset aplicado`);
+    toast.success(`PRESET ${PRESET_SCENARIOS[key].name} APLICADO`);
   };
 
-  const scenarioColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-  const formatBillions = (value: number) => `$${(value / 1e9).toFixed(2)}B`;
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+  // Projection data
+  const projectionData = Array.from({ length: 12 }, (_, i) => {
+    const month = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"][i];
+    const row: Record<string, any> = { month };
+    scenarios.forEach((s, idx) => { row[s.name] = results[idx].cashFlow[i] / 1e9; });
+    return row;
+  });
+
+  const comparisonData = scenarios.map((s, i) => ({
+    name: s.name,
+    receita: results[i].revenue / 1e9,
+    lucro: results[i].profit / 1e9,
+  }));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8 shadow-2xl overflow-hidden"
+    <div
+      style={{
+        background: "hsl(var(--card))",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "6px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        overflow: "hidden",
+      }}
     >
-      {/* Header do Simulador */}
-      <div className="flex items-center justify-between mb-10 flex-wrap gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
-            <Calculator className="w-6 h-6 text-primary" />
+      {/* ── Top Header Bar ── */}
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(220,38,38,0.04)" }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 flex items-center justify-center rounded"
+            style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.25)" }}
+          >
+            <Calculator className="w-4 h-4" style={{ color: "#dc2626" }} />
           </div>
           <div>
-            <h3 className="text-xl font-black text-white tracking-tight">Simulador What-If</h3>
-            <p className="text-sm text-white/40 font-medium">Modelagem preditiva de cenários financeiros</p>
+            <div className="flex items-center gap-2">
+              <Terminal className="w-3 h-3 text-red-500" />
+              <span className="text-[9px] font-bold tracking-[0.3em]" style={{ color: "rgba(220,38,38,0.8)" }}>
+                MÓDULO-SIM // WHAT-IF ENGINE
+              </span>
+            </div>
+            <h3 className="text-[13px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>
+              SIMULADOR DE CENÁRIOS FINANCEIROS
+            </h3>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setCompareMode(!compareMode)}
-            className={`rounded-xl px-6 py-5 font-bold transition-all ${
-              compareMode ? 'bg-primary text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
-            }`}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={addScenario}
+            className="flex items-center gap-2 px-4 py-2 rounded text-[9px] font-bold tracking-widest transition-all"
+            style={{
+              background: "linear-gradient(135deg, #dc2626, #991b1b)",
+              color: "white",
+              border: "1px solid rgba(220,38,38,0.4)",
+              boxShadow: "0 0 12px rgba(220,38,38,0.2)",
+            }}
           >
-            <Layers className="w-4 h-4 mr-2" />
-            {compareMode ? "Modo Simples" : "Comparar"}
-          </Button>
-          <Button onClick={addScenario} className="bg-white text-black hover:bg-white/90 rounded-xl px-6 py-5 font-bold">
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Cenário
-          </Button>
+            <Plus className="w-3 h-3" />
+            NOVO CENÁRIO
+          </button>
         </div>
       </div>
 
-      {/* Navegação de Cenários - Estilo Tab Moderna */}
-      <div className="flex items-center gap-2 mb-10 bg-white/[0.02] p-1.5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+      {/* ── Scenario Tabs ── */}
+      <div
+        className="flex items-center gap-1 px-4 py-3 overflow-x-auto"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}
+      >
         {scenarios.map((scenario, index) => (
           <button
             key={index}
             onClick={() => setActiveScenario(index)}
-            className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all whitespace-nowrap ${
-              activeScenario === index 
-                ? 'bg-white/10 text-white border border-white/10 shadow-lg' 
-                : 'text-white/30 hover:text-white/60'
-            }`}
+            className="flex items-center gap-2 px-4 py-2 rounded text-[9px] font-bold tracking-widest whitespace-nowrap transition-all"
+            style={{
+              background: activeScenario === index ? "rgba(255,255,255,0.07)" : "transparent",
+              border: `1px solid ${activeScenario === index ? "rgba(255,255,255,0.1)" : "transparent"}`,
+              color: activeScenario === index ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+            }}
           >
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: scenarioColors[index] }} />
-            <span className="text-xs font-black uppercase tracking-widest">{scenario.name}</span>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: SCENARIO_COLORS[index] }} />
+            {scenario.name}
           </button>
         ))}
       </div>
 
-      <Tabs defaultValue="params" className="space-y-8">
-        <TabsList className="bg-white/[0.03] p-1 rounded-xl border border-white/5 w-full max-w-md">
-          {["params", "results", "comparison", "projection"].map((tab) => (
-            <TabsTrigger 
-              key={tab} 
-              value={tab} 
-              className="rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white/10 data-[state=active]:text-white"
-            >
-              {tab === "params" ? "Parâmetros" : tab === "results" ? "Resultados" : tab === "comparison" ? "Comparativo" : "Projeção"}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* ── Tab Navigation ── */}
+      <div
+        className="flex items-center overflow-x-auto"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="px-5 py-3 text-[9px] font-bold tracking-[0.2em] transition-all whitespace-nowrap relative"
+            style={{ color: activeTab === tab.id ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-0 right-0 h-[2px]"
+                style={{ background: "#dc2626" }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="params" className="space-y-10">
-          {/* Quick Presets & Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-white/20 uppercase tracking-widest mr-2">Presets:</span>
-              {['optimistic', 'pessimistic', 'crisis'].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => applyPreset(p as any)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-[10px] font-bold text-white/60 uppercase transition-all"
-                >
-                  {p === 'optimistic' ? 'Otimista' : p === 'pessimistic' ? 'Pessimista' : 'Crise'}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-4">
-              <button onClick={() => duplicateScenario(activeScenario)} className="text-white/30 hover:text-white flex items-center gap-2 text-[10px] font-bold uppercase transition-colors">
-                <Copy className="w-3 h-3" /> Copiar
-              </button>
-              {scenarios.length > 1 && (
-                <button onClick={() => removeScenario(activeScenario)} className="text-[#ef4444]/60 hover:text-[#ef4444] flex items-center gap-2 text-[10px] font-bold uppercase transition-colors">
-                  <Trash2 className="w-3 h-3" /> Apagar
-                </button>
-              )}
-            </div>
-          </div>
+      {/* ══ TAB CONTENT ══ */}
+      <div className="p-6">
+        <AnimatePresence mode="wait">
 
-          {/* Edit Name */}
-          <div className="max-w-md space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Identificação</label>
-            <Input
-              value={currentScenario.name}
-              onChange={(e) => updateScenario('name', e.target.value)}
-              className="bg-white/5 border-white/10 text-white font-bold h-12 rounded-xl focus:ring-primary/20"
-            />
-          </div>
+          {/* ── PARAMS ── */}
+          {activeTab === "params" && (
+            <motion.div key="params" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
 
-          {/* Sliders Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
-            {[
-              { label: "Preço Brent", key: "brentPrice", icon: <DollarSign />, min: 30, max: 150, unit: "$", color: "#3b82f6" },
-              { label: "Produção", key: "production", icon: <Fuel />, min: 500, max: 1500, unit: "k", color: "#10b981" },
-              { label: "Câmbio", key: "exchangeRate", icon: <TrendingUp />, min: 500, max: 1500, unit: "AOA", color: "#f59e0b" },
-              { label: "Custo Oper.", key: "operatingCost", icon: <BarChart3 />, min: 15, max: 50, unit: "$", color: "#ef4444" },
-              { label: "Impostos", key: "taxRate", icon: <PieChart />, min: 30, max: 70, unit: "%", color: "#8b5cf6" },
-              { label: "Royalties", key: "royaltyRate", icon: <LineChart />, min: 5, max: 30, unit: "%", color: "#ec4899" }
-            ].map((param) => (
-              <div key={param.key} className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center" style={{ color: param.color }}>
-                      {param.icon}
-                    </div>
-                    <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">{param.label}</span>
-                  </div>
-                  <span className="text-sm font-black text-white">
-                    {param.unit === '$' || param.unit === 'AOA' ? param.unit : ''}
-                    {(currentScenario as any)[param.key]}
-                    {param.unit === '%' || param.unit === 'k' ? param.unit : ''}
+              {/* Actions row */}
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* Presets */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] font-bold tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    PRESETS:
                   </span>
+                  {(["optimistic","pessimistic","crisis"] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => applyPreset(p)}
+                      className="px-3 py-1.5 rounded text-[9px] font-bold tracking-wider transition-all"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        color: "hsl(var(--muted-foreground))",
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(220,38,38,0.3)";
+                        (e.currentTarget as HTMLElement).style.color = "#f87171";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
+                        (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))";
+                      }}
+                    >
+                      {PRESET_SCENARIOS[p].name}
+                    </button>
+                  ))}
                 </div>
-                <Slider
-                  value={[(currentScenario as any)[param.key]]}
-                  onValueChange={([v]) => updateScenario(param.key as any, v)}
-                  min={param.min}
-                  max={param.max}
-                  step={1}
-                  className="py-2"
-                />
-              </div>
-            ))}
-          </div>
 
-          {/* Angola Local Variables */}
-          <AngolaVariables
-            brentPrice={currentScenario.brentPrice}
-            operatingCost={currentScenario.operatingCost}
-            production={currentScenario.production}
-          />
-        </TabsContent>
-
-        <TabsContent value="results" className="space-y-8">
-          {/* Métricas de Resultado */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: "Receita Anual", value: formatBillions(currentResult.revenue), color: "#3b82f6" },
-              { label: "Lucro Líquido", value: formatBillions(currentResult.profit), color: currentResult.profit > 0 ? "#10b981" : "#ef4444", trend: currentResult.profit > 0 },
-              { label: "Margem", value: formatPercent(currentResult.margin), color: "#f59e0b" },
-              { label: "Gov. Take", value: formatBillions(currentResult.governmentTake), color: "#8b5cf6" }
-            ].map((metric, i) => (
-              <div key={i} className="bg-white/[0.03] border border-white/5 p-6 rounded-2xl relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: metric.color }} />
-                <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">{metric.label}</div>
-                <div className="text-2xl font-black text-white flex items-center gap-2">
-                  {metric.value}
-                  {metric.trend !== undefined && (
-                    metric.trend ? <TrendingUp className="w-4 h-4 text-[#10b981]" /> : <TrendingDown className="w-4 h-4 text-[#ef4444]" />
+                {/* Utils */}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => duplicateScenario(activeScenario)}
+                    className="flex items-center gap-1.5 text-[9px] font-bold tracking-widest transition-colors"
+                    style={{ color: "hsl(var(--muted-foreground))" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))"}
+                  >
+                    <Copy className="w-3 h-3" /> DUPLICAR
+                  </button>
+                  {scenarios.length > 1 && (
+                    <button
+                      onClick={() => removeScenario(activeScenario)}
+                      className="flex items-center gap-1.5 text-[9px] font-bold tracking-widest transition-colors"
+                      style={{ color: "rgba(239,68,68,0.5)" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#f87171"}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(239,68,68,0.5)"}
+                    >
+                      <Trash2 className="w-3 h-3" /> REMOVER
+                    </button>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Break-Even Status */}
-          <div className={`p-8 rounded-3xl border flex items-center justify-between overflow-hidden relative ${
-            currentScenario.brentPrice < currentResult.breakEven ? 'bg-[#ef4444]/5 border-[#ef4444]/20' : 'bg-[#10b981]/5 border-[#10b981]/20'
-          }`}>
-            <div className="flex items-center gap-6 relative z-10">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                currentScenario.brentPrice < currentResult.breakEven ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#10b981]/20 text-[#10b981]'
-              }`}>
-                {currentScenario.brentPrice < currentResult.breakEven ? <AlertTriangle className="w-7 h-7" /> : <TrendingUp className="w-7 h-7" />}
+              {/* Name */}
+              <div className="max-w-xs space-y-2">
+                <span className="text-[8px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  IDENTIFICAÇÃO DO CENÁRIO
+                </span>
+                <input
+                  value={currentScenario.name}
+                  onChange={e => updateScenario("name", e.target.value)}
+                  className="w-full h-10 px-3 rounded text-[11px] font-bold tracking-wider outline-none transition-colors"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "hsl(var(--foreground))",
+                    fontFamily: "'IBM Plex Mono', monospace",
+                  }}
+                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = "rgba(220,38,38,0.4)"}
+                  onBlur={e => (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.08)"}
+                />
               </div>
-              <div>
-                <h4 className="text-lg font-black text-white tracking-tight">Preço de Break-Even</h4>
-                <p className="text-sm text-white/40 font-medium">
-                  {currentScenario.brentPrice < currentResult.breakEven ? "Alerta: Preço atual abaixo do limite de rentabilidade." : "Positivo: Operação rentável nos parâmetros atuais."}
+
+              {/* Sliders */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-7">
+                {[
+                  { label: "PREÇO BRENT",   key: "brentPrice",    icon: DollarSign, min: 30,  max: 150,  unit: "$",   color: "#3b82f6" },
+                  { label: "PRODUÇÃO",       key: "production",    icon: Fuel,       min: 500, max: 1500, unit: "k",   color: "#10b981" },
+                  { label: "CÂMBIO",         key: "exchangeRate",  icon: TrendingUp, min: 500, max: 1500, unit: "AOA", color: "#f59e0b" },
+                  { label: "CUSTO OPER.",    key: "operatingCost", icon: BarChart3,  min: 15,  max: 50,   unit: "$",   color: "#ef4444" },
+                  { label: "IMPOSTOS",       key: "taxRate",       icon: PieChart,   min: 30,  max: 70,   unit: "%",   color: "#8b5cf6" },
+                  { label: "ROYALTIES",      key: "royaltyRate",   icon: LineChart,  min: 5,   max: 30,   unit: "%",   color: "#ec4899" },
+                ].map(p => (
+                  <SliderParam
+                    key={p.key}
+                    label={p.label}
+                    icon={p.icon}
+                    color={p.color}
+                    value={(currentScenario as any)[p.key]}
+                    min={p.min}
+                    max={p.max}
+                    unit={p.unit}
+                    onChange={(v: number) => updateScenario(p.key as any, v)}
+                  />
+                ))}
+              </div>
+
+              <AngolaVariables
+                brentPrice={currentScenario.brentPrice}
+                operatingCost={currentScenario.operatingCost}
+                production={currentScenario.production}
+              />
+            </motion.div>
+          )}
+
+          {/* ── RESULTS ── */}
+          {activeTab === "results" && (
+            <motion.div key="results" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+              {/* KPI grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "RECEITA ANUAL",  value: fB(currentResult.revenue),        color: "#3b82f6",  tag: "REV" },
+                  { label: "LUCRO LÍQUIDO",  value: fB(currentResult.profit),         color: currentResult.profit > 0 ? "#10b981" : "#ef4444", tag: "NET" },
+                  { label: "MARGEM",         value: fPct(currentResult.margin),       color: "#f59e0b",  tag: "MRG" },
+                  { label: "GOV. TAKE",      value: fB(currentResult.governmentTake), color: "#8b5cf6",  tag: "GOV" },
+                ].map((m, i) => (
+                  <div
+                    key={i}
+                    className="relative overflow-hidden rounded p-5 group"
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", transition: "border-color 0.2s" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = `${m.color}33`}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"}
+                  >
+                    <div className="absolute top-0 right-0 text-[8px] font-bold px-2 py-0.5" style={{ background: `${m.color}18`, color: m.color, borderBottomLeftRadius: "4px" }}>{m.tag}</div>
+                    <div className="text-[9px] font-bold tracking-[0.2em] mb-3" style={{ color: "hsl(var(--muted-foreground))" }}>{m.label}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold tabular-nums" style={{ color: m.color, letterSpacing: "-0.02em" }}>{m.value}</span>
+                      {m.label === "LUCRO LÍQUIDO" && (
+                        currentResult.profit > 0
+                          ? <TrendingUp className="w-4 h-4" style={{ color: "#10b981" }} />
+                          : <TrendingDown className="w-4 h-4" style={{ color: "#ef4444" }} />
+                      )}
+                    </div>
+                    <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${m.color}, transparent)` }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Break-Even */}
+              <div
+                className="p-6 rounded relative overflow-hidden flex items-center justify-between gap-6"
+                style={{
+                  background: currentScenario.brentPrice < currentResult.breakEven
+                    ? "rgba(239,68,68,0.06)" : "rgba(74,222,128,0.06)",
+                  border: `1px solid ${currentScenario.brentPrice < currentResult.breakEven ? "rgba(239,68,68,0.2)" : "rgba(74,222,128,0.2)"}`,
+                }}
+              >
+                <Activity className="absolute -right-8 -bottom-8 w-32 h-32 opacity-[0.04]" />
+
+                <div className="flex items-center gap-4 relative z-10">
+                  <div
+                    className="w-10 h-10 flex items-center justify-center rounded"
+                    style={{
+                      background: currentScenario.brentPrice < currentResult.breakEven ? "rgba(239,68,68,0.12)" : "rgba(74,222,128,0.12)",
+                      color: currentScenario.brentPrice < currentResult.breakEven ? "#f87171" : "#4ade80",
+                    }}
+                  >
+                    {currentScenario.brentPrice < currentResult.breakEven
+                      ? <AlertTriangle className="w-5 h-5" />
+                      : <TrendingUp className="w-5 h-5" />
+                    }
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-bold tracking-[0.25em] mb-1" style={{ color: currentScenario.brentPrice < currentResult.breakEven ? "rgba(248,113,113,0.7)" : "rgba(74,222,128,0.7)" }}>
+                      {currentScenario.brentPrice < currentResult.breakEven ? "⚠ ALERTA — ABAIXO DO BREAK-EVEN" : "// OPERAÇÃO RENTÁVEL"}
+                    </div>
+                    <p className="text-[11px] font-bold" style={{ color: "hsl(var(--foreground))" }}>PREÇO DE BREAK-EVEN</p>
+                    <p className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      {currentScenario.brentPrice < currentResult.breakEven
+                        ? `Preço actual ($${currentScenario.brentPrice}) abaixo do limite de rentabilidade`
+                        : `Margem de segurança: $${(currentScenario.brentPrice - currentResult.breakEven).toFixed(0)}/bbl`
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative z-10 text-right shrink-0">
+                  <span className="font-bold tabular-nums" style={{ fontSize: "2rem", color: "hsl(var(--foreground))", letterSpacing: "-0.03em" }}>
+                    ${currentResult.breakEven.toFixed(0)}
+                  </span>
+                  <span className="text-[11px] ml-1" style={{ color: "hsl(var(--muted-foreground))" }}>/BBL</span>
+                </div>
+              </div>
+
+              {/* Monthly cash flow mini-chart */}
+              <div
+                className="rounded overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.05)" }}
+              >
+                <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    CASH FLOW MENSAL // {currentScenario.name}
+                  </span>
+                </div>
+                <div className="px-4 py-4" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={currentResult.cashFlow.map((v, i) => ({ month: ["J","F","M","A","M","J","J","A","S","O","N","D"][i], value: v / 1e9 }))}>
+                      <defs>
+                        <linearGradient id="cfGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor={SCENARIO_COLORS[activeScenario]} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={SCENARIO_COLORS[activeScenario]} stopOpacity={0}   />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis dataKey="month" stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+                      <Area type="monotone" dataKey="value" name="CASH FLOW" stroke={SCENARIO_COLORS[activeScenario]} strokeWidth={2} fill="url(#cfGrad)" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── COMPARISON ── */}
+          {activeTab === "comparison" && (
+            <motion.div key="comparison" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+              {/* Bar chart */}
+              <div className="rounded overflow-hidden" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    COMPARATIVO // RECEITA & LUCRO POR CENÁRIO ($B)
+                  </span>
+                </div>
+                <div className="px-4 py-4" style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={comparisonData}>
+                      <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis dataKey="name" stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
+                      <Bar dataKey="receita" name="RECEITA ($B)" fill="#3b82f6" radius={[3,3,0,0]} barSize={32} />
+                      <Bar dataKey="lucro"   name="LUCRO ($B)"   fill="#10b981" radius={[3,3,0,0]} barSize={32} />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Comparison table */}
+              <div className="rounded overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                {/* Header */}
+                <div
+                  className="grid text-[9px] font-bold tracking-[0.2em] px-5 py-3"
+                  style={{
+                    gridTemplateColumns: "1fr 80px 80px 70px 80px",
+                    background: "rgba(255,255,255,0.025)",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    color: "hsl(var(--muted-foreground))",
+                  }}
+                >
+                  <span>CENÁRIO</span>
+                  <span className="text-right">RECEITA</span>
+                  <span className="text-right">LUCRO</span>
+                  <span className="text-right">MARGEM</span>
+                  <span className="text-right">BREAK-EVEN</span>
+                </div>
+
+                {scenarios.map((scenario, index) => (
+                  <div
+                    key={index}
+                    className="grid px-5 py-3.5 transition-colors cursor-pointer relative"
+                    style={{
+                      gridTemplateColumns: "1fr 80px 80px 70px 80px",
+                      alignItems: "center",
+                      borderBottom: index < scenarios.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                      background: activeScenario === index ? "rgba(255,255,255,0.025)" : "transparent",
+                    }}
+                    onClick={() => setActiveScenario(index)}
+                  >
+                    {activeScenario === index && (
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: SCENARIO_COLORS[index] }} />
+                    )}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: SCENARIO_COLORS[index] }} />
+                      <span className="text-[10px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>{scenario.name}</span>
+                    </div>
+                    <span className="text-[10px] tabular-nums text-right" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      {fB(results[index].revenue)}
+                    </span>
+                    <span
+                      className="text-[10px] font-bold tabular-nums text-right"
+                      style={{ color: results[index].profit > 0 ? "#4ade80" : "#f87171" }}
+                    >
+                      {fB(results[index].profit)}
+                    </span>
+                    <span className="text-[10px] tabular-nums text-right" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      {fPct(results[index].margin)}
+                    </span>
+                    <span className="text-[10px] tabular-nums text-right" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      ${results[index].breakEven.toFixed(0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── PROJECTION ── */}
+          {activeTab === "projection" && (
+            <motion.div key="projection" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+              <div className="rounded overflow-hidden" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    PROJECÇÃO DE CASH FLOW // 12 MESES ($B)
+                  </span>
+                </div>
+                <div className="px-4 py-4" style={{ height: 320 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={projectionData}>
+                      <defs>
+                        {scenarios.map((s, i) => (
+                          <linearGradient key={s.name} id={`pg${i}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor={SCENARIO_COLORS[i]} stopOpacity={0.18} />
+                            <stop offset="95%" stopColor={SCENARIO_COLORS[i]} stopOpacity={0}    />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis dataKey="month" stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+                      {scenarios.map((s, i) => (
+                        <Area key={s.name} type="monotone" dataKey={s.name} stroke={SCENARIO_COLORS[i]} fill={`url(#pg${i})`} strokeWidth={2} dot={false} />
+                      ))}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Legend */}
+                <div className="flex flex-wrap items-center gap-4 px-5 pb-4">
+                  {scenarios.map((s, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <div className="w-4 h-[2px] rounded-full" style={{ background: SCENARIO_COLORS[i] }} />
+                      <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>{s.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technical note */}
+              <div
+                className="p-5 rounded relative overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+              >
+                <div className="absolute top-2 right-2 opacity-[0.06]">
+                  <Zap className="w-10 h-10" />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <RefreshCw className="w-3 h-3 text-red-500" />
+                  <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "rgba(220,38,38,0.7)" }}>
+                    NOTA TÉCNICA // DISCLAIMER
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  Esta projecção considera variações sazonais baseadas em modelos estatísticos de produção.
+                  Os valores são estimativas brutas e não consideram interrupções operacionais imprevistas ou variações fiscais extraordinárias.
                 </p>
               </div>
-            </div>
-            <div className="text-4xl font-black text-white relative z-10">
-              ${currentResult.breakEven.toFixed(0)}<span className="text-lg text-white/30 ml-1">/bbl</span>
-            </div>
-            {/* Background Decorative Icon */}
-            <Activity className="absolute -right-10 -bottom-10 w-40 h-40 opacity-5" />
-          </div>
-        </TabsContent>
+            </motion.div>
+          )}
 
-        <TabsContent value="comparison" className="space-y-8">
-          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 h-[450px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart data={scenarios.map((s, i) => ({
-                name: s.name,
-                receita: results[i].revenue / 1e9,
-                lucro: results[i].profit / 1e9,
-                margem: results[i].margin,
-              }))}>
-                <CartesianGrid vertical={false} stroke="white" strokeOpacity={0.03} strokeDasharray="4 4" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 }} />
-                <Tooltip content={<ModernTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="receita" fill="#3b82f6" name="Receita ($B)" radius={[6, 6, 0, 0]} barSize={40} />
-                <Bar dataKey="lucro" fill="#10b981" name="Lucro ($B)" radius={[6, 6, 0, 0]} barSize={40} />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-white/5">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-white/[0.03]">
-                  <th className="py-4 px-6 text-[10px] font-black text-white/30 uppercase tracking-widest">Cenário</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-white/30 uppercase tracking-widest text-right">Receita</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-white/30 uppercase tracking-widest text-right">Lucro</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-white/30 uppercase tracking-widest text-right">Margem</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-white/30 uppercase tracking-widest text-right">Break-Even</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {scenarios.map((scenario, index) => (
-                  <tr key={index} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: scenarioColors[index] }} />
-                        <span className="font-bold text-white">{scenario.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-right font-mono text-sm text-white/70">{formatBillions(results[index].revenue)}</td>
-                    <td className={`py-4 px-6 text-right font-mono text-sm font-bold ${results[index].profit > 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                      {formatBillions(results[index].profit)}
-                    </td>
-                    <td className="py-4 px-6 text-right font-mono text-sm text-white/70">{formatPercent(results[index].margin)}</td>
-                    <td className="py-4 px-6 text-right font-mono text-sm text-white/70">${results[index].breakEven.toFixed(0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="projection" className="space-y-8">
-          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 h-[450px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={Array.from({ length: 12 }, (_, i) => {
-                const month = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][i];
-                const data: Record<string, any> = { month };
-                scenarios.forEach((s, idx) => { data[s.name] = results[idx].cashFlow[i] / 1e9; });
-                return data;
-              })}>
-                <defs>
-                  {scenarios.map((s, i) => (
-                    <linearGradient key={s.name} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={scenarioColors[i]} stopOpacity={0.2} />
-                      <stop offset="95%" stopColor={scenarioColors[i]} stopOpacity={0} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid vertical={false} stroke="white" strokeOpacity={0.03} strokeDasharray="4 4" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 }} />
-                <Tooltip content={<ModernTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                {scenarios.map((s, i) => (
-                  <Area key={s.name} type="monotone" dataKey={s.name} stroke={scenarioColors[i]} fill={`url(#grad-${i})`} strokeWidth={3} />
-                ))}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-            <div className="flex items-center gap-3 mb-2">
-              <RefreshCw className="w-4 h-4 text-primary" />
-              <span className="text-xs font-black text-white uppercase tracking-widest">Nota Técnica</span>
-            </div>
-            <p className="text-xs text-white/30 leading-relaxed">
-              Esta projeção de fluxo de caixa considera variações sazonais baseadas em modelos estatísticos de produção. 
-              Os valores são estimativas brutas e não consideram interrupções operacionais imprevistas ou variações fiscais extraordinárias.
-            </p>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };

@@ -1,54 +1,18 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Scale, 
-  TrendingUp, 
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  AlertTriangle,
-  Calculator,
-  Percent,
-  Building2,
-  Leaf,
-  Globe,
-  Info,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Activity
+import {
+  Scale, TrendingUp, TrendingDown, DollarSign, BarChart3,
+  AlertTriangle, Calculator, Percent, Building2, Leaf,
+  Globe, Info, ArrowRight, CheckCircle2, XCircle, Activity,
+  Terminal, ChevronRight, Zap, Radio,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Tooltip as UITooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
-} from "@/components/ui/tooltip";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface SimulationParams {
   royaltyChange: number;
   taxChange: number;
@@ -65,480 +29,432 @@ interface SimulationResult {
   exportVolumeImpact: number;
   governmentTakeChange: number;
   breakEvenPrice: number;
-  viabilityScore: number; // 0 to 100
+  viabilityScore: number;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const DEFAULT_PARAMS: SimulationParams = {
-  royaltyChange: 0,
-  taxChange: 0,
-  environmentalCompliance: 0,
-  opepQuotaChange: 0,
-  brentPriceScenario: 78,
-  currencyDevaluation: 0,
+  royaltyChange: 0, taxChange: 0, environmentalCompliance: 0,
+  opepQuotaChange: 0, brentPriceScenario: 78, currencyDevaluation: 0,
 };
 
 const BASE_VALUES = {
-  dailyProduction: 1100000,
-  currentRoyalty: 16,
-  currentTax: 50,
-  operatingCost: 25,
-  currentBrent: 78,
-  annualRevenue: 25000000000,
+  dailyProduction: 1100000, currentRoyalty: 16,
+  currentTax: 50, operatingCost: 25, currentBrent: 78,
 };
 
-export const RegulatoryImpactSimulator = () => {
-  const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
-  const [activeScenario, setActiveScenario] = useState<string>("baseline");
+const SCENARIOS = {
+  optimistic:  { label: "OTIMISTA",   desc: "Preços altos e incentivos fiscais",  params: { royaltyChange: -2, taxChange: -3, environmentalCompliance: 5,  opepQuotaChange: 5,   brentPriceScenario: 95, currencyDevaluation: 5  } },
+  baseline:    { label: "BASE",       desc: "Condições actuais de mercado",       params: DEFAULT_PARAMS },
+  pessimistic: { label: "PESSIMISTA", desc: "Queda de preços e custos elevados",  params: { royaltyChange: 2, taxChange: 3,  environmentalCompliance: 15, opepQuotaChange: -5,  brentPriceScenario: 60, currencyDevaluation: 20 } },
+  crisis:      { label: "CRISE",      desc: "Cenário de stress extremo",          params: { royaltyChange: 5, taxChange: 8,  environmentalCompliance: 30, opepQuotaChange: -15, brentPriceScenario: 45, currencyDevaluation: 40 } },
+} as const;
 
-  const scenarios = {
-    optimistic: {
-      label: "Otimista",
-      description: "Preços altos e incentivos fiscais",
-      params: {
-        royaltyChange: -2,
-        taxChange: -3,
-        environmentalCompliance: 5,
-        opepQuotaChange: 5,
-        brentPriceScenario: 95,
-        currencyDevaluation: 5,
-      }
-    },
-    baseline: {
-      label: "Base",
-      description: "Condições atuais de mercado",
-      params: DEFAULT_PARAMS
-    },
-    pessimistic: {
-      label: "Pessimista",
-      description: "Queda de preços e custos elevados",
-      params: {
-        royaltyChange: 2,
-        taxChange: 3,
-        environmentalCompliance: 15,
-        opepQuotaChange: -5,
-        brentPriceScenario: 60,
-        currencyDevaluation: 20,
-      }
-    },
-    crisis: {
-      label: "Crise",
-      description: "Cenário de stress extremo",
-      params: {
-        royaltyChange: 5,
-        taxChange: 8,
-        environmentalCompliance: 30,
-        opepQuotaChange: -15,
-        brentPriceScenario: 45,
-        currencyDevaluation: 40,
-      }
-    },
-  };
+type ScenarioKey = keyof typeof SCENARIOS;
+type TabId = "analysis" | "projection";
 
-  const applyScenario = (scenarioKey: string) => {
-    setActiveScenario(scenarioKey);
-    if (scenarioKey !== "custom") {
-      setParams(scenarios[scenarioKey as keyof typeof scenarios].params);
-    }
-  };
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const viabilityColor  = (s: number) => s > 70 ? "#4ade80" : s > 40 ? "#fb923c" : "#f87171";
+const viabilityLabel  = (s: number) => s > 70 ? "ALTA ATRATIVIDADE" : s > 40 ? "RISCO MODERADO" : "INVIÁVEL / CRÍTICO";
+const signedPct       = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 
-  const results = useMemo<SimulationResult>(() => {
-    const productionMultiplier = 1 + (params.opepQuotaChange / 100);
-    const newProduction = BASE_VALUES.dailyProduction * productionMultiplier;
-    
-    const baseRevenue = BASE_VALUES.dailyProduction * BASE_VALUES.currentBrent * 365;
-    const newRevenue = newProduction * params.brentPriceScenario * 365;
-    const revenueImpact = ((newRevenue - baseRevenue) / baseRevenue) * 100;
-
-    const envCostIncrease = params.environmentalCompliance / 100;
-    const currencyCostIncrease = params.currencyDevaluation / 200;
-    const newOperatingCost = BASE_VALUES.operatingCost * (1 + envCostIncrease + currencyCostIncrease);
-    const productionCostImpact = ((newOperatingCost - BASE_VALUES.operatingCost) / BASE_VALUES.operatingCost) * 100;
-
-    const currentGovTake = BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax;
-    const newGovTake = (BASE_VALUES.currentRoyalty + params.royaltyChange) + (BASE_VALUES.currentTax + params.taxChange);
-    const governmentTakeChange = newGovTake - currentGovTake;
-
-    const currentMargin = BASE_VALUES.currentBrent - BASE_VALUES.operatingCost;
-    const currentProfitPerBarrel = currentMargin * (1 - currentGovTake / 100);
-    const newMargin = params.brentPriceScenario - newOperatingCost;
-    const newProfitPerBarrel = newMargin * (1 - newGovTake / 100);
-    const netProfitImpact = ((newProfitPerBarrel - currentProfitPerBarrel) / currentProfitPerBarrel) * 100;
-
-    const breakEvenPrice = newOperatingCost / (1 - newGovTake / 100);
-
-    // Calculate viability score (0-100)
-    let score = 50;
-    score += (params.brentPriceScenario - breakEvenPrice) * 2;
-    score -= governmentTakeChange * 2;
-    score = Math.max(0, Math.min(100, score));
-
-    return {
-      revenueImpact,
-      productionCostImpact,
-      netProfitImpact,
-      exportVolumeImpact: params.opepQuotaChange,
-      governmentTakeChange,
-      breakEvenPrice,
-      viabilityScore: score
-    };
-  }, [params]);
-
-  const projectionData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return months.map((month, index) => {
-      const factor = 1 + (results.netProfitImpact / 100) * ((index + 1) / 12);
-      return {
-        month,
-        baseline: 100,
-        scenario: Math.round(100 * factor),
-      };
-    });
-  }, [results.netProfitImpact]);
-
-  const getViabilityColor = (score: number) => {
-    if (score > 70) return "text-emerald-500";
-    if (score > 40) return "text-amber-500";
-    return "text-rose-500";
-  };
-
-  const getViabilityLabel = (score: number) => {
-    if (score > 70) return "Alta Atratividade";
-    if (score > 40) return "Risco Moderado";
-    return "Inviável / Crítico";
-  };
-
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Calculator className="w-6 h-6 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">Simulador de Impacto Regulatório</h1>
+    <div className="px-3 py-2 text-[10px] font-bold" style={{ background: "hsl(var(--card))", border: "1px solid rgba(220,38,38,0.3)", borderRadius: "4px", fontFamily: "'IBM Plex Mono', monospace" }}>
+      <p className="text-[9px] mb-1.5 tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</p>
+      {payload.map((p: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: p.color || p.fill }} />
+            <span style={{ color: "hsl(var(--muted-foreground))" }}>{p.name}</span>
           </div>
-          <p className="text-muted-foreground">Análise preditiva para o setor petrolífero angolano</p>
+          <span style={{ color: "hsl(var(--foreground))" }}>{p.value}</span>
         </div>
-        
-        <div className="flex items-center gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
-          <div className="text-right">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Score de Viabilidade</p>
-            <p className={`text-xl font-bold ${getViabilityColor(results.viabilityScore)}`}>
-              {getViabilityLabel(results.viabilityScore)}
-            </p>
-          </div>
-          <div className="w-12 h-12 relative">
-             <svg className="w-full h-full" viewBox="0 0 36 36">
-                <path
-                  className="stroke-muted fill-none"
-                  strokeWidth="3"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className={`fill-none transition-all duration-500 ease-in-out ${
-                    results.viabilityScore > 70 ? 'stroke-emerald-500' : results.viabilityScore > 40 ? 'stroke-amber-500' : 'stroke-rose-500'
-                  }`}
-                  strokeWidth="3"
-                  strokeDasharray={`${results.viabilityScore}, 100`}
-                  strokeLinecap="round"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-             </svg>
-             <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-                {Math.round(results.viabilityScore)}%
-             </div>
-          </div>
-        </div>
-      </div>
+      ))}
+    </div>
+  );
+};
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Controls */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="w-4 h-4" /> Cenários Pré-definidos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(scenarios).map(([key, scenario]) => (
-                  <Button
-                    key={key}
-                    variant={activeScenario === key ? "default" : "outline"}
-                    className="h-auto py-2 px-3 flex flex-col items-start gap-0.5 text-left"
-                    onClick={() => applyScenario(key)}
-                  >
-                    <span className="text-xs font-bold">{scenario.label}</span>
-                    <span className="text-[10px] opacity-70 font-normal leading-tight">{scenario.description}</span>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+// ─── Slider row ───────────────────────────────────────────────────────────────
+const ParamSlider = ({ label, value, min, max, unit, onChange, color = "#dc2626" }: any) => (
+  <div className="space-y-2.5">
+    <div className="flex items-center justify-between">
+      <span className="text-[9px] font-bold tracking-[0.15em]" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</span>
+      <span className="text-[10px] font-bold tabular-nums px-2 py-0.5 rounded" style={{ background: `${color}14`, color, fontFamily: "'IBM Plex Mono', monospace" }}>
+        {value > 0 && unit !== "USD" ? "+" : ""}{value}{unit}
+      </span>
+    </div>
+    <Slider value={[value]} min={min} max={max} step={label.includes("Brent") ? 1 : 0.5} onValueChange={([v]) => onChange(v)} className="py-1" />
+  </div>
+);
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Ajustes de Parâmetros</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Fiscal Group */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                  <Building2 className="w-3 h-3" /> Fiscalidade
-                </div>
-                <div className="space-y-4">
-                  <ParameterSlider 
-                    label="Royalties" 
-                    value={params.royaltyChange} 
-                    min={-10} max={10} 
-                    unit="pp"
-                    onChange={(v) => { setParams({...params, royaltyChange: v}); setActiveScenario("custom"); }}
-                  />
-                  <ParameterSlider 
-                    label="Imposto de Rendimento" 
-                    value={params.taxChange} 
-                    min={-10} max={10} 
-                    unit="pp"
-                    onChange={(v) => { setParams({...params, taxChange: v}); setActiveScenario("custom"); }}
-                  />
-                </div>
-              </div>
+// ─── Insight row ──────────────────────────────────────────────────────────────
+const InsightRow = ({ condition, type, text }: { condition: boolean; type: "danger" | "warning" | "success" | "info"; text: string }) => {
+  if (!condition && type !== "info") return null;
+  const cfg = {
+    danger:  { color: "#f87171", bg: "rgba(248,113,113,0.07)", border: "rgba(248,113,113,0.2)",  Icon: XCircle      },
+    warning: { color: "#fb923c", bg: "rgba(251,146,60,0.07)",  border: "rgba(251,146,60,0.2)",  Icon: AlertTriangle },
+    success: { color: "#4ade80", bg: "rgba(74,222,128,0.07)",  border: "rgba(74,222,128,0.2)",  Icon: CheckCircle2  },
+    info:    { color: "#60a5fa", bg: "rgba(96,165,250,0.07)",  border: "rgba(96,165,250,0.2)",  Icon: Info          },
+  }[type];
+  return (
+    <div className="flex items-start gap-2.5 p-3 rounded" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+      <cfg.Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: cfg.color }} />
+      <p className="text-[10px] leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>{text}</p>
+    </div>
+  );
+};
 
-              {/* Market Group */}
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                  <Globe className="w-3 h-3" /> Mercado & Operação
-                </div>
-                <div className="space-y-4">
-                  <ParameterSlider 
-                    label="Preço Brent" 
-                    value={params.brentPriceScenario} 
-                    min={40} max={120} 
-                    unit="USD"
-                    onChange={(v) => { setParams({...params, brentPriceScenario: v}); setActiveScenario("custom"); }}
-                  />
-                  <ParameterSlider 
-                    label="Quota OPEP+" 
-                    value={params.opepQuotaChange} 
-                    min={-20} max={20} 
-                    unit="%"
-                    onChange={(v) => { setParams({...params, opepQuotaChange: v}); setActiveScenario("custom"); }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Results & Visualizations */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Top Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricCard 
-              label="Impacto na Receita" 
-              value={results.revenueImpact} 
-              icon={<DollarSign className="w-4 h-4" />}
-              trend={results.revenueImpact > 0 ? "up" : "down"}
-            />
-            <MetricCard 
-              label="Margem de Lucro" 
-              value={results.netProfitImpact} 
-              icon={<TrendingUp className="w-4 h-4" />}
-              trend={results.netProfitImpact > 0 ? "up" : "down"}
-            />
-            <MetricCard 
-              label="Break-even" 
-              value={results.breakEvenPrice} 
-              icon={<Scale className="w-4 h-4" />}
-              unit="$/bbl"
-              isAbsolute
-              status={results.breakEvenPrice > params.brentPriceScenario ? "danger" : "success"}
-            />
-          </div>
-
-          {/* Main Content Tabs */}
-          <Tabs defaultValue="analysis" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="analysis">Análise de Impacto</TabsTrigger>
-              <TabsTrigger value="projection">Projeção 12 Meses</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="analysis" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Distribuição de Valor</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Gov Take', value: BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange },
-                            { name: 'Custos', value: (results.productionCostImpact / 100 + 1) * 25 },
-                            { name: 'Margem', value: Math.max(0, params.brentPriceScenario - results.breakEvenPrice) }
-                          ]}
-                          cx="50%" cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          <Cell fill="hsl(var(--primary))" />
-                          <Cell fill="hsl(var(--muted))" />
-                          <Cell fill="hsl(var(--accent))" />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Insights Estratégicos</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <InsightItem 
-                      condition={results.viabilityScore < 40}
-                      type="danger"
-                      text="Risco elevado de desinvestimento. A carga fiscal supera a viabilidade operacional."
-                    />
-                    <InsightItem 
-                      condition={results.breakEvenPrice > 65}
-                      type="warning"
-                      text="Vulnerabilidade alta a choques de preço externos. Necessário otimizar custos."
-                    />
-                    <InsightItem 
-                      condition={results.netProfitImpact > 15}
-                      type="success"
-                      text="Cenário altamente atrativo para novos investimentos e exploração."
-                    />
-                    <InsightItem 
-                      condition={true}
-                      type="info"
-                      text={`O Government Take atual situa-se em ${(BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange).toFixed(1)}%.`}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="projection">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={projectionData}>
-                        <defs>
-                          <linearGradient id="colorScenario" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} />
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="baseline" 
-                          stroke="hsl(var(--muted-foreground))" 
-                          fill="transparent" 
-                          strokeDasharray="5 5" 
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="scenario" 
-                          stroke="hsl(var(--primary))" 
-                          fillOpacity={1} 
-                          fill="url(#colorScenario)" 
-                          strokeWidth={3}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+// ─── Circular progress ────────────────────────────────────────────────────────
+const CircularScore = ({ score }: { score: number }) => {
+  const c = viabilityColor(score);
+  return (
+    <div className="relative w-14 h-14 shrink-0">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+        <path className="fill-none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+        <path
+          className="fill-none transition-all duration-700"
+          stroke={c}
+          strokeWidth="3"
+          strokeDasharray={`${score}, 100`}
+          strokeLinecap="round"
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums" style={{ color: c, fontFamily: "'IBM Plex Mono', monospace" }}>
+        {Math.round(score)}
       </div>
     </div>
   );
 };
 
-// Helper Components
-const ParameterSlider = ({ label, value, min, max, unit, onChange }: any) => (
-  <div className="space-y-3">
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <Badge variant="secondary" className="font-mono">
-        {value > 0 && "+"}{value}{unit}
-      </Badge>
-    </div>
-    <Slider
-      value={[value]}
-      min={min}
-      max={max}
-      step={label.includes("Brent") ? 1 : 0.5}
-      onValueChange={([v]) => onChange(v)}
-      className="cursor-pointer"
-    />
-  </div>
-);
+// ═════════════════════════════════════════════════════════════════════════════
+export const RegulatoryImpactSimulator = () => {
+  const [params, setParams]               = useState<SimulationParams>(DEFAULT_PARAMS);
+  const [activeScenario, setActiveScenario] = useState<ScenarioKey | "custom">("baseline");
+  const [activeTab, setActiveTab]         = useState<TabId>("analysis");
 
-const MetricCard = ({ label, value, icon, trend, unit = "%", isAbsolute = false, status }: any) => (
-  <Card className="overflow-hidden">
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="p-1.5 bg-secondary/50 rounded-md text-muted-foreground">
-          {icon}
-        </div>
-        {status === "danger" ? (
-          <Badge variant="destructive" className="animate-pulse">Crítico</Badge>
-        ) : trend && (
-          <div className={`flex items-center text-xs font-bold ${trend === "up" ? "text-emerald-500" : "text-rose-500"}`}>
-            {trend === "up" ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-            {trend === "up" ? "Alta" : "Queda"}
-          </div>
-        )}
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground font-medium">{label}</p>
-        <p className="text-2xl font-bold">
-          {!isAbsolute && value > 0 && "+"}{value.toFixed(1)}{unit}
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const InsightItem = ({ condition, type, text }: any) => {
-  if (!condition && type !== "info") return null;
-  
-  const styles = {
-    danger: "bg-rose-500/10 text-rose-600 border-rose-200",
-    warning: "bg-amber-500/10 text-amber-600 border-amber-200",
-    success: "bg-emerald-500/10 text-emerald-600 border-emerald-200",
-    info: "bg-blue-500/10 text-blue-600 border-blue-200"
+  const applyScenario = (key: ScenarioKey) => {
+    setActiveScenario(key);
+    setParams(SCENARIOS[key].params as SimulationParams);
   };
 
-  const icons = {
-    danger: <XCircle className="w-4 h-4" />,
-    warning: <AlertTriangle className="w-4 h-4" />,
-    success: <CheckCircle2 className="w-4 h-4" />,
-    info: <Info className="w-4 h-4" />
+  const setParam = (key: keyof SimulationParams, v: number) => {
+    setParams(p => ({ ...p, [key]: v }));
+    setActiveScenario("custom");
   };
+
+  // ── Calculation ─────────────────────────────────────────────────────────────
+  const results = useMemo<SimulationResult>(() => {
+    const newProduction   = BASE_VALUES.dailyProduction * (1 + params.opepQuotaChange / 100);
+    const baseRevenue     = BASE_VALUES.dailyProduction * BASE_VALUES.currentBrent * 365;
+    const newRevenue      = newProduction * params.brentPriceScenario * 365;
+    const revenueImpact   = ((newRevenue - baseRevenue) / baseRevenue) * 100;
+    const newOpex         = BASE_VALUES.operatingCost * (1 + params.environmentalCompliance / 100 + params.currencyDevaluation / 200);
+    const productionCostImpact = ((newOpex - BASE_VALUES.operatingCost) / BASE_VALUES.operatingCost) * 100;
+    const curGovTake      = BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax;
+    const newGovTake      = (BASE_VALUES.currentRoyalty + params.royaltyChange) + (BASE_VALUES.currentTax + params.taxChange);
+    const curProfit       = (BASE_VALUES.currentBrent - BASE_VALUES.operatingCost) * (1 - curGovTake / 100);
+    const newProfit       = (params.brentPriceScenario - newOpex) * (1 - newGovTake / 100);
+    const netProfitImpact = ((newProfit - curProfit) / curProfit) * 100;
+    const breakEvenPrice  = newOpex / (1 - newGovTake / 100);
+    const score           = Math.max(0, Math.min(100, 50 + (params.brentPriceScenario - breakEvenPrice) * 2 - (newGovTake - curGovTake) * 2));
+    return { revenueImpact, productionCostImpact, netProfitImpact, exportVolumeImpact: params.opepQuotaChange, governmentTakeChange: newGovTake - curGovTake, breakEvenPrice, viabilityScore: score };
+  }, [params]);
+
+  const projectionData = useMemo(() => (
+    ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"].map((month, i) => ({
+      month,
+      baseline: 100,
+      scenario: Math.round(100 * (1 + (results.netProfitImpact / 100) * ((i + 1) / 12))),
+    }))
+  ), [results.netProfitImpact]);
+
+  const pieData = [
+    { name: "GOV TAKE", value: BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange, color: "#dc2626" },
+    { name: "CUSTOS OP", value: (results.productionCostImpact / 100 + 1) * 25, color: "#f59e0b" },
+    { name: "MARGEM",    value: Math.max(0, params.brentPriceScenario - results.breakEvenPrice), color: "#4ade80" },
+  ];
+
+  const govTakeTotal = (BASE_VALUES.currentRoyalty + BASE_VALUES.currentTax + results.governmentTakeChange).toFixed(1);
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border text-xs font-medium ${styles[type as keyof typeof styles]}`}>
-      <div className="mt-0.5">{icons[type as keyof typeof icons]}</div>
-      <p className="leading-relaxed">{text}</p>
+    <div
+      className="max-w-6xl mx-auto space-y-4"
+      style={{ fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
+    >
+      {/* ── Header ── */}
+      <div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-5 rounded"
+        style={{ background: "hsl(var(--card))", border: "1px solid rgba(220,38,38,0.15)", borderLeft: "2px solid #dc2626" }}
+      >
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Terminal className="w-3 h-3 text-red-500" />
+            <span className="text-[9px] font-bold tracking-[0.3em]" style={{ color: "rgba(220,38,38,0.7)" }}>
+              ENGINE-SIM // IMPACTO REGULATÓRIO
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 flex items-center justify-center rounded" style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)" }}>
+              <Calculator className="w-4 h-4 text-red-500" />
+            </div>
+            <div>
+              <h1 className="text-[14px] font-bold tracking-wider" style={{ color: "hsl(var(--foreground))" }}>
+                SIMULADOR DE IMPACTO REGULATÓRIO
+              </h1>
+              <p className="text-[9px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
+                ANÁLISE PREDITIVA · SECTOR PETROLÍFERO ANGOLANO
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Viability score */}
+        <div
+          className="flex items-center gap-4 px-5 py-3 rounded"
+          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <CircularScore score={results.viabilityScore} />
+          <div>
+            <p className="text-[8px] font-bold tracking-[0.25em] mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+              VIABILITY SCORE
+            </p>
+            <p className="text-[11px] font-bold" style={{ color: viabilityColor(results.viabilityScore) }}>
+              {viabilityLabel(results.viabilityScore)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        {/* ── Left: Controls ── */}
+        <div className="lg:col-span-4 space-y-4">
+
+          {/* Scenario presets */}
+          <div className="rounded overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+              <Radio className="w-3 h-3 text-red-500" />
+              <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                CENÁRIOS PRÉ-DEFINIDOS
+              </span>
+            </div>
+            <div className="p-3 grid grid-cols-2 gap-2">
+              {(Object.entries(SCENARIOS) as [ScenarioKey, typeof SCENARIOS[ScenarioKey]][]).map(([key, s]) => (
+                <button
+                  key={key}
+                  onClick={() => applyScenario(key)}
+                  className="flex flex-col items-start px-3 py-2.5 rounded text-left transition-all"
+                  style={{
+                    background: activeScenario === key ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${activeScenario === key ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.06)"}`,
+                  }}
+                >
+                  <span className="text-[9px] font-bold tracking-wider" style={{ color: activeScenario === key ? "#f87171" : "hsl(var(--foreground))" }}>
+                    {s.label}
+                  </span>
+                  <span className="text-[8px] mt-0.5 leading-tight" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    {s.desc}
+                  </span>
+                </button>
+              ))}
+              {activeScenario === "custom" && (
+                <div
+                  className="col-span-2 flex items-center gap-2 px-3 py-1.5 rounded"
+                  style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}
+                >
+                  <Zap className="w-3 h-3" style={{ color: "#a78bfa" }} />
+                  <span className="text-[9px] font-bold tracking-widest" style={{ color: "#a78bfa" }}>CUSTOM // PARÂMETROS MANUAIS</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Params */}
+          <div className="rounded overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+              <Building2 className="w-3 h-3 text-amber-400" />
+              <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                FISCALIDADE
+              </span>
+            </div>
+            <div className="p-4 space-y-5">
+              <ParamSlider label="ROYALTIES"           value={params.royaltyChange}         min={-10} max={10}  unit="pp" color="#f59e0b" onChange={v => setParam("royaltyChange", v)} />
+              <ParamSlider label="IMPOSTO RENDIMENTO"  value={params.taxChange}              min={-10} max={10}  unit="pp" color="#f59e0b" onChange={v => setParam("taxChange", v)} />
+            </div>
+
+            <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+              <Globe className="w-3 h-3 text-blue-400" />
+              <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                MERCADO & OPERAÇÃO
+              </span>
+            </div>
+            <div className="p-4 space-y-5">
+              <ParamSlider label="PREÇO BRENT"     value={params.brentPriceScenario}     min={40}  max={120} unit="USD" color="#3b82f6" onChange={v => setParam("brentPriceScenario", v)} />
+              <ParamSlider label="QUOTA OPEP+"     value={params.opepQuotaChange}         min={-20} max={20}  unit="%"   color="#10b981" onChange={v => setParam("opepQuotaChange", v)} />
+              <ParamSlider label="COMPLIANCE AMBIENTAL" value={params.environmentalCompliance} min={0} max={40}  unit="%"   color="#a78bfa" onChange={v => setParam("environmentalCompliance", v)} />
+              <ParamSlider label="DESVALORIZAÇÃO AOA"    value={params.currencyDevaluation}    min={0} max={50}  unit="%"   color="#f87171" onChange={v => setParam("currencyDevaluation", v)} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right: Results ── */}
+        <div className="lg:col-span-8 space-y-4">
+
+          {/* KPI row */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "IMPACTO RECEITA",  value: signedPct(results.revenueImpact),          color: results.revenueImpact > 0 ? "#4ade80" : "#f87171",  icon: DollarSign, tag: "REV" },
+              { label: "MARGEM LUCRO",      value: signedPct(results.netProfitImpact),         color: results.netProfitImpact > 0 ? "#4ade80" : "#f87171", icon: TrendingUp,  tag: "MGN" },
+              { label: "BREAK-EVEN",        value: `$${results.breakEvenPrice.toFixed(0)}/BBL`, color: results.breakEvenPrice > params.brentPriceScenario ? "#f87171" : "#4ade80", icon: Scale, tag: "BEP" },
+            ].map((m, i) => (
+              <div
+                key={i}
+                className="relative overflow-hidden rounded p-4 group"
+                style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)", transition: "border-color 0.2s" }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = `${m.color}33`}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"}
+              >
+                <div className="absolute top-0 right-0 text-[8px] font-bold px-2 py-0.5" style={{ background: `${m.color}14`, color: m.color, borderBottomLeftRadius: "4px" }}>{m.tag}</div>
+                <div className="flex items-center gap-1.5 mb-3">
+                  <m.icon className="w-3 h-3" style={{ color: m.color }} />
+                  <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>{m.label}</span>
+                </div>
+                <div className="text-[18px] font-bold tabular-nums" style={{ color: m.color, letterSpacing: "-0.02em" }}>{m.value}</div>
+                {m.tag === "BEP" && results.breakEvenPrice > params.brentPriceScenario && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <AlertTriangle className="w-2.5 h-2.5 text-red-500" />
+                    <span className="text-[8px] font-bold text-red-500">ACIMA DO PREÇO ACTUAL</span>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${m.color}, transparent)` }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Tab nav */}
+          <div
+            className="flex overflow-hidden rounded"
+            style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            {(["analysis", "projection"] as TabId[]).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="relative flex-1 px-5 py-3 text-[9px] font-bold tracking-[0.2em] transition-colors"
+                style={{ color: activeTab === tab ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}
+              >
+                {tab === "analysis" ? "ANÁLISE DE IMPACTO" : "PROJECÇÃO 12 MESES"}
+                {activeTab === tab && (
+                  <motion.div layoutId="sim-tab-line" className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "#dc2626" }} />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <AnimatePresence mode="wait">
+
+            {activeTab === "analysis" && (
+              <motion.div key="analysis" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Donut */}
+                <div className="rounded overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      DISTRIBUIÇÃO DE VALOR
+                    </span>
+                  </div>
+                  <div className="p-4" style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                          {pieData.map((entry, i) => <Cell key={i} fill={entry.color} opacity={0.85} />)}
+                        </Pie>
+                        <Tooltip content={<ChartTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="px-4 pb-4 space-y-1.5">
+                    {pieData.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-3 rounded-sm" style={{ background: d.color }} />
+                          <span className="text-[9px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>{d.name}</span>
+                        </div>
+                        <span className="text-[10px] font-bold tabular-nums" style={{ color: d.color }}>{d.value.toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Insights */}
+                <div className="rounded overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                    <Zap className="w-3 h-3 text-violet-400" />
+                    <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      STRATEGIC INSIGHTS
+                    </span>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <InsightRow condition={results.viabilityScore < 40}     type="danger"  text="Risco elevado de desinvestimento. A carga fiscal supera a viabilidade operacional." />
+                    <InsightRow condition={results.breakEvenPrice > 65}     type="warning" text="Vulnerabilidade alta a choques de preço externos. Necessário optimizar custos." />
+                    <InsightRow condition={results.netProfitImpact > 15}    type="success" text="Cenário altamente atractivo para novos investimentos e exploração." />
+                    <InsightRow condition={true}                             type="info"    text={`Government Take actual: ${govTakeTotal}% do barril bruto.`} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "projection" && (
+              <motion.div key="projection" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <div className="rounded overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      PROJECÇÃO RENDIMENTO // BASELINE VS CENÁRIO ACTIVO
+                    </span>
+                  </div>
+                  <div className="px-4 py-4" style={{ height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={projectionData}>
+                        <defs>
+                          <linearGradient id="scGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#dc2626" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#dc2626" stopOpacity={0}   />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                        <XAxis dataKey="month" stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                        <YAxis stroke="rgba(255,255,255,0.15)" fontSize={8} tickLine={false} axisLine={false} fontFamily="IBM Plex Mono" />
+                        <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+                        <Area type="monotone" dataKey="baseline" name="BASE"    stroke="rgba(255,255,255,0.2)"  fill="transparent" strokeDasharray="5 4" strokeWidth={1.5} dot={false} />
+                        <Area type="monotone" dataKey="scenario" name="CENÁRIO" stroke="#dc2626" fill="url(#scGrad)" strokeWidth={2} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center gap-5 px-5 pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-[1px]" style={{ background: "rgba(255,255,255,0.2)", borderTop: "1px dashed rgba(255,255,255,0.3)" }} />
+                      <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>BASE</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-[2px] rounded-full bg-red-500" />
+                      <span className="text-[9px] font-bold tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>CENÁRIO</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 };

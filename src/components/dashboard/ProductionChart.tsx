@@ -1,51 +1,56 @@
 import { motion } from "framer-motion";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { useProductionData } from "@/hooks/useData";
 import { useMemo } from "react";
 import { format, parseISO, subMonths } from "date-fns";
 import { pt } from "date-fns/locale";
-import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Radio } from "lucide-react";
 import { DataDepthBadge } from "./DataDepthBadge";
 
 const fallbackData = [
-  { month: "Jan", production: 1120, forecast: null },
-  { month: "Fev", production: 1145, forecast: null },
-  { month: "Mar", production: 1098, forecast: null },
-  { month: "Abr", production: 1167, forecast: null },
-  { month: "Mai", production: 1134, forecast: null },
-  { month: "Jun", production: 1156, forecast: null },
-  { month: "Jul", production: 1089, forecast: null },
-  { month: "Ago", production: 1112, forecast: null },
-  { month: "Set", production: 1078, forecast: null },
-  { month: "Out", production: 1095, forecast: null },
-  { month: "Nov", production: 1067, forecast: 1067 },
-  { month: "Dez", production: null, forecast: 1045 },
+  { month: "JAN", production: 1120, forecast: null },
+  { month: "FEV", production: 1145, forecast: null },
+  { month: "MAR", production: 1098, forecast: null },
+  { month: "ABR", production: 1167, forecast: null },
+  { month: "MAI", production: 1134, forecast: null },
+  { month: "JUN", production: 1156, forecast: null },
+  { month: "JUL", production: 1089, forecast: null },
+  { month: "AGO", production: 1112, forecast: null },
+  { month: "SET", production: 1078, forecast: null },
+  { month: "OUT", production: 1095, forecast: null },
+  { month: "NOV", production: 1067, forecast: 1067 },
+  { month: "DEZ", production: null, forecast: 1045 },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-card border border-border rounded-lg p-3 shadow-xl">
-        <p className="text-sm font-medium text-foreground mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {entry.name === "production" ? "Produção" : "Previsão IA"}:{" "}
-            <span className="font-semibold">{entry.value?.toLocaleString()} kbd</span>
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: "hsl(var(--card))",
+        border: "1px solid rgba(220,38,38,0.3)",
+        borderRadius: "4px",
+        padding: "10px 14px",
+        fontFamily: "'IBM Plex Mono', monospace",
+      }}
+    >
+      <p style={{ fontSize: 9, letterSpacing: "0.2em", color: "hsl(var(--muted-foreground))", marginBottom: 6 }}>
+        {label}
+      </p>
+      {payload.map((entry: any, i: number) => (
+        entry.value != null && (
+          <p key={i} style={{ fontSize: 11, fontWeight: 700, color: entry.color, margin: "2px 0" }}>
+            {entry.dataKey === "production" ? "PRODUÇÃO" : "PREV. IA"}:{" "}
+            <span style={{ color: "hsl(var(--foreground))" }}>
+              {entry.value?.toLocaleString()} KBD
+            </span>
           </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+        )
+      ))}
+    </div>
+  );
 };
 
 export function ProductionChart() {
@@ -53,171 +58,131 @@ export function ProductionChart() {
 
   const chartData = useMemo(() => {
     if (!productionData || productionData.length === 0) return fallbackData;
-
-    // Group production by month
     const monthlyData = new Map<string, number>();
-    
     productionData.forEach(item => {
       try {
         const date = parseISO(item.data_date);
         const monthKey = format(date, "yyyy-MM");
-        const current = monthlyData.get(monthKey) || 0;
-        monthlyData.set(monthKey, current + Number(item.daily_production) / 1000);
-      } catch (e) {
-        // Skip invalid dates
-      }
+        monthlyData.set(monthKey, (monthlyData.get(monthKey) || 0) + Number(item.daily_production) / 1000);
+      } catch {}
     });
-
-    // Convert to array and sort
     const sortedData = Array.from(monthlyData.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-12) // Last 12 months
-      .map(([monthKey, production]) => {
-        const date = parseISO(`${monthKey}-01`);
-        return {
-          month: format(date, "MMM", { locale: pt }),
-          production: Math.round(production),
-          forecast: null as number | null,
-        };
-      });
-
-    // Add forecast for next 2 months (simple decline projection)
+      .slice(-12)
+      .map(([monthKey, production]) => ({
+        month: format(parseISO(`${monthKey}-01`), "MMM", { locale: pt }).toUpperCase(),
+        production: Math.round(production),
+        forecast: null as number | null,
+      }));
     if (sortedData.length >= 2) {
       const lastProduction = sortedData[sortedData.length - 1].production;
-      const avgDeclineRate = productionData.reduce((sum, p) => sum + (Number(p.decline_rate) || 0), 0) / productionData.length;
-      const declineMultiplier = 1 - (avgDeclineRate / 100);
-
-      // Add forecast to last data point
+      const avgDecline = productionData.reduce((s, p) => s + (Number(p.decline_rate) || 0), 0) / productionData.length;
+      const dm = 1 - avgDecline / 100;
       sortedData[sortedData.length - 1].forecast = lastProduction;
-
-      // Add future months
       const lastMonth = new Date();
       for (let i = 1; i <= 2; i++) {
-        const futureMonth = subMonths(lastMonth, -i);
         sortedData.push({
-          month: format(futureMonth, "MMM yy", { locale: pt }),
+          month: format(subMonths(lastMonth, -i), "MMM yy", { locale: pt }).toUpperCase(),
           production: null as any,
-          forecast: Math.round(lastProduction * Math.pow(declineMultiplier, i)),
+          forecast: Math.round(lastProduction * Math.pow(dm, i)),
         });
       }
     }
-
     return sortedData;
   }, [productionData]);
 
   const yDomain = useMemo(() => {
-    const allValues = chartData
-      .flatMap(d => [d.production, d.forecast])
-      .filter((v): v is number => v !== null && v !== undefined);
-    
-    if (allValues.length === 0) return [0, 1500];
-    
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    const padding = (max - min) * 0.1;
-    
-    return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
+    const vals = chartData.flatMap(d => [d.production, d.forecast]).filter((v): v is number => v != null);
+    if (!vals.length) return [0, 1500];
+    const min = Math.min(...vals), max = Math.max(...vals), pad = (max - min) * 0.1;
+    return [Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
   }, [chartData]);
 
   const hasData = chartData.some(d => d.production !== null || d.forecast !== null);
 
   if (isLoading) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-border/50 p-6 card-gradient"
+      <div
+        className="rounded p-5"
+        style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)", fontFamily: "'IBM Plex Mono', monospace" }}
       >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <Skeleton className="h-6 w-48 mb-2" />
-            <Skeleton className="h-4 w-32" />
-          </div>
+        <div className="flex items-center gap-2 mb-5">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <div className="h-3 w-40 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
         </div>
-        <Skeleton className="h-72 w-full" />
-      </motion.div>
+        <div className="h-64 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+      </div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
-      className="rounded-xl border border-border/50 p-6 card-gradient"
+      transition={{ duration: 0.3, delay: 0.2 }}
+      className="rounded overflow-hidden"
+      style={{ background: "hsl(var(--card))", border: "1px solid rgba(255,255,255,0.06)", fontFamily: "'IBM Plex Mono', monospace" }}
     >
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-5 py-4"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+      >
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Produção de Petróleo</h3>
-          <p className="text-sm text-muted-foreground">Angola - milhares de barris/dia</p>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[9px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              PRODUÇÃO DE PETRÓLEO // ANGOLA
+            </span>
+          </div>
+          <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.25)", marginLeft: "14px" }}>
+            MILHARES DE BARRIS/DIA (KBD)
+          </p>
         </div>
+
         <div className="flex items-center gap-4">
           <DataDepthBadge startYear={2018} endYear={2025} />
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span className="text-xs text-muted-foreground">Produção Real</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-accent" />
-            <span className="text-xs text-muted-foreground">Previsão IA</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-[2px] rounded-full" style={{ background: "#3b82f6" }} />
+              <span className="text-[9px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>REAL</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-[2px] rounded-full" style={{ background: "#f59e0b", borderTop: "2px dashed #f59e0b" }} />
+              <span className="text-[9px] font-bold tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>PREV. IA</span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Chart */}
       {!hasData ? (
-        <div className="h-72 flex items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Sem dados de produção disponíveis</p>
-            <p className="text-xs mt-1">Adicione dados no painel administrativo</p>
-          </div>
+        <div className="h-64 flex flex-col items-center justify-center gap-3">
+          <BarChart3 className="w-8 h-8" style={{ color: "rgba(255,255,255,0.1)" }} />
+          <p className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+            // SEM DADOS DE PRODUÇÃO DISPONÍVEIS
+          </p>
         </div>
       ) : (
-        <div className="h-72">
+        <div className="px-4 py-4" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
-                <linearGradient id="productionGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
+                <linearGradient id="prodGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}    />
                 </linearGradient>
-                <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0} />
+                <linearGradient id="fcGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}    />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" vertical={false} />
-              <XAxis
-                dataKey="month"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-                domain={yDomain}
-                tickFormatter={(value) => `${value}`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="production"
-                stroke="hsl(217, 91%, 60%)"
-                strokeWidth={2}
-                fill="url(#productionGradient)"
-                connectNulls={false}
-              />
-              <Area
-                type="monotone"
-                dataKey="forecast"
-                stroke="hsl(38, 92%, 50%)"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                fill="url(#forecastGradient)"
-                connectNulls={false}
-              />
+              <CartesianGrid strokeDasharray="2 5" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "IBM Plex Mono" }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "IBM Plex Mono" }} domain={yDomain} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }} />
+              <Area type="monotone" dataKey="production" stroke="#3b82f6" strokeWidth={2} fill="url(#prodGrad)" dot={false} connectNulls={false} />
+              <Area type="monotone" dataKey="forecast"   stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 4" fill="url(#fcGrad)" dot={false} connectNulls={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

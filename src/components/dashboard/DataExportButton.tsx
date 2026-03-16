@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, FileSpreadsheet, FileText, Calendar, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
+import { Download, FileSpreadsheet, FileText, Calendar, X, Terminal } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { pt } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { exportData, ExportColumn, filterDataByDateRange } from "@/utils/exportData";
 
@@ -24,19 +18,17 @@ interface DataExportButtonProps {
   columns: ExportColumn[];
   filename: string;
   dateField?: string;
-  variant?: "default" | "outline" | "ghost";
-  size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
 
 const presetRanges = [
-  { label: "Últimos 7 dias", getValue: () => ({ from: subDays(new Date(), 7), to: new Date() }) },
-  { label: "Últimos 30 dias", getValue: () => ({ from: subDays(new Date(), 30), to: new Date() }) },
-  { label: "Este mês", getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-  { label: "Últimos 3 meses", getValue: () => ({ from: subMonths(new Date(), 3), to: new Date() }) },
-  { label: "Últimos 6 meses", getValue: () => ({ from: subMonths(new Date(), 6), to: new Date() }) },
-  { label: "Último ano", getValue: () => ({ from: subMonths(new Date(), 12), to: new Date() }) },
-  { label: "Todos os dados", getValue: () => ({ from: undefined, to: undefined }) },
+  { label: "7D",   getValue: () => ({ from: subDays(new Date(), 7),    to: new Date() }) },
+  { label: "30D",  getValue: () => ({ from: subDays(new Date(), 30),   to: new Date() }) },
+  { label: "MÊS",  getValue: () => ({ from: startOfMonth(new Date()),  to: endOfMonth(new Date()) }) },
+  { label: "3M",   getValue: () => ({ from: subMonths(new Date(), 3),  to: new Date() }) },
+  { label: "6M",   getValue: () => ({ from: subMonths(new Date(), 6),  to: new Date() }) },
+  { label: "1A",   getValue: () => ({ from: subMonths(new Date(), 12), to: new Date() }) },
+  { label: "TUDO", getValue: () => ({ from: undefined, to: undefined }) },
 ];
 
 export const DataExportButton = ({
@@ -44,122 +36,135 @@ export const DataExportButton = ({
   columns,
   filename,
   dateField,
-  variant = "outline",
-  size = "default",
   className,
 }: DataExportButtonProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>({});
+  const [isOpen, setIsOpen]             = useState(false);
+  const [dateRange, setDateRange]       = useState<DateRange>({});
   const [showCalendar, setShowCalendar] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
-  const handleExport = (exportFormat: 'csv' | 'excel') => {
+  const handleExport = (exportFormat: "csv" | "excel") => {
     try {
-      // Filter data by date if dateField is provided
       let filteredData = data;
       if (dateField && (dateRange.from || dateRange.to)) {
         filteredData = filterDataByDateRange(data, dateField, dateRange.from, dateRange.to);
       }
-
-      if (filteredData.length === 0) {
-        toast.error("Nenhum dado para exportar no período selecionado");
+      if (!filteredData.length) {
+        toast.error("NENHUM DADO NO PERÍODO SELECCIONADO");
         return;
       }
-
-      // Generate filename with date range
       let exportFilename = filename;
       if (dateRange.from && dateRange.to) {
-        exportFilename += `_${format(dateRange.from, 'yyyy-MM-dd')}_${format(dateRange.to, 'yyyy-MM-dd')}`;
-      } else if (dateRange.from) {
-        exportFilename += `_desde_${format(dateRange.from, 'yyyy-MM-dd')}`;
-      } else if (dateRange.to) {
-        exportFilename += `_ate_${format(dateRange.to, 'yyyy-MM-dd')}`;
+        exportFilename += `_${format(dateRange.from, "yyyy-MM-dd")}_${format(dateRange.to, "yyyy-MM-dd")}`;
       }
-
-      exportData({
-        filename: exportFilename,
-        columns,
-        data: filteredData,
-        format: exportFormat,
-      });
-
-      toast.success(`Exportado ${filteredData.length} registros em ${exportFormat.toUpperCase()}`);
+      exportData({ filename: exportFilename, columns, data: filteredData, format: exportFormat });
+      toast.success(`EXPORT ${exportFormat.toUpperCase()} // ${filteredData.length} REGISTOS`);
       setIsOpen(false);
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error("Erro ao exportar dados");
+    } catch {
+      toast.error("EXPORT FAILED");
     }
-  };
-
-  const handlePresetClick = (preset: typeof presetRanges[0]) => {
-    setDateRange(preset.getValue());
-    setShowCalendar(false);
   };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant={variant} size={size} className={cn("gap-2", className)}>
-          <Download className="w-4 h-4" />
-          {size !== "icon" && "Exportar"}
-        </Button>
+        <button
+          className={`flex items-center gap-2 px-4 py-2.5 rounded text-[10px] font-bold tracking-widest transition-all ${className ?? ""}`}
+          style={{
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "hsl(var(--muted-foreground))",
+            background: "transparent",
+            fontFamily: "'IBM Plex Mono', monospace",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = "rgba(220,38,38,0.3)";
+            (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)";
+            (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))";
+          }}
+        >
+          <Download className="w-3.5 h-3.5" />
+          EXPORTAR
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-foreground">Exportar Dados</h4>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
 
-          {/* Date Range Selection */}
+      <PopoverContent
+        align="end"
+        className="w-72 p-0"
+        style={{
+          background: "hsl(var(--card))",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "6px",
+          fontFamily: "'IBM Plex Mono', monospace",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-4 py-3"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}
+        >
+          <div className="flex items-center gap-2">
+            <Terminal className="w-3 h-3 text-red-500" />
+            <span className="text-[9px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              EXPORTAR DADOS
+            </span>
+          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="w-5 h-5 flex items-center justify-center rounded transition-colors"
+            style={{ color: "hsl(var(--muted-foreground))" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#f87171"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "hsl(var(--muted-foreground))"}
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Date presets */}
           {dateField && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">
-                Período
-              </label>
-              
-              {/* Preset buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                {presetRanges.map((preset) => (
-                  <Button
+              <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                PERÍODO
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {presetRanges.map(preset => (
+                  <button
                     key={preset.label}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "justify-start text-xs h-8",
-                      dateRange.from === preset.getValue().from && 
-                      dateRange.to === preset.getValue().to && 
-                      "border-primary bg-primary/10"
-                    )}
-                    onClick={() => handlePresetClick(preset)}
+                    onClick={() => {
+                      setDateRange(preset.getValue());
+                      setActivePreset(preset.label);
+                      setShowCalendar(false);
+                    }}
+                    className="py-1.5 rounded text-[9px] font-bold tracking-wider transition-all"
+                    style={{
+                      background: activePreset === preset.label ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${activePreset === preset.label ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.06)"}`,
+                      color: activePreset === preset.label ? "#f87171" : "hsl(var(--muted-foreground))",
+                    }}
                   >
                     {preset.label}
-                  </Button>
+                  </button>
                 ))}
               </div>
 
-              {/* Custom date range */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2 h-8"
+              <button
                 onClick={() => setShowCalendar(!showCalendar)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded text-[9px] font-bold tracking-wider transition-all"
+                style={{
+                  background: showCalendar ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  color: "hsl(var(--muted-foreground))",
+                }}
               >
                 <Calendar className="w-3 h-3" />
-                {dateRange.from && dateRange.to ? (
-                  <span className="text-xs">
-                    {format(dateRange.from, "dd/MM/yyyy", { locale: pt })} - {format(dateRange.to, "dd/MM/yyyy", { locale: pt })}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Período personalizado</span>
-                )}
-              </Button>
+                {dateRange.from && dateRange.to
+                  ? `${format(dateRange.from, "dd/MM/yy")} → ${format(dateRange.to, "dd/MM/yy")}`
+                  : "PERÍODO PERSONALIZADO"
+                }
+              </button>
 
               <AnimatePresence>
                 {showCalendar && (
@@ -172,10 +177,10 @@ export const DataExportButton = ({
                     <CalendarComponent
                       mode="range"
                       selected={{ from: dateRange.from, to: dateRange.to }}
-                      onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                      onSelect={range => setDateRange({ from: range?.from, to: range?.to })}
                       numberOfMonths={1}
                       locale={pt}
-                      className="rounded-md border pointer-events-auto"
+                      className="rounded border pointer-events-auto"
                     />
                   </motion.div>
                 )}
@@ -183,35 +188,38 @@ export const DataExportButton = ({
             </div>
           )}
 
-          {/* Export Format Buttons */}
+          {/* Format buttons */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Formato
-            </label>
+            <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              FORMATO
+            </span>
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="default"
-                className="gap-2 h-12 flex-col"
-                onClick={() => handleExport('csv')}
-              >
-                <FileText className="w-5 h-5" />
-                <span className="text-xs">CSV</span>
-              </Button>
-              <Button
-                variant="default"
-                className="gap-2 h-12 flex-col bg-success hover:bg-success/90"
-                onClick={() => handleExport('excel')}
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-                <span className="text-xs">Excel</span>
-              </Button>
+              {([
+                { fmt: "csv"   as const, Icon: FileText,        label: "CSV",   color: "#60a5fa" },
+                { fmt: "excel" as const, Icon: FileSpreadsheet, label: "EXCEL", color: "#4ade80" },
+              ] as const).map(({ fmt, Icon, label, color }) => (
+                <button
+                  key={fmt}
+                  onClick={() => handleExport(fmt)}
+                  className="flex flex-col items-center gap-2 py-4 rounded text-[9px] font-bold tracking-widest transition-all"
+                  style={{ background: `${color}0d`, border: `1px solid ${color}22`, color }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${color}1a`; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = `${color}0d`; }}
+                >
+                  <Icon className="w-5 h-5" />
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Data count */}
-          <p className="text-xs text-muted-foreground text-center">
-            {data.length} registros disponíveis
-          </p>
+          {/* Count */}
+          <div
+            className="text-center text-[9px] font-bold tabular-nums"
+            style={{ color: "rgba(255,255,255,0.2)" }}
+          >
+            {data.length} REGISTOS DISPONÍVEIS
+          </div>
         </div>
       </PopoverContent>
     </Popover>
