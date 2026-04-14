@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string | null
+          id: number
+          key_value: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          key_value: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          key_value?: string
+          name?: string
+        }
+        Relationships: []
+      }
       country_risk: {
         Row: {
           country: string
