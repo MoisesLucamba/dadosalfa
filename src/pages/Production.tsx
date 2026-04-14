@@ -409,42 +409,44 @@ const Production = () => {
                   const up = block.trend >= 0;
                   const blockNum = block.block.split(" ")[1];
                   return (
-                    <div key={block.block} className="data-row grid" style={{
-                      gridTemplateColumns: "1fr auto",
-                      padding: "14px 24px", alignItems: "center",
+                    <div key={block.block} className="data-row" style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
+                      padding: "14px 24px",
                       background: index % 2 === 0 ? "transparent" : "rgba(255,255,255,0.008)",
                       borderBottom: index < blockProductionData.length - 1 ? "1px solid var(--border-subtle)" : "none",
                       cursor: "pointer",
                     }}>
                       {/* block name */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 140 }}>
                         <div className="row-icon" style={{
                           width: 32, height: 32, borderRadius: 6,
                           background: "var(--bg-primary)", border: "1px solid var(--border-subtle)",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
-                          color: "var(--text-muted)", transition: "background 180ms, color 180ms",
-                          flexShrink: 0,
+                          color: "var(--text-muted)", flexShrink: 0,
                         }}>
                           {blockNum}
                         </div>
-                        <span className="row-name" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", transition: "color 180ms" }}>
-                          {block.block}
-                        </span>
+                        <div>
+                          <span className="row-name" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                            {block.block}
+                          </span>
+                          <span className="block md:hidden" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 11, color: "var(--text-secondary)" }}>
+                            {block.operator}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* operator */}
-                      <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
+                      {/* operator - hidden on mobile */}
+                      <span className="hidden md:block" style={{ fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "var(--text-secondary)" }}>
                         {block.operator}
                       </span>
 
-                      {/* production */}
-                      <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", textAlign: "right" }}>
-                        {block.production.toLocaleString()}
-                      </span>
-
-                      {/* trend badge */}
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      {/* production + trend */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                          {block.production.toLocaleString()}
+                        </span>
                         <span className="badge-pill" style={{
                           color: up ? "var(--accent-green)" : "var(--accent-red)",
                           background: up ? "rgba(0,212,170,0.10)" : "rgba(255,107,53,0.10)",
@@ -452,21 +454,6 @@ const Production = () => {
                           {up ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
                           {up ? "+" : ""}{block.trend}%
                         </span>
-                      </div>
-
-                      {/* chevron action */}
-                      <div style={{ display: "flex", justifyContent: "center" }}>
-                        <button style={{
-                          padding: 6, borderRadius: 6, border: "none",
-                          background: "transparent", cursor: "pointer",
-                          color: "var(--text-muted)", transition: "background 180ms, color 180ms",
-                          display: "flex",
-                        }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
-                        >
-                          <ChevronRight size={16} />
-                        </button>
                       </div>
                     </div>
                   );
