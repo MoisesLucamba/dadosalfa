@@ -156,7 +156,7 @@ const Production = () => {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <Header activeItem="/production" />
 
-          <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 80 }}>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
             <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
               {/* ── PAGE HEADER ── */}
@@ -202,7 +202,7 @@ const Production = () => {
               </div>
 
               {/* ── KPI CARDS ── */}
-              <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
+              <div className="fade-up d2 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {kpis.map((kpi, i) => {
                   const up = kpi.change >= 0;
                   const Icon = kpi.icon;
@@ -294,7 +294,7 @@ const Production = () => {
               </div>
 
               {/* ── OPERATORS + FIELD STATUS ── */}
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 32 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-8">
 
                 {/* Operator bar chart */}
                 <div className="fade-up d4 surface-card" style={{
@@ -394,7 +394,7 @@ const Production = () => {
                 </div>
 
                 {/* col headers */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px", padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-primary)" }}>
+                <div className="hidden md:grid" style={{ gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px", padding: "10px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-primary)" }}>
                   {["Bloco", "Operadora", "Produção (kbpd)", "Tendência", ""].map((h, i) => (
                     <span key={i} style={{
                       fontFamily: "'Outfit',sans-serif", fontSize: 10, fontWeight: 700,
@@ -409,8 +409,8 @@ const Production = () => {
                   const up = block.trend >= 0;
                   const blockNum = block.block.split(" ")[1];
                   return (
-                    <div key={block.block} className="data-row" style={{
-                      display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 48px",
+                    <div key={block.block} className="data-row grid" style={{
+                      gridTemplateColumns: "1fr auto",
                       padding: "14px 24px", alignItems: "center",
                       background: index % 2 === 0 ? "transparent" : "rgba(255,255,255,0.008)",
                       borderBottom: index < blockProductionData.length - 1 ? "1px solid var(--border-subtle)" : "none",

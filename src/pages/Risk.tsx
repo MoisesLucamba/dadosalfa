@@ -295,7 +295,7 @@ const Risk = () => {
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex, lastUpdated: lastUpdated || undefined })}
+                  onClick={() => generateRiskPDF({ riskScores, alerts, countryRisks, geopoliticalForecasts: [], globalRiskIndex })}
                   className="flex items-center gap-2 px-4 py-2.5 rounded text-[11px] font-bold tracking-widest transition-all border"
                   style={{ borderColor: "rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))", background: "transparent" }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(220,38,38,0.3)"; (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))"; }}

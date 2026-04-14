@@ -277,7 +277,7 @@ const Prices = () => {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <Header activeItem="/prices" />
 
-          <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 80 }}>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
             <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
               {/* ── PAGE HEADER ── */}
@@ -330,7 +330,7 @@ const Prices = () => {
               </div>
 
               {/* ── KPI CARDS ── */}
-              <div className="fade-up d2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
+              <div className="fade-up d2 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {kpisArray.map((kpi, i) => {
                   const up = kpi.change >= 0;
                   const Icon = kpi.icon;
@@ -430,7 +430,7 @@ const Prices = () => {
               </div>
 
               {/* ── BENCHMARKS + SPREADS ── */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 
                 {/* Benchmarks table */}
                 <div className="fade-up d4 surface-card" style={{
@@ -536,7 +536,7 @@ const Prices = () => {
               </div>
 
               {/* ── OPEC + VOLATILITY ── */}
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 32 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-8">
 
                 {/* OPEC news */}
                 <div className="fade-up d5">
@@ -545,7 +545,7 @@ const Prices = () => {
                     <SectionLabel>Latest Updates</SectionLabel>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {opecNews.map((news, i) => {
                       const { color, bg, Icon } = impactMeta(news.impact);
                       return (

@@ -267,7 +267,7 @@ const Index = () => {
 
         <Header activeItem="/" onHelpClick={triggerTour} />
 
-        <main style={{ flex: 1, overflowY: "auto", padding: "32px", paddingBottom: 88, position: "relative", zIndex: 1 }}>
+        <main className="flex-1 overflow-y-auto relative z-[1] p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
             {/* ── PAGE HEADER ── */}
@@ -360,7 +360,7 @@ const Index = () => {
             )}
 
             {/* ── KPI GRID ── */}
-            <div className="fade-up d2" data-tour="kpi-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+            <div className="fade-up d2 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
               {isLoading
                 ? [...Array(4)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 128 }} />)
                 : kpiDefs.map((def, i) => {
@@ -381,7 +381,7 @@ const Index = () => {
             </div>
 
             {/* ── PRICE TICKERS ── */}
-            <div className="fade-up d3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 32 }}>
+            <div className="fade-up d3 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {isLoading
                 ? [...Array(3)].map((_, i) => <div key={i} className="skeleton-dark" style={{ height: 72 }} />)
                 : topPriceCards.map((card, i) => (
@@ -391,7 +391,7 @@ const Index = () => {
             </div>
 
             {/* ── MAIN CONTENT GRID ── */}
-            <div className="fade-up d4" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 32 }}>
+            <div className="fade-up d4 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-8">
 
               {/* left column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
