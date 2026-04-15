@@ -195,10 +195,7 @@ const Risk = () => {
 
       <Sidebar activeItem="/risk" />
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Glow */}
-        <div className="absolute top-0 right-0 w-[45%] h-[40%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(239,68,68,0.04) 0%, transparent 70%)" }} />
-        <div className="absolute bottom-0 left-0 w-[35%] h-[30%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(249,115,22,0.03) 0%, transparent 70%)" }} />
+      <div className="flex-1 flex flex-col overflow-hidden">
 
         <Header activeItem="/risk" />
 
