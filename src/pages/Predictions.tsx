@@ -182,31 +182,11 @@ const Predictions = () => {
     <div className="min-h-screen bg-background text-foreground">
       <Helmet><title>AlphaData — Previsões IA</title></Helmet>
 
-      {/* Boot */}
-      <AnimatePresence>
-        {!bootDone && (
-          <motion.div
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
-            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
-            exit={{ opacity: 0, transition: { duration: 0.35 } }}
-          >
-            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
-              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
-              <p className="opacity-70">INITIALISING NEURAL PREDICTION ENGINE..... OK</p>
-              <p className="opacity-70">LOADING HISTORICAL BRENT DATASET.......... OK</p>
-              <p className="text-red-500 animate-pulse">CALIBRATING AI FORECAST MODELS............ ■</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="flex h-screen overflow-hidden">
         <Sidebar activeItem="/predictions" />
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Ambient glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[35%] pointer-events-none" style={{ background: "radial-gradient(ellipse at top, rgba(220,38,38,0.04) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-0 right-0 w-[30%] h-[25%] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(167,139,250,0.03) 0%, transparent 70%)" }} />
+        <div className="flex-1 flex flex-col overflow-hidden">
 
           <Header activeItem="/predictions" />
 
