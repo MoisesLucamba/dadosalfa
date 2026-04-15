@@ -60,15 +60,7 @@ interface PredictionsData {
   generated_at?: string;
 }
 
-/* ─── Scanline ────────────────────────────────────────────────────────────── */
-const ScanlineOverlay = () => (
-  <div
-    className="pointer-events-none fixed inset-0 z-50 opacity-[0.022]"
-    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)" }}
-  />
-);
-
-/* ─── Radar Pulse ─────────────────────────────────────────────────────────── */
+/* ─── Pulse ────────────────────────────────────────────────────────────── */
 const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
   <span className="relative inline-flex h-2 w-2">
     <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ background: color }} />
@@ -187,16 +179,8 @@ const Predictions = () => {
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
-    <div
-      className="min-h-screen text-foreground"
-      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
-    >
-      <Helmet>
-        <title>ALPHADAT-OS // PREVISÕES IA</title>
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-      </Helmet>
-
-      <ScanlineOverlay />
+    <div className="min-h-screen bg-background text-foreground">
+      <Helmet><title>AlphaData — Previsões IA</title></Helmet>
 
       {/* Boot */}
       <AnimatePresence>
