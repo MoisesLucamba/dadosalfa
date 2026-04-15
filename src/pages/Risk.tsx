@@ -70,15 +70,7 @@ interface CountryRisk {
   trend: string;
 }
 
-// ─── Scanline ─────────────────────────────────────────────────────────────────
-const ScanlineOverlay = () => (
-  <div
-    className="pointer-events-none fixed inset-0 z-50 opacity-[0.022]"
-    style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)" }}
-  />
-);
-
-// ─── Radar Pulse ──────────────────────────────────────────────────────────────
+// ─── Pulse ────────────────────────────────────────────────────────────────────
 const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
   <span className="relative inline-flex h-2 w-2">
     <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ background: color }} />
@@ -198,41 +190,12 @@ const Risk = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="flex h-screen overflow-hidden text-foreground"
-      style={{ background: "hsl(var(--background))", fontFamily: "'IBM Plex Mono', 'Courier New', monospace" }}
-    >
-      <Helmet>
-        <title>ALPHADAT-OS // RISCO & GEOPOLÍTICA</title>
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-      </Helmet>
-
-      <ScanlineOverlay />
-
-      {/* Boot */}
-      <AnimatePresence>
-        {!bootDone && (
-          <motion.div
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
-            style={{ background: "#000", fontFamily: "'IBM Plex Mono', monospace" }}
-            exit={{ opacity: 0, transition: { duration: 0.35 } }}
-          >
-            <div className="text-red-500 text-xs space-y-1 w-96 max-w-full px-8">
-              <p className="text-red-400 text-lg font-bold mb-4">&gt; ALPHADAT-OS v3.2.1</p>
-              <p className="opacity-70">MOUNTING GEOPOLITICAL THREAT ENGINE....... OK</p>
-              <p className="opacity-70">CALIBRATING RISK VECTORS.................. OK</p>
-              <p className="text-red-500 animate-pulse">LOADING RISK INTELLIGENCE MODULE.......... ■</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <Helmet><title>AlphaData — Risco & Geopolítica</title></Helmet>
 
       <Sidebar activeItem="/risk" />
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Glow */}
-        <div className="absolute top-0 right-0 w-[45%] h-[40%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(239,68,68,0.04) 0%, transparent 70%)" }} />
-        <div className="absolute bottom-0 left-0 w-[35%] h-[30%] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(249,115,22,0.03) 0%, transparent 70%)" }} />
+      <div className="flex-1 flex flex-col overflow-hidden">
 
         <Header activeItem="/risk" />
 

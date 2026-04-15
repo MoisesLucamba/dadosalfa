@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Search, ChevronDown, LogOut, Sun, Moon,
   Settings, UserCircle, X, Check, AlertTriangle,
-  Info, CreditCard, ChevronRight, Radio, HelpCircle, Terminal,
+  Info, CreditCard, ChevronRight, Radio, HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -15,39 +15,21 @@ import { formatDistanceToNow } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-const T = {
-  bg:       "#04080f",
-  card:     "#070d1a",
-  hover:    "#0a1220",
-  red:      "#ef4444",
-  redDim:   "rgba(220,38,38,0.1)",
-  redBdr:   "rgba(220,38,38,0.25)",
-  sky:      "#38bdf8",
-  skyDim:   "rgba(56,189,248,0.1)",
-  skyBdr:   "rgba(56,189,248,0.25)",
-  border:   "rgba(255,255,255,0.06)",
-  w60:      "rgba(255,255,255,0.60)",
-  w30:      "rgba(255,255,255,0.30)",
-  w08:      "rgba(255,255,255,0.08)",
-  mono:     "'IBM Plex Mono', monospace",
-};
-
 /* ─── Severity map ───────────────────────────────────────────────────────── */
 const SEV: Record<string, { color: string; bg: string; icon: any }> = {
-  alert:   { color: T.red,    bg: T.redDim,                      icon: AlertTriangle },
-  warning: { color: "#fb923c",bg: "rgba(251,146,60,0.1)",        icon: AlertTriangle },
-  info:    { color: T.sky,    bg: T.skyDim,                      icon: Info          },
-  success: { color: "#4ade80",bg: "rgba(74,222,128,0.1)",        icon: Check         },
+  alert:   { color: "hsl(var(--destructive))", bg: "hsl(var(--destructive) / 0.1)", icon: AlertTriangle },
+  warning: { color: "#fb923c", bg: "rgba(251,146,60,0.1)", icon: AlertTriangle },
+  info:    { color: "hsl(var(--primary))", bg: "hsl(var(--primary) / 0.1)", icon: Info },
+  success: { color: "hsl(var(--success))", bg: "hsl(var(--success) / 0.1)", icon: Check },
 };
 
 /* ─── Quick suggestions ──────────────────────────────────────────────────── */
-const QUICK: Array<{ label: string; sig: string; path: string; tag: string }> = [
-  { label: "BLOCO 17 — TOTALENERGIES", sig: "PRD", path: "/production", tag: "PRODUÇÃO"    },
-  { label: "PREÇO BRENT HOJE",         sig: "MKT", path: "/prices",     tag: "PREÇOS"      },
-  { label: "EXPORTAÇÕES DEZEMBRO",     sig: "EXP", path: "/exports",    tag: "EXPORTAÇÕES" },
-  { label: "RISCO GEOPOLÍTICO ANGOLA", sig: "RSK", path: "/risk",       tag: "RISCO"       },
-  { label: "RELATÓRIO MENSAL",         sig: "REP", path: "/reports",    tag: "RELATÓRIOS"  },
+const QUICK: Array<{ label: string; path: string; tag: string }> = [
+  { label: "Bloco 17 — TotalEnergies", path: "/production", tag: "Produção" },
+  { label: "Preço Brent Hoje",         path: "/prices",     tag: "Preços" },
+  { label: "Exportações Dezembro",     path: "/exports",    tag: "Exportações" },
+  { label: "Risco Geopolítico Angola", path: "/risk",       tag: "Risco" },
+  { label: "Relatório Mensal",         path: "/reports",    tag: "Relatórios" },
 ];
 
 interface HeaderProps { activeItem?: string; onHelpClick?: () => void; }
@@ -72,10 +54,9 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const unread      = notifications?.filter(n => !n.is_read) ?? [];
   const unreadCount = unread.length;
 
-  const displayName = user?.email?.split("@")[0]?.toUpperCase() || "OPERADOR";
-  const initials    = displayName.substring(0, 2);
+  const displayName = user?.email?.split("@")[0] || "Operador";
+  const initials    = displayName.substring(0, 2).toUpperCase();
 
-  /* Close on outside click */
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) setShowNotifs(false);
@@ -85,7 +66,6 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* ⌘K shortcut */
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); }
@@ -102,7 +82,7 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   const handleSignOut = async () => {
     setShowUser(false);
     await signOut();
-    toast.success("SESSÃO TERMINADA // ACK");
+    toast.success("Sessão terminada");
     navigate("/auth");
   };
 
@@ -110,33 +90,13 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
     !searchVal || s.label.toLowerCase().includes(searchVal.toLowerCase())
   );
 
-  /* Shared input style for search overlay */
-  const inpCls: React.CSSProperties = {
-    background: "transparent",
-    color: "rgba(255,255,255,0.9)",
-    fontFamily: T.mono,
-    fontSize: "12px",
-    fontWeight: "bold",
-    letterSpacing: "0.08em",
-    outline: "none",
-    flex: 1,
-  };
-
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');`}</style>
-
-      {/* ── Header bar ── */}
       <motion.header
         initial={{ y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.28, ease: "easeOut" }}
-        className="h-14 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-30"
-        style={{
-          background: T.bg,
-          borderBottom: `1px solid ${T.border}`,
-          fontFamily: T.mono,
-        }}
+        className="h-14 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-30 bg-background border-b border-border"
       >
         {/* LEFT */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -145,23 +105,18 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
           {/* Search bar — desktop */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="relative hidden sm:flex items-center gap-2.5 h-8 px-3 rounded text-left flex-1 max-w-xs transition-all"
-            style={{ background: T.w08, border: `1px solid ${T.border}`, color: T.w30 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = T.redBdr; (e.currentTarget as HTMLElement).style.color = T.w60; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.w30; }}
+            className="relative hidden sm:flex items-center gap-2.5 h-8 px-3 rounded text-left flex-1 max-w-xs transition-all bg-muted/50 border border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
           >
-            <Search className="w-3 h-3 shrink-0" />
-            <span className="text-[10px] font-bold tracking-wider flex-1 truncate">PESQUISAR BLOCOS, OPERADORES…</span>
-            <kbd className="hidden md:flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0"
-              style={{ background: T.w08, color: T.w30, fontFamily: T.mono }}>
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-xs flex-1 truncate">Pesquisar blocos, operadores…</span>
+            <kbd className="hidden md:flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               ⌘K
             </kbd>
           </button>
 
           {/* Search — mobile */}
           <button
-            className="sm:hidden w-8 h-8 rounded flex items-center justify-center"
-            style={{ background: T.w08, color: T.w60 }}
+            className="sm:hidden w-8 h-8 rounded flex items-center justify-center bg-muted/50 text-muted-foreground"
             onClick={() => setSearchOpen(true)}
           >
             <Search className="w-3.5 h-3.5" />
@@ -169,54 +124,41 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
         </div>
 
         {/* RIGHT */}
-        <div className="flex items-center gap-0.5 md:gap-1 ml-2">
-
-          {/* Data sync */}
+        <div className="flex items-center gap-1 md:gap-1.5 ml-2">
           <div className="hidden lg:block mr-1">
             <DataSyncButton variant="compact" />
           </div>
 
           {/* LIVE pill */}
-          <div className="hidden md:flex items-center gap-1.5 h-6 px-2.5 rounded mr-1.5"
-            style={{ background: T.redDim, border: `1px solid ${T.redBdr}` }}>
-            <Radio className="w-2.5 h-2.5 animate-pulse" style={{ color: T.red }} />
-            <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: T.red }}>LIVE</span>
+          <div className="hidden md:flex items-center gap-1.5 h-6 px-2.5 rounded mr-1.5 bg-success/10 border border-success/20">
+            <Radio className="w-2.5 h-2.5 animate-pulse text-success" />
+            <span className="text-[9px] font-semibold tracking-wider text-success">LIVE</span>
           </div>
 
-          {/* Help */}
           {onHelpClick && (
-            <IconBtn onClick={onHelpClick} title="TOUR GUIADO">
-              <HelpCircle className="w-3.5 h-3.5" />
+            <IconBtn onClick={onHelpClick} title="Tour guiado">
+              <HelpCircle className="w-4 h-4" />
             </IconBtn>
           )}
 
-          {/* Theme */}
-          <IconBtn onClick={toggleTheme} title={theme === "dark" ? "MODO CLARO" : "MODO ESCURO"}>
+          <IconBtn onClick={toggleTheme} title={theme === "dark" ? "Modo claro" : "Modo escuro"}>
             <motion.div animate={{ rotate: theme === "dark" ? 0 : 180 }} transition={{ duration: 0.3 }}>
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </motion.div>
           </IconBtn>
 
-          {/* ── Notifications ── */}
+          {/* Notifications */}
           <div className="relative" ref={notifsRef}>
             <button
               onClick={() => { setShowNotifs(p => !p); setShowUser(false); }}
-              className="relative w-8 h-8 rounded flex items-center justify-center transition-all"
-              style={{
-                background: showNotifs ? T.redDim : "transparent",
-                color: showNotifs ? T.red : T.w30,
-                border: `1px solid ${showNotifs ? T.redBdr : "transparent"}`,
-              }}
-              onMouseEnter={e => { if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.color = "white"; } }}
-              onMouseLeave={e => { if (!showNotifs) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w30; } }}
+              className={`relative w-8 h-8 rounded flex items-center justify-center transition-all ${showNotifs ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent'}`}
             >
-              <Bell className="w-3.5 h-3.5" />
+              <Bell className="w-4 h-4" />
               <AnimatePresence>
                 {unreadCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                    className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
-                    style={{ background: T.red, fontFamily: T.mono }}
+                    className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white bg-destructive"
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </motion.span>
@@ -224,7 +166,6 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
               </AnimatePresence>
             </button>
 
-            {/* Notifs dropdown */}
             <AnimatePresence>
               {showNotifs && (
                 <motion.div
@@ -232,64 +173,52 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.97 }}
                   transition={{ duration: 0.13 }}
-                  className="absolute right-0 top-10 w-80 rounded overflow-hidden shadow-2xl z-50"
-                  style={{ background: T.card, border: `1px solid rgba(220,38,38,0.2)`, fontFamily: T.mono }}
+                  className="absolute right-0 top-10 w-80 rounded-lg overflow-hidden shadow-2xl z-50 bg-card border border-border"
                 >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: T.border, background: "rgba(220,38,38,0.04)" }}>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                     <div className="flex items-center gap-2">
-                      <Terminal className="w-3 h-3" style={{ color: T.red }} />
-                      <span className="text-[10px] font-bold tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.9)" }}>NOTIFICAÇÕES</span>
+                      <Bell className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-semibold text-foreground">Notificações</span>
                       {unreadCount > 0 && (
-                        <span className="text-[8px] font-bold px-2 py-0.5 rounded tracking-widest"
-                          style={{ background: T.redDim, color: T.red }}>
-                          {unreadCount} NOVAS
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary">
+                          {unreadCount} novas
                         </span>
                       )}
                     </div>
                     {unreadCount > 0 && (
                       <button
                         onClick={() => notifications?.filter(n => !n.is_read).forEach(n => markRead.mutate(n.id))}
-                        className="text-[8px] font-bold tracking-widest transition-colors"
-                        style={{ color: T.w30 }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.sky}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.w30}
+                        className="text-[10px] font-medium text-muted-foreground hover:text-primary transition-colors"
                       >
-                        MARCAR LIDAS
+                        Marcar lidas
                       </button>
                     )}
                   </div>
 
-                  {/* List */}
-                  <div className="max-h-64 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                  <div className="max-h-64 overflow-y-auto scrollbar-thin">
                     {notifications && notifications.length > 0 ? (
                       notifications.slice(0, 7).map(n => {
-                        const sev = SEV[n.type] || SEV.info;
+                        const sev = SEV[n.type || "info"] || SEV.info;
                         const SIcon = sev.icon;
                         return (
                           <div
                             key={n.id}
-                            className="relative flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
-                            style={{ borderBottom: `1px solid ${T.border}` }}
+                            className="relative flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 border-b border-border/50"
                             onClick={() => { markRead.mutate(n.id); setShowNotifs(false); navigate("/alerts"); }}
-                            onMouseEnter={e => (e.currentTarget.style.background = T.hover)}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
                             {!n.is_read && (
-                              <span className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r"
-                                style={{ background: sev.color }} />
+                              <span className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r" style={{ background: sev.color }} />
                             )}
-                            <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5"
-                              style={{ background: sev.bg }}>
-                              <SIcon className="w-3 h-3" style={{ color: sev.color }} />
+                            <div className="w-7 h-7 rounded flex items-center justify-center shrink-0 mt-0.5" style={{ background: sev.bg }}>
+                              <SIcon className="w-3.5 h-3.5" style={{ color: sev.color }} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-[10px] font-bold tracking-wider line-clamp-1" style={{ color: "rgba(255,255,255,0.9)" }}>{n.title?.toUpperCase()}</p>
+                                <p className="text-xs font-semibold text-foreground line-clamp-1">{n.title}</p>
                                 {!n.is_read && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sev.color }} />}
                               </div>
-                              <p className="text-[9px] mt-0.5 line-clamp-1" style={{ color: T.w30 }}>{n.message}</p>
-                              <p className="text-[8px] mt-1 tabular-nums" style={{ color: T.w30 }}>
+                              <p className="text-[11px] mt-0.5 text-muted-foreground line-clamp-1">{n.message}</p>
+                              <p className="text-[10px] mt-1 text-muted-foreground/60">
                                 {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: pt })}
                               </p>
                             </div>
@@ -298,61 +227,41 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                       })
                     ) : (
                       <div className="py-10 text-center">
-                        <Check className="w-6 h-6 mx-auto mb-2" style={{ color: T.w30 }} />
-                        <p className="text-[9px] font-bold tracking-widest" style={{ color: T.w30 }}>// TUDO EM DIA</p>
+                        <Check className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">Tudo em dia</p>
                       </div>
                     )}
                   </div>
 
-                  {/* Footer */}
                   <button
                     onClick={() => { setShowNotifs(false); navigate("/alerts"); }}
-                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[9px] font-bold tracking-widest border-t transition-colors"
-                    style={{ borderColor: T.border, color: T.sky }}
-                    onMouseEnter={e => (e.currentTarget.style.background = T.skyDim)}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium border-t border-border text-primary hover:bg-primary/5 transition-colors"
                   >
-                    VER CENTRAL DE ALERTAS <ChevronRight className="w-3 h-3" />
+                    Ver central de alertas <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Divider */}
-          <div className="hidden md:block w-px h-4 mx-0.5" style={{ background: T.border }} />
+          <div className="hidden md:block w-px h-5 mx-1 bg-border" />
 
-          {/* ── User menu ── */}
+          {/* User menu */}
           <div className="relative" ref={userRef}>
             <button
               onClick={() => { setShowUser(p => !p); setShowNotifs(false); }}
-              className="flex items-center gap-2 h-8 pl-1 pr-2.5 rounded transition-all"
-              style={{
-                background: showUser ? T.skyDim : "transparent",
-                border: `1px solid ${showUser ? T.skyBdr : "transparent"}`,
-              }}
-              onMouseEnter={e => { if (!showUser) { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.borderColor = T.border; } }}
-              onMouseLeave={e => { if (!showUser) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; } }}
+              className={`flex items-center gap-2 h-8 pl-1 pr-2.5 rounded transition-all border ${showUser ? 'bg-primary/10 border-primary/20' : 'border-transparent hover:bg-muted hover:border-border'}`}
             >
-              {/* Avatar */}
-              <div
-                className="w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                style={{ background: showUser ? T.sky : "rgba(56,189,248,0.7)", fontFamily: T.mono }}
-              >
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground bg-primary shrink-0">
                 {initials}
               </div>
-              {/* Name */}
               <div className="hidden md:block text-left min-w-0">
-                <p className="text-[10px] font-bold tracking-wider leading-none truncate max-w-[80px]" style={{ color: "rgba(255,255,255,0.9)", fontFamily: T.mono }}>{displayName}</p>
-                <p className="text-[8px] font-bold mt-0.5 leading-none tracking-widest" style={{ color: T.w30, fontFamily: T.mono }}>ACTIVO</p>
+                <p className="text-xs font-medium text-foreground leading-none truncate max-w-[100px]">{displayName}</p>
+                <p className="text-[10px] mt-0.5 leading-none text-muted-foreground">Activo</p>
               </div>
-              <ChevronDown
-                className="hidden md:block w-3 h-3 shrink-0 transition-transform"
-                style={{ color: T.w30, transform: showUser ? "rotate(180deg)" : "rotate(0)" }}
-              />
+              <ChevronDown className={`hidden md:block w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${showUser ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* User dropdown */}
             <AnimatePresence>
               {showUser && (
                 <motion.div
@@ -360,63 +269,51 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.97 }}
                   transition={{ duration: 0.13 }}
-                  className="absolute right-0 top-10 w-56 rounded overflow-hidden shadow-2xl z-50"
-                  style={{ background: T.card, border: `1px solid rgba(56,189,248,0.2)`, fontFamily: T.mono }}
+                  className="absolute right-0 top-10 w-56 rounded-lg overflow-hidden shadow-2xl z-50 bg-card border border-border"
                 >
-                  {/* User hero */}
-                  <div className="px-4 py-3.5 border-b relative overflow-hidden" style={{ borderColor: T.border }}>
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at left, rgba(56,189,248,0.04), transparent 60%)" }} />
-                    <div className="relative flex items-center gap-3">
-                      <div className="w-9 h-9 rounded flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                        style={{ background: T.sky, fontFamily: T.mono }}>
+                  <div className="px-4 py-3.5 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-primary-foreground bg-primary shrink-0">
                         {initials}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold tracking-wider truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{displayName}</p>
-                        <p className="text-[9px] truncate mt-0.5" style={{ color: T.w30 }}>{user?.email}</p>
-                        <span className="inline-flex items-center gap-1 mt-1.5 text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded"
-                          style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
-                          <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-                          SESSÃO ACTIVA
+                        <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{user?.email}</p>
+                        <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/20">
+                          <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
+                          Sessão activa
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Nav */}
-                  <div className="p-1.5 space-y-px">
+                  <div className="p-1.5 space-y-0.5">
                     {[
-                      { label: "VER PERFIL",    icon: UserCircle, path: "/settings"     },
-                      { label: "CONFIGURAÇÕES", icon: Settings,   path: "/settings"     },
-                      { label: "SUBSCRIÇÃO",    icon: CreditCard, path: "/subscription" },
+                      { label: "Ver Perfil",    icon: UserCircle, path: "/settings" },
+                      { label: "Configurações", icon: Settings,   path: "/settings" },
+                      { label: "Subscrição",    icon: CreditCard, path: "/subscription" },
                     ].map(({ label, icon: Icon, path }) => (
                       <button
                         key={label}
                         onClick={() => { setShowUser(false); navigate(path); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left group transition-all"
-                        style={{ color: T.w60 }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w60; }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-muted-foreground hover:bg-muted hover:text-foreground transition-colors group"
                       >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-[10px] font-bold tracking-wider">{label}</span>
-                        <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-30 transition-opacity" />
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-medium">{label}</span>
+                        <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-50 transition-opacity" />
                       </button>
                     ))}
                   </div>
 
-                  <div className="mx-3 h-px my-1" style={{ background: T.border }} />
+                  <div className="mx-3 h-px bg-border" />
 
                   <div className="p-1.5">
                     <button
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left transition-all"
-                      style={{ color: T.red }}
-                      onMouseEnter={e => (e.currentTarget.style.background = T.redDim)}
-                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-destructive hover:bg-destructive/10 transition-colors"
                     >
-                      <LogOut className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-[10px] font-bold tracking-wider">TERMINAR SESSÃO</span>
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      <span className="text-xs font-medium">Terminar sessão</span>
                     </button>
                   </div>
                 </motion.div>
@@ -426,7 +323,7 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
         </div>
       </motion.header>
 
-      {/* ── Search overlay ── */}
+      {/* Search overlay */}
       <AnimatePresence>
         {searchOpen && (
           <motion.div
@@ -434,8 +331,7 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4"
-            style={{ background: "rgba(2,4,10,0.92)", backdropFilter: "blur(12px)" }}
+            className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4 bg-background/80 backdrop-blur-md"
             onClick={() => { setSearchOpen(false); setSearchVal(""); }}
           >
             <motion.div
@@ -443,13 +339,11 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.97 }}
               transition={{ duration: 0.16 }}
-              className="w-full max-w-xl rounded overflow-hidden shadow-2xl"
-              style={{ background: T.card, border: `1px solid rgba(220,38,38,0.25)`, fontFamily: T.mono }}
+              className="w-full max-w-xl rounded-lg overflow-hidden shadow-2xl bg-card border border-border"
               onClick={e => e.stopPropagation()}
             >
-              {/* Input row */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: T.border }}>
-                <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: T.red }} />
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                <Search className="w-4 h-4 shrink-0 text-primary" />
                 <input
                   ref={searchRef}
                   value={searchVal}
@@ -460,72 +354,56 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
                       setSearchOpen(false); setSearchVal("");
                     }
                   }}
-                  placeholder="PESQUISAR BLOCOS, OPERADORES, ANÁLISES…"
-                  style={{ ...inpCls, caretColor: T.red }}
+                  placeholder="Pesquisar blocos, operadores, análises…"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                 />
                 {searchVal && (
-                  <button onClick={() => setSearchVal("")} style={{ color: T.w30 }}>
-                    <X className="w-3.5 h-3.5" />
+                  <button onClick={() => setSearchVal("")} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
                   </button>
                 )}
                 <button
                   onClick={() => { setSearchOpen(false); setSearchVal(""); }}
-                  className="w-7 h-7 rounded flex items-center justify-center transition-all"
-                  style={{ background: T.w08, color: T.w30 }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = T.w08; (e.currentTarget as HTMLElement).style.color = T.w30; }}
+                  className="w-7 h-7 rounded flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground transition-all"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Results */}
               <div className="p-2">
-                <p className="text-[8px] font-bold tracking-[0.25em] px-3 py-2" style={{ color: T.w30 }}>
-                  {searchVal ? `RESULTADOS PARA "${searchVal}"` : "// SUGESTÕES RÁPIDAS"}
+                <p className="text-[10px] font-medium text-muted-foreground px-3 py-2">
+                  {searchVal ? `Resultados para "${searchVal}"` : "Sugestões rápidas"}
                 </p>
-                <div className="space-y-px">
+                <div className="space-y-0.5">
                   {filtered.length > 0 ? (
                     filtered.map((s, i) => (
                       <button
                         key={i}
                         onClick={() => { navigate(s.path); setSearchOpen(false); setSearchVal(""); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-left group"
-                        style={{ color: T.w60 }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.hover; (e.currentTarget as HTMLElement).style.color = "white"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = T.w60; }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-left text-muted-foreground hover:bg-muted hover:text-foreground group"
                       >
-                        <span className="text-[8px] font-bold w-8 shrink-0 tabular-nums" style={{ color: T.red }}>{s.sig}</span>
-                        <span className="text-[11px] font-bold tracking-wider flex-1">{s.label}</span>
-                        <span
-                          className="text-[8px] font-bold tracking-widest px-2 py-0.5 rounded shrink-0 opacity-50 group-hover:opacity-90 transition-opacity"
-                          style={{ background: T.redDim, color: T.red, border: `1px solid ${T.redBdr}` }}
-                        >
+                        <span className="text-xs font-medium flex-1">{s.label}</span>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 opacity-60 group-hover:opacity-100 transition-opacity">
                           {s.tag}
                         </span>
-                        <ChevronRight className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-30 transition-opacity" />
+                        <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
                       </button>
                     ))
                   ) : (
                     <div className="py-8 text-center">
-                      <p className="text-[10px] font-bold tracking-wider" style={{ color: T.w30 }}>
-                        // SEM RESULTADOS PARA <span style={{ color: "white" }}>"{searchVal}"</span>
+                      <p className="text-xs text-muted-foreground">
+                        Sem resultados para <span className="text-foreground font-medium">"{searchVal}"</span>
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Footer hints */}
-              <div className="px-4 py-2 border-t flex items-center gap-5"
-                style={{ borderColor: T.border, background: "rgba(255,255,255,0.01)" }}>
-                {[["ENTER", "PESQUISAR"], ["ESC", "FECHAR"], ["↑↓", "NAVEGAR"]].map(([key, label]) => (
+              <div className="px-4 py-2 border-t border-border flex items-center gap-5 bg-muted/30">
+                {[["Enter", "Pesquisar"], ["Esc", "Fechar"], ["↑↓", "Navegar"]].map(([key, label]) => (
                   <div key={key} className="flex items-center gap-1.5">
-                    <kbd className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                      style={{ background: T.w08, color: T.w30, fontFamily: T.mono }}>
-                      {key}
-                    </kbd>
-                    <span className="text-[8px] font-bold tracking-wider" style={{ color: T.w30 }}>{label}</span>
+                    <kbd className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{key}</kbd>
+                    <span className="text-[10px] text-muted-foreground">{label}</span>
                   </div>
                 ))}
               </div>
@@ -537,15 +415,11 @@ export function Header({ activeItem = "/", onHelpClick }: HeaderProps) {
   );
 }
 
-/* ─── Icon button helper ─────────────────────────────────────────────────── */
 const IconBtn = ({ children, onClick, title }: { children: React.ReactNode; onClick: () => void; title?: string }) => (
   <button
     onClick={onClick}
     title={title}
-    className="w-8 h-8 rounded flex items-center justify-center transition-all"
-    style={{ color: "rgba(255,255,255,0.3)" }}
-    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color = "white"; }}
-    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+    className="w-8 h-8 rounded flex items-center justify-center transition-all text-muted-foreground hover:bg-muted hover:text-foreground"
   >
     {children}
   </button>
