@@ -265,7 +265,7 @@ export function Sidebar({
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "relative flex items-center gap-2.5 rounded-md overflow-hidden group transition-all duration-150",
-                  isCollapsed ? "justify-center px-3 py-2.5" : "px-3 py-2",
+collapsed ? "justify-center px-3 py-2.5" : "px-3 py-2",
                   isActive
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-muted-foreground border border-transparent hover:bg-muted/50 hover:text-foreground"
@@ -285,7 +285,7 @@ export function Sidebar({
                   </span>
                 )}
 
-                {isCollapsed && (
+                {collapsed && (
                   <div className="absolute left-full ml-2.5 px-2.5 py-1.5 rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-all bg-popover border border-border shadow-lg text-xs font-medium text-foreground">
                     {item.label}
                   </div>
