@@ -309,6 +309,7 @@ function OceanMap({
 }) {
   const [hoverWell, setHoverWell] = useState<Well | null>(null);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [pingKey, setPingKey] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -316,6 +317,11 @@ function OceanMap({
     const t = setInterval(() => setPingKey((k) => k + 1), 4000);
     return () => clearInterval(t);
   }, []);
+
+  // Click-to-center pan: translate scene so selected well moves toward map center (500,300)
+  const selectedWell = WELLS.find((w) => w.id === selected);
+  const panX = selectedWell ? (500 - selectedWell.x) * 0.35 : 0;
+  const panY = selectedWell ? (300 - selectedWell.y) * 0.35 : 0;
 
   // viewBox: 1000x600. Brasil left, Angola right.
   const blocks = useMemo(() => {
@@ -344,13 +350,24 @@ function OceanMap({
     const r = svg.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    // map x [0..1] → lon -50°W .. 15°E; y [0..1] → lat 5°N .. -35°S
     const lon = -50 + px * 65;
     const lat = 5 - py * 40;
     onCursor({
       lat: `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"}`,
       lon: `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`,
     });
+  };
+
+  // Convert SVG coords -> container px for the floating tooltip
+  const handleWellEnter = (w: Well, e: React.MouseEvent) => {
+    setHoverWell(w);
+    const svg = svgRef.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    // account for pan transform applied to scene group
+    const sx = ((w.x + panX) / 1000) * r.width;
+    const sy = ((w.y + panY) / 600) * r.height;
+    setTooltipPos({ x: sx, y: sy });
   };
 
   return (
@@ -391,120 +408,149 @@ function OceanMap({
         <rect width="1000" height="600" fill="url(#oceanGrad)" />
         <rect width="1000" height="600" fill="url(#grid)" />
 
-        {/* Temperature overlay */}
-        {layers.temp && <rect width="1000" height="600" fill="url(#tempGrad)" />}
+        {/* Pannable scene */}
+        <g
+          style={{
+            transform: `translate(${panX}px, ${panY}px)`,
+            transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1)",
+          }}
+        >
+          {/* Temperature overlay */}
+          {layers.temp && <rect width="1000" height="600" fill="url(#tempGrad)" />}
 
-        {/* Coastlines — simplified silhouettes */}
-        {/* Brasil (left) */}
-        <path
-          d="M 0,80 L 130,90 L 145,150 L 160,220 L 150,300 L 165,380 L 140,470 L 120,560 L 0,580 Z"
-          fill="#020B18" stroke="#00C8FF" strokeWidth="1" strokeOpacity="0.5"
-          filter="url(#glow)"
-        />
-        {/* Angola/Africa (right) */}
-        <path
-          d="M 1000,60 L 880,75 L 855,140 L 840,210 L 850,290 L 835,370 L 845,450 L 870,540 L 1000,560 Z"
-          fill="#020B18" stroke="#00C8FF" strokeWidth="1" strokeOpacity="0.5"
-          filter="url(#glow)"
-        />
-        <text x="60"  y="320" fill="#00C8FF" opacity="0.5" fontSize="10" letterSpacing="3">BRASIL</text>
-        <text x="900" y="320" fill="#00C8FF" opacity="0.5" fontSize="10" letterSpacing="3">ANGOLA</text>
+          {/* Coastlines */}
+          <path
+            d="M 0,80 L 130,90 L 145,150 L 160,220 L 150,300 L 165,380 L 140,470 L 120,560 L 0,580 Z"
+            fill="#020B18" stroke="#00C8FF" strokeWidth="1" strokeOpacity="0.5"
+            filter="url(#glow)"
+          />
+          <path
+            d="M 1000,60 L 880,75 L 855,140 L 840,210 L 850,290 L 835,370 L 845,450 L 870,540 L 1000,560 Z"
+            fill="#020B18" stroke="#00C8FF" strokeWidth="1" strokeOpacity="0.5"
+            filter="url(#glow)"
+          />
+          <text x="60"  y="320" fill="#00C8FF" opacity="0.5" fontSize="10" letterSpacing="3">BRASIL</text>
+          <text x="900" y="320" fill="#00C8FF" opacity="0.5" fontSize="10" letterSpacing="3">ANGOLA</text>
 
-        {/* Blocks */}
-        {layers.blocks &&
-          blocks.map((b) => (
-            <g key={b.code} onMouseEnter={() => setHoverBlock(b.code)} onMouseLeave={() => setHoverBlock(null)}>
-              <rect
-                x={b.x} y={b.y} width={b.w} height={b.h}
-                fill={hoverBlock === b.code ? "#00C8FF11" : "transparent"}
-                stroke="#00C8FF" strokeOpacity="0.18" strokeWidth="0.8"
-              />
-              <text x={b.x + 4} y={b.y + 12} fill="#00C8FF" fontSize="8" opacity="0.5" fontFamily="monospace">
-                {b.code}
-              </text>
-            </g>
-          ))}
-
-        {/* Currents */}
-        {layers.currents && (
-          <>
-            <path
-              d="M 150,300 C 350,260 650,340 870,310"
-              fill="none" stroke="#00FFCC" strokeOpacity="0.7" strokeWidth="1.5"
-              strokeDasharray="6 8"
-              style={{ animation: "elastraDash 6s linear infinite" }}
-            />
-            <text x="430" y="290" fill="#00FFCC" fontSize="9" letterSpacing="2" opacity="0.85">
-              CORRENTE EQUATORIAL SUL →
-            </text>
-            <path
-              d="M 855,540 C 845,440 835,330 850,210"
-              fill="none" stroke="#00C8FF" strokeOpacity="0.7" strokeWidth="1.5"
-              strokeDasharray="6 8"
-              style={{ animation: "elastraDash 8s linear infinite" }}
-            />
-            <text x="765" y="400" fill="#00C8FF" fontSize="9" letterSpacing="2" opacity="0.85">
-              ↑ BENGUELA
-            </text>
-          </>
-        )}
-
-        {/* AI prediction zones */}
-        {layers.ai &&
-          aiZones.map((z) => (
-            <g key={z.id}>
-              <circle cx={z.x} cy={z.y} r="60"
-                fill="none" stroke="#00FFCC" strokeOpacity="0.55"
-                strokeWidth="1.5" strokeDasharray="4 6"
-                style={{ animation: "elastraPulse 3s ease-in-out infinite" }}
-              />
-              <circle cx={z.x} cy={z.y} r="6" fill="#00FFCC" opacity="0.9" />
-              <text x={z.x + 10} y={z.y - 10} fill="#00FFCC" fontSize="10" fontFamily="monospace">
-                {z.label} — {z.prob}%
-              </text>
-            </g>
-          ))}
-
-        {/* Sonar ping from center */}
-        <circle key={pingKey} cx="500" cy="300" r="20"
-          fill="none" stroke="#00C8FF" strokeWidth="1.5" opacity="0.7"
-          style={{ animation: "mapPing 4s ease-out forwards" }}
-        />
-
-        {/* Wells */}
-        {layers.wells &&
-          WELLS.filter((w) => w.year <= maxYear).map((w) => {
-            const c = typeColor(w.type);
-            const active = selected === w.id;
-            const big = layers.ai && w.similarity >= 80;
-            return (
-              <g key={w.id}
-                onMouseEnter={() => setHoverWell(w)}
-                onMouseLeave={() => setHoverWell(null)}
-                onClick={() => onSelect(w.id)}
-                style={{ cursor: "pointer" }}
-              >
-                {(w.type !== "dry") && (
-                  <circle cx={w.x} cy={w.y} r={big ? 18 : 12}
-                    fill="none" stroke={c} strokeWidth="1.5" opacity="0.7"
-                    style={{ animation: "elastraPulse 2.4s ease-in-out infinite" }}
-                  />
-                )}
-                <circle cx={w.x} cy={w.y} r={active ? 7 : 5}
-                  fill={c} stroke="#020B18" strokeWidth="1.5"
-                  style={{ filter: `drop-shadow(0 0 6px ${c})` }}
+          {/* Blocks */}
+          {layers.blocks &&
+            blocks.map((b) => (
+              <g key={b.code} onMouseEnter={() => setHoverBlock(b.code)} onMouseLeave={() => setHoverBlock(null)}>
+                <rect
+                  x={b.x} y={b.y} width={b.w} height={b.h}
+                  fill={hoverBlock === b.code ? "#00C8FF11" : "transparent"}
+                  stroke="#00C8FF" strokeOpacity="0.18" strokeWidth="0.8"
                 />
-                {active && (
-                  <circle cx={w.x} cy={w.y} r="14"
-                    fill="none" stroke="#00FFCC" strokeWidth="1.5"
-                    style={{ animation: "elastraRipple 1.6s ease-out infinite" }}
-                  />
-                )}
+                <text x={b.x + 4} y={b.y + 12} fill="#00C8FF" fontSize="8" opacity="0.5" fontFamily="monospace">
+                  {b.code}
+                </text>
               </g>
-            );
-          })}
+            ))}
 
-        {/* Depth ruler right */}
+          {/* Currents */}
+          {layers.currents && (
+            <>
+              <path
+                d="M 150,300 C 350,260 650,340 870,310"
+                fill="none" stroke="#00FFCC" strokeOpacity="0.7" strokeWidth="1.5"
+                strokeDasharray="6 8"
+                style={{ animation: "elastraDash 6s linear infinite" }}
+              />
+              <text x="430" y="290" fill="#00FFCC" fontSize="9" letterSpacing="2" opacity="0.85">
+                CORRENTE EQUATORIAL SUL →
+              </text>
+              <path
+                d="M 855,540 C 845,440 835,330 850,210"
+                fill="none" stroke="#00C8FF" strokeOpacity="0.7" strokeWidth="1.5"
+                strokeDasharray="6 8"
+                style={{ animation: "elastraDash 8s linear infinite" }}
+              />
+              <text x="765" y="400" fill="#00C8FF" fontSize="9" letterSpacing="2" opacity="0.85">
+                ↑ BENGUELA
+              </text>
+            </>
+          )}
+
+          {/* AI prediction zones */}
+          {layers.ai &&
+            aiZones.map((z) => (
+              <g key={z.id}>
+                <circle cx={z.x} cy={z.y} r="60"
+                  fill="none" stroke="#00FFCC" strokeOpacity="0.55"
+                  strokeWidth="1.5" strokeDasharray="4 6"
+                  style={{ animation: "elastraPulse 3s ease-in-out infinite" }}
+                />
+                <circle cx={z.x} cy={z.y} r="6" fill="#00FFCC" opacity="0.9" />
+                <text x={z.x + 10} y={z.y - 10} fill="#00FFCC" fontSize="10" fontFamily="monospace">
+                  {z.label} — {z.prob}%
+                </text>
+              </g>
+            ))}
+
+          {/* Sonar ping from center */}
+          <circle key={pingKey} cx="500" cy="300" r="20"
+            fill="none" stroke="#00C8FF" strokeWidth="1.5" opacity="0.7"
+            style={{ animation: "mapPing 4s ease-out forwards" }}
+          />
+
+          {/* Wells — rendered LAST so they sit above everything else in the scene */}
+          {layers.wells &&
+            WELLS.filter((w) => w.year <= maxYear).map((w) => {
+              const c = typeColor(w.type);
+              const active = selected === w.id;
+              const big = layers.ai && w.similarity >= 80;
+              return (
+                <g key={w.id}
+                  onMouseEnter={(e) => handleWellEnter(w, e)}
+                  onMouseLeave={() => { setHoverWell(null); setTooltipPos(null); }}
+                  onClick={() => onSelect(w.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* Hit area */}
+                  <circle cx={w.x} cy={w.y} r="16" fill="transparent" />
+
+                  {w.type !== "dry" && (
+                    <circle cx={w.x} cy={w.y} r={big ? 18 : 12}
+                      fill="none" stroke={c} strokeWidth="1.5" opacity="0.7"
+                      style={{ animation: "elastraPulse 2.4s ease-in-out infinite" }}
+                    />
+                  )}
+
+                  {/* Dry wells: X marker */}
+                  {w.type === "dry" && (
+                    <g stroke={c} strokeWidth="2" opacity="0.9">
+                      <line x1={w.x - 6} y1={w.y - 6} x2={w.x + 6} y2={w.y + 6} />
+                      <line x1={w.x - 6} y1={w.y + 6} x2={w.x + 6} y2={w.y - 6} />
+                    </g>
+                  )}
+
+                  <circle cx={w.x} cy={w.y} r={active ? 7 : 5}
+                    fill={c} stroke="#020B18" strokeWidth="1.5"
+                    style={{ filter: `drop-shadow(0 0 6px ${c})` }}
+                  />
+                  {active && (
+                    <circle cx={w.x} cy={w.y} r="14"
+                      fill="none" stroke="#00FFCC" strokeWidth="1.5"
+                      style={{ animation: "elastraRipple 1.6s ease-out infinite" }}
+                    />
+                  )}
+                  {/* Label under marker */}
+                  <text
+                    x={w.x} y={w.y + (active ? 20 : 18)}
+                    textAnchor="middle"
+                    fontSize={active ? 10 : 8}
+                    fill={active ? "#FFFFFF" : "#7FB7D6"}
+                    fontFamily="monospace"
+                    style={{ pointerEvents: "none", textShadow: "0 0 4px #020B18" }}
+                  >
+                    {w.name}
+                  </text>
+                </g>
+              );
+            })}
+        </g>
+
+        {/* Depth ruler — fixed (not panned) */}
         <g transform="translate(970,80)">
           <line x1="0" y1="0" x2="0" y2="440" stroke="#00C8FF" strokeOpacity="0.4" />
           {[0, 500, 1000, 1500, 2000, 2500, 3000, 3500].map((d, i) => (
@@ -517,7 +563,7 @@ function OceanMap({
           ))}
         </g>
 
-        {/* Temp legend */}
+        {/* Temp legend — fixed */}
         {layers.temp && (
           <g transform="translate(20,80)">
             <rect width="10" height="200" fill="url(#tempGrad)" stroke="#00C8FF" strokeOpacity="0.4" />
@@ -533,29 +579,34 @@ function OceanMap({
         {hoverBlock && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-md border border-[#00C8FF]/40 bg-[#020B18]/90 backdrop-blur text-[11px] font-mono text-[#00C8FF]"
+            className="pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-md border border-[#00C8FF]/40 bg-[#020B18]/90 backdrop-blur text-[11px] font-mono text-[#00C8FF] z-20"
           >
             {hoverBlock} · TotalEnergies · ATIVO
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Well tooltip */}
+      {/* Well tooltip — anchored next to marker */}
       <AnimatePresence>
-        {hoverWell && (
+        {hoverWell && tooltipPos && (
           <motion.div
-            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="pointer-events-none absolute top-4 right-4 px-3 py-2 rounded-md border border-[#00C8FF]/40 bg-[#020B18]/90 backdrop-blur text-[11px] font-mono"
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="pointer-events-none absolute px-3 py-2 rounded-md border border-[#00C8FF]/50 bg-[#020B18]/95 backdrop-blur text-[11px] font-mono shadow-[0_0_18px_rgba(0,200,255,0.3)] z-20"
+            style={{
+              left: Math.min(Math.max(tooltipPos.x + 14, 8), (svgRef.current?.clientWidth ?? 800) - 200),
+              top:  Math.max(tooltipPos.y - 50, 8),
+            }}
           >
             <div className="text-white font-bold">{hoverWell.name}</div>
             <div className="text-[#7FB7D6]">{typeLabel(hoverWell.type)} · {hoverWell.depth}m · {hoverWell.year}</div>
-            <div className="text-[#00FFCC]">{hoverWell.temp}°C · {hoverWell.salinity} PSU</div>
+            <div className="text-[#00FFCC]">{hoverWell.temp}°C · {hoverWell.salinity} PSU · {hoverWell.pressure} bar</div>
+            <div className="text-[#00C8FF] mt-0.5">SIM {hoverWell.similarity}% · {hoverWell.country}</div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Map legend */}
-      <div className="absolute bottom-3 left-3 rounded-md border border-[#00C8FF]/20 bg-[#020B18]/85 backdrop-blur px-3 py-2 text-[10px] font-mono space-y-1">
+      <div className="absolute bottom-3 left-3 rounded-md border border-[#00C8FF]/20 bg-[#020B18]/85 backdrop-blur px-3 py-2 text-[10px] font-mono space-y-1 z-20">
         <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: "#F5A623", boxShadow: "0 0 6px #F5A623" }} /><span className="text-[#7FB7D6]">Petróleo</span></div>
         <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: "#00FFCC", boxShadow: "0 0 6px #00FFCC" }} /><span className="text-[#7FB7D6]">Gás</span></div>
         <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: "#FF4757" }} /><span className="text-[#7FB7D6]">Seco</span></div>
