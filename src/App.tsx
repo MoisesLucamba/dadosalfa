@@ -24,6 +24,7 @@ import Competitors from "./pages/Competitors";
 import Workspace from "./pages/Workspace";
 import Subscription from "./pages/Subscription";
 import WellSimulation from "./pages/WellSimulation";
+import OceanIntelligence from "./pages/OceanIntelligence";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -183,6 +184,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <WellSimulation />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ocean-intelligence"
+                  element={
+                    <ProtectedRoute>
+                      <OceanIntelligence />
                     </ProtectedRoute>
                   }
                 />
