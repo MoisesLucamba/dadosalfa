@@ -38,6 +38,7 @@ const MORE_ITEMS = [
   { icon: Building2,    label: "COMPETIDORES",         sig: "CMP", href: "/competitors",     color: "#a78bfa" },
   { icon: Search,       label: "PESQUISA",             sig: "SRH", href: "/search",          color: "#38bdf8" },
   { icon: Zap,          label: "VISÃO COMPUTACIONAL",  sig: "VIZ", href: "/well-simulation", color: "#fb923c" },
+  { icon: Zap,          label: "OCEAN INTELLIGENCE",   sig: "OCN", href: "/ocean-intelligence", color: "#00FFCC" },
   { icon: Bell,         label: "ALERTAS",              sig: "ALR", href: "/alerts",          color: "#f87171" },
   { icon: Users,        label: "WORKSPACE",            sig: "WRK", href: "/workspace",       color: "#818cf8" },
   { icon: Settings,     label: "CONFIGURAÇÕES",        sig: "CFG", href: "/settings",        color: T.w30     },
