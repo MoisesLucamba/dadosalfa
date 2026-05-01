@@ -43,6 +43,7 @@ const navGroups = [
       { icon: AlertTriangle,   label: "Risco",                href: "/risk" },
       { icon: Building2,       label: "Competidores",         href: "/competitors" },
       { icon: Zap,             label: "Visão Computacional",  href: "/well-simulation", badge: "AI" },
+      { icon: Activity,        label: "Ocean Intelligence",   href: "/ocean-intelligence", badge: "NEW" },
     ],
   },
   {
