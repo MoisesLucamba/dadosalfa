@@ -31,7 +31,7 @@ function generateForecastData(currentProd: number, days: number) {
     date.setDate(date.getDate() + w * 7);
     const dateStr = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 
-    const predicted = Math.round(currentProd * Math.pow(1 - declineRate, w) + (Math.random() - 0.5) * 200);
+    const predicted = Math.round(currentProd * Math.pow(1 - declineRate, w));
     const upper = Math.round(predicted * 1.06);
     const lower = Math.round(predicted * 0.94);
 
