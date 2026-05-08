@@ -224,10 +224,10 @@ const useBrentHistory = (priceData: any[]) =>
 
     if (brentData.length === 0) return fallbackHistoryData;
 
-    return brentData.map((item, idx) => ({
+    return brentData.map((item) => ({
       date: new Date(item.data_date).toLocaleDateString("pt-PT", { month: "short" }),
       price: item.price || 0,
-      volume: 100 + Math.random() * 50,
+      volume: item.volume ?? 0,
     }));
   }, [priceData]);
 

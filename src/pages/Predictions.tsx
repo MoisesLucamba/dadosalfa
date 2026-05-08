@@ -149,31 +149,33 @@ const Predictions = () => {
     finally { setLoading(false); }
   };
 
-  /* ── Forecast data ──────────────────────────────────────────────────────── */
+  /* ── Forecast data (deterministic — only render if backend provided real series) ── */
   const priceForecastData = useMemo(() => {
     if (predictions?.price_forecast) return predictions.price_forecast;
-    const base = predictions?.predictions?.brent_30d?.value || 78;
+    const base = predictions?.predictions?.brent_30d?.value;
+    if (!base) return [];
     const today = new Date();
     return Array.from({ length: 16 }, (_, idx) => {
       const i = idx - 5;
       const d = new Date(today);
       d.setDate(d.getDate() + i * 3);
       const dateStr = d.toLocaleDateString("pt-AO", { day: "numeric", month: "short" }).toUpperCase();
-      if (i <= 0) return { date: dateStr, actual: base + (Math.random() - 0.5) * 2, predicted: null, lower: null, upper: null };
-      const p = base + i * 0.2 + (Math.random() - 0.5);
+      if (i <= 0) return { date: dateStr, actual: base, predicted: null, lower: null, upper: null };
+      const p = base + i * 0.2;
       return { date: dateStr, actual: null, predicted: p, lower: p - 2, upper: p + 2 };
     });
   }, [predictions]);
 
   const productionForecastData = useMemo(() => {
     if (predictions?.production_forecast) return predictions.production_forecast;
-    const base = predictions?.predictions?.production_30d?.value || 1100;
+    const base = predictions?.predictions?.production_30d?.value;
+    if (!base) return [];
     const months = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ","JAN'25","FEV'25"];
     const cur = new Date().getMonth();
     return months.map((month, i) => ({
       month,
-      actual:    i <= cur ? base + (Math.random() - 0.5) * 50 : null,
-      predicted: i >= cur ? base - i * 3 + (Math.random() - 0.5) * 20 : null,
+      actual:    i <= cur ? base : null,
+      predicted: i >= cur ? base - i * 3 : null,
     }));
   }, [predictions]);
 
