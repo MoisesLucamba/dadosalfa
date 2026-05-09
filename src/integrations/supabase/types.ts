@@ -689,6 +689,81 @@ export type Database = {
         }
         Relationships: []
       }
+      service_provider_suggestions: {
+        Row: {
+          category: string
+          company_name: string
+          contact_email: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          category: string
+          company_name: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          category?: string
+          company_name?: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      service_providers: {
+        Row: {
+          categories: string[]
+          country: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          categories?: string[]
+          country?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          categories?: string[]
+          country?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string | null
