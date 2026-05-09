@@ -26,6 +26,7 @@ import {
   Mail, BarChart3, Lock, Eye, EyeOff, AlertTriangle,
   Terminal, Activity, Radio, Settings as SettingsIcon,
 } from "lucide-react";
+import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 interface ProfileForm { contact_name: string; contact_phone: string; contact_role: string; }
@@ -666,6 +667,12 @@ const Settings = () => {
                     >
                       <Key className="w-3 h-3" /> ALTERAR SENHA
                     </button>
+                  </ActionRow>
+
+                  <ActionRow label="AUTENTICAÇÃO DE 2 FACTORES (TOTP)" desc="Adicione uma camada extra com Google Authenticator, Authy ou 1Password.">
+                    <div className="w-full sm:w-auto sm:min-w-[280px]">
+                      <TwoFactorSetup />
+                    </div>
                   </ActionRow>
                 </Section>
 
