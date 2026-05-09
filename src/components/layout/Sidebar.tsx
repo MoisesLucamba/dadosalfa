@@ -51,6 +51,7 @@ const navGroups = [
     label: "Dados",
     items: [
       { icon: Ship,     label: "Exportações", href: "/exports" },
+      { icon: Building2, label: "Fornecedores", href: "/service-providers" },
       { icon: Search,   label: "Pesquisa",    href: "/search" },
       { icon: FileText, label: "Relatórios",  href: "/reports" },
       { icon: Shield,   label: "Admin",       href: "/admin", badge: "ADM", adminOnly: true },
