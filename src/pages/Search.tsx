@@ -1331,8 +1331,8 @@ const Search = () => {
                 await supabase.from("chat_messages").insert({
                   conversation_id: newId, user_id: user.id,
                   role: m.role, content: m.content,
-                  sources: m.sources ?? [], charts: m.charts ?? [],
-                });
+                  sources: (m.sources ?? []) as any, charts: (m.charts ?? []) as any,
+                } as any);
               }
             }
             localStorage.removeItem(STORAGE_KEY);
