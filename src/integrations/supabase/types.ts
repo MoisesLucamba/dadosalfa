@@ -35,30 +35,110 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          charts: Json | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          sources: Json | null
+          tool_calls: Json | null
+          user_id: string
+        }
+        Insert: {
+          charts?: Json | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          sources?: Json | null
+          tool_calls?: Json | null
+          user_id: string
+        }
+        Update: {
+          charts?: Json | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          sources?: Json | null
+          tool_calls?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       country_risk: {
         Row: {
+          citations: Json | null
+          confidence_level: string | null
           country: string
           created_at: string
           data_date: string
           id: string
+          is_ai_estimated: boolean | null
           score: number
           trend: string | null
           updated_at: string
         }
         Insert: {
+          citations?: Json | null
+          confidence_level?: string | null
           country: string
           created_at?: string
           data_date?: string
           id?: string
+          is_ai_estimated?: boolean | null
           score: number
           trend?: string | null
           updated_at?: string
         }
         Update: {
+          citations?: Json | null
+          confidence_level?: string | null
           country?: string
           created_at?: string
           data_date?: string
           id?: string
+          is_ai_estimated?: boolean | null
           score?: number
           trend?: string | null
           updated_at?: string
@@ -294,7 +374,10 @@ export type Database = {
           crude_type: string
           data_date: string
           id: string
+          is_official: boolean | null
           price: number
+          source: string | null
+          source_url: string | null
           updated_at: string
           volume: number | null
         }
@@ -304,7 +387,10 @@ export type Database = {
           crude_type: string
           data_date?: string
           id?: string
+          is_official?: boolean | null
           price: number
+          source?: string | null
+          source_url?: string | null
           updated_at?: string
           volume?: number | null
         }
@@ -314,7 +400,10 @@ export type Database = {
           crude_type?: string
           data_date?: string
           id?: string
+          is_official?: boolean | null
           price?: number
+          source?: string | null
+          source_url?: string | null
           updated_at?: string
           volume?: number | null
         }
@@ -581,34 +670,46 @@ export type Database = {
       risk_alerts: {
         Row: {
           alert_type: string
+          citations: Json | null
+          confidence_level: string | null
           created_at: string
           description: string
           id: string
           impact: string | null
           is_active: boolean | null
+          is_ai_estimated: boolean | null
           region: string | null
+          source_url: string | null
           title: string
           updated_at: string
         }
         Insert: {
           alert_type: string
+          citations?: Json | null
+          confidence_level?: string | null
           created_at?: string
           description: string
           id?: string
           impact?: string | null
           is_active?: boolean | null
+          is_ai_estimated?: boolean | null
           region?: string | null
+          source_url?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           alert_type?: string
+          citations?: Json | null
+          confidence_level?: string | null
           created_at?: string
           description?: string
           id?: string
           impact?: string | null
           is_active?: boolean | null
+          is_ai_estimated?: boolean | null
           region?: string | null
+          source_url?: string | null
           title?: string
           updated_at?: string
         }
@@ -617,10 +718,14 @@ export type Database = {
       risk_data: {
         Row: {
           category: string
+          citations: Json | null
+          confidence_level: string | null
           created_at: string
           data_date: string
           description: string | null
           id: string
+          is_ai_estimated: boolean | null
+          methodology: string | null
           score: number
           source: string | null
           trend: string | null
@@ -628,10 +733,14 @@ export type Database = {
         }
         Insert: {
           category: string
+          citations?: Json | null
+          confidence_level?: string | null
           created_at?: string
           data_date?: string
           description?: string | null
           id?: string
+          is_ai_estimated?: boolean | null
+          methodology?: string | null
           score: number
           source?: string | null
           trend?: string | null
@@ -639,10 +748,14 @@ export type Database = {
         }
         Update: {
           category?: string
+          citations?: Json | null
+          confidence_level?: string | null
           created_at?: string
           data_date?: string
           description?: string | null
           id?: string
+          is_ai_estimated?: boolean | null
+          methodology?: string | null
           score?: number
           source?: string | null
           trend?: string | null

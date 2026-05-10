@@ -50,6 +50,8 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPES
@@ -1253,6 +1255,7 @@ const ChatBubble = ({
    ═══════════════════════════════════════════════════════════════════════════ */
 const Search = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sessions, setSessions]           = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSId] = useState<string | null>(null);
   const [input, setInput]                 = useState("");
@@ -1272,13 +1275,92 @@ const Search = () => {
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
   useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+
+  // Load conversations + messages from Supabase (with localStorage migration fallback)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) { try { const p = JSON.parse(saved); setSessions(p); if (p.length > 0) setCurrentSId(p[0].id); } catch {} }
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data: convs, error } = await supabase
+        .from("chat_conversations")
+        .select("id,title,created_at,updated_at")
+        .eq("user_id", user.id)
+        .eq("is_archived", false)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error || cancelled) { console.error("[chat] load convs", error); return; }
+
+      const convIds = (convs ?? []).map(c => c.id);
+      let allMsgs: any[] = [];
+      if (convIds.length) {
+        const { data: msgs } = await supabase
+          .from("chat_messages")
+          .select("id,conversation_id,role,content,sources,charts,created_at")
+          .in("conversation_id", convIds)
+          .order("created_at", { ascending: true });
+        allMsgs = msgs ?? [];
+      }
+
+      const loaded: ChatSession[] = (convs ?? []).map(c => ({
+        id: c.id,
+        title: c.title,
+        date: new Date(c.created_at).toLocaleDateString("pt-BR"),
+        messages: allMsgs.filter(m => m.conversation_id === c.id).map(m => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          sources: Array.isArray(m.sources) ? m.sources : undefined,
+          charts: Array.isArray(m.charts) && m.charts.length ? m.charts : undefined,
+        })),
+      }));
+
+      // One-time migration from localStorage if Supabase is empty
+      if (loaded.length === 0) {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const legacy: ChatSession[] = JSON.parse(saved);
+            for (const s of legacy.slice(0, 20)) {
+              const newId = crypto.randomUUID();
+              const { error: cErr } = await supabase.from("chat_conversations").insert({
+                id: newId, user_id: user.id, title: s.title || "CONSULTA",
+              });
+              if (cErr) continue;
+              for (const m of s.messages) {
+                await supabase.from("chat_messages").insert({
+                  conversation_id: newId, user_id: user.id,
+                  role: m.role, content: m.content,
+                  sources: (m.sources ?? []) as any, charts: (m.charts ?? []) as any,
+                } as any);
+              }
+            }
+            localStorage.removeItem(STORAGE_KEY);
+            // reload
+            const { data: convs2 } = await supabase
+              .from("chat_conversations").select("id,title,created_at")
+              .eq("user_id", user.id).order("updated_at", { ascending: false }).limit(50);
+            if (convs2 && !cancelled) {
+              setSessions(convs2.map(c => ({ id: c.id, title: c.title, date: new Date(c.created_at).toLocaleDateString("pt-BR"), messages: [] })));
+              setCurrentSId(convs2[0]?.id ?? null);
+            }
+            return;
+          } catch (e) { console.error("[chat] migration failed", e); }
+        }
+      }
+
+      if (!cancelled) {
+        setSessions(loaded);
+        if (loaded.length > 0) setCurrentSId(loaded[0].id);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  useEffect(() => {
     const savedCtx = localStorage.getItem(CONTEXT_KEY);
     if (savedCtx) { try { setCtx(JSON.parse(savedCtx)); } catch {} }
   }, []);
-  useEffect(() => { if (sessions.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem(CONTEXT_KEY, JSON.stringify(conversationContext)); }, [conversationContext]);
   useEffect(() => { chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [currentSession?.messages, loading]);
 
@@ -1300,55 +1382,87 @@ const Search = () => {
     setCtx({ lastMentionedBlock: null, lastMentionedOperator: null, lastMentionedWell: null, lastMentionedMetric: null, lastMentionedPeriod: null, lastChartType: null });
   }, []);
 
-  const startNewChat = useCallback(() => {
-    const id = Date.now().toString();
+  const startNewChat = useCallback(async () => {
+    if (!user?.id) { toast.error("Sessão expirada"); return; }
+    const id = crypto.randomUUID();
+    const { error } = await supabase.from("chat_conversations").insert({
+      id, user_id: user.id, title: "NOVA CONSULTA",
+    });
+    if (error) { toast.error("Erro ao criar conversa"); return; }
     setSessions(prev => [{ id, title: "NOVA CONSULTA", messages: [], date: new Date().toLocaleDateString("pt-BR") }, ...prev]);
     setCurrentSId(id); setInput(""); clearContext(); setSidebarOpen(false);
     toast.success("NOVA SESSÃO INICIADA");
-  }, [clearContext]);
+  }, [clearContext, user?.id]);
 
-  const deleteHistory = useCallback(() => {
+  const deleteHistory = useCallback(async () => {
+    if (!user?.id) return;
     if (window.confirm("Confirma a eliminação de todo o histórico?")) {
-      setSessions([]); setCurrentSId(null); localStorage.removeItem(STORAGE_KEY); toast.error("HISTÓRICO ELIMINADO");
+      const { error } = await supabase.from("chat_conversations").delete().eq("user_id", user.id);
+      if (error) { toast.error("Erro ao apagar histórico"); return; }
+      setSessions([]); setCurrentSId(null); toast.error("HISTÓRICO ELIMINADO");
     }
-  }, []);
+  }, [user?.id]);
 
-  const deleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
+  const deleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Eliminar esta sessão?")) {
-      setSessions(prev => { const f = prev.filter(s => s.id !== sessionId); if (!f.length) localStorage.removeItem(STORAGE_KEY); return f; });
-      if (currentSessionId === sessionId) setCurrentSId(sessions[0]?.id || null);
+      const { error } = await supabase.from("chat_conversations").delete().eq("id", sessionId);
+      if (error) { toast.error("Erro ao apagar"); return; }
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      if (currentSessionId === sessionId) setCurrentSId(sessions.find(s => s.id !== sessionId)?.id || null);
       toast.success("SESSÃO ELIMINADA");
     }
   }, [currentSessionId, sessions]);
 
+
   const send = useCallback(async (text?: string) => {
     const term = (text ?? input).trim();
-    if (!term || loading) return;
+    if (!term || loading || !user?.id) return;
 
     let sessionId = currentSessionId;
+    let isFirstMessage = false;
     if (!sessionId) {
-      const id = Date.now().toString();
-      const s: ChatSession = { id, title: term.substring(0, 50).toUpperCase(), messages: [], date: new Date().toLocaleDateString("pt-BR") };
-      setSessions([s]); setCurrentSId(id); sessionId = id;
+      const id = crypto.randomUUID();
+      const title = term.substring(0, 50).toUpperCase();
+      const { error } = await supabase.from("chat_conversations").insert({
+        id, user_id: user.id, title,
+      });
+      if (error) { toast.error("Erro ao criar conversa"); return; }
+      const s: ChatSession = { id, title, messages: [], date: new Date().toLocaleDateString("pt-BR") };
+      setSessions(prev => [s, ...prev]); setCurrentSId(id); sessionId = id;
+      isFirstMessage = true;
+    } else {
+      const cur = sessions.find(s => s.id === sessionId);
+      isFirstMessage = !cur || cur.messages.length === 0;
     }
 
     setLoading(true); setInput("");
     const userCtx = parseContextFromText(term);
     setCtx(prev => ({ ...prev, ...userCtx }));
 
+    const userMsgId = crypto.randomUUID();
     const userMsg: Message = {
-      id: Date.now().toString(), role: "user", content: term,
+      id: userMsgId, role: "user", content: term,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     const autoCharts = generateChartsForQuery(term);
     if (autoCharts.length) setCtx(prev => ({ ...prev, lastChartType: autoCharts[0].type }));
-    const aId = (Date.now() + 1).toString();
+    const aId = crypto.randomUUID();
     setStreamingId(aId);
 
+    const newTitle = isFirstMessage ? term.substring(0, 50).toUpperCase() : undefined;
     setSessions(prev => prev.map(s => s.id === sessionId
-      ? { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? term.substring(0, 50).toUpperCase() : s.title }
+      ? { ...s, messages: [...s.messages, userMsg], title: newTitle ?? s.title }
       : s));
+
+    // Persist user message + title update
+    await supabase.from("chat_messages").insert({
+      id: userMsgId, conversation_id: sessionId!, user_id: user.id,
+      role: "user", content: term,
+    } as any);
+    if (newTitle) {
+      await supabase.from("chat_conversations").update({ title: newTitle }).eq("id", sessionId!);
+    }
 
     try {
       const curMsgs = sessions.find(s => s.id === sessionId)?.messages || [];
@@ -1374,10 +1488,18 @@ const Search = () => {
             return { ...s, messages: msgs };
           }));
         },
-        onDone: () => {
+        onDone: async () => {
           setLoading(false); setStreamingId(null);
           const rCtx = parseContextFromText(acc);
           setCtx(prev => ({ ...prev, ...rCtx }));
+          // Persist assistant message
+          await supabase.from("chat_messages").insert({
+            id: aId, conversation_id: sessionId!, user_id: user.id,
+            role: "assistant", content: acc,
+            sources: ["Base de Dados Corporativa", "AlphaData Market Feed"] as any,
+            charts: (autoCharts.length ? autoCharts : []) as any,
+          } as any);
+          await supabase.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", sessionId!);
         },
       });
     } catch (error) {
@@ -1386,7 +1508,7 @@ const Search = () => {
       toast.error("ERRO CRÍTICO — CONSULTA FALHADA");
       setLoading(false); setStreamingId(null);
     }
-  }, [input, loading, currentSessionId, sessions, conversationContext]);
+  }, [input, loading, currentSessionId, sessions, conversationContext, user?.id]);
 
   const handleEditMessage = useCallback((msgId: string, newText: string) => {
     if (!currentSessionId) return;

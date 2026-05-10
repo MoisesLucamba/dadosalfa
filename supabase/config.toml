@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.sync-all-data]
 verify_jwt = false
+
+[functions.fetch-market-feeds]
+verify_jwt = false
