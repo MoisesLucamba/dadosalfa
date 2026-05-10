@@ -37,32 +37,36 @@ serve(async (req) => {
           {
             role: "system",
             content: `You are a geopolitical and market risk analyst specialized in Angola and the African oil sector.
-You analyze political, economic, operational, and regulatory risks affecting oil operations.
-Provide realistic assessments based on current events and historical patterns.
+
+CRITICAL ETHICAL RULES (mandatory):
+1. NEVER invent specific events, names of officials, or precise statistics you cannot cite.
+2. EVERY risk score MUST include a brief methodology note explaining what factors drove the score.
+3. EVERY risk alert MUST include at least one citation (publication name + URL or "internal_methodology" if no public source).
+4. Score ranges MUST be calibrated: 0-30 low, 31-60 moderate, 61-80 elevated, 81-100 critical. Avoid clustering at extremes without justification.
+5. If you lack specific data on a category, set confidence_level to "estimated" and note the gap explicitly.
+6. NEVER assign "verified" confidence — that level is reserved for data ingested from official APIs (ANPG, OPEC, EIA, IMF). AI-generated analysis is at most "estimated".
+7. Cite real, well-known sources only: Reuters, Bloomberg, Financial Times, OPEC Bulletin, IMF Country Report, World Bank, ANPG press releases, S&P Global Commodity Insights, Argus Media. Do NOT fabricate URLs — use the publication's home page if a specific article URL is unknown.
+
 Current date: ${currentDate}.
-Return ONLY valid JSON.`
+Return data via the provided tool only.`
           },
           {
             role: "user",
-            content: `Provide a comprehensive risk assessment for Angola's oil sector.
+            content: `Provide a comprehensive risk assessment for Angola's oil sector based on publicly known recent developments (post-OPEC+ exit Jan 2024, Lourenço administration, Lei 10/04 framework, Cabinda enclave dynamics, Lobito Corridor logistics).
 
-Analyze these risk categories (score 1-100, where 100 is highest risk):
+Categories (score 0-100, higher = more risk):
+1. POLITICAL — government stability, anti-corruption drive, succession dynamics
+2. ECONOMIC — Kwanza FX volatility, inflation, sovereign debt servicing
+3. OPERATIONAL — FPSO uptime, declining mature fields, deepwater complexity
+4. REGULATORY — local content (Decreto 271/20), tax stability, contract renegotiation
+5. SECURITY — Cabinda FLEC tensions, Gulf of Guinea piracy residual risk
+6. MARKET — Brent volatility, China demand exposure (>60% of exports)
+7. ENVIRONMENTAL — IEA NZE pressure, methane regulations, ESG disinvestment
+8. INFRASTRUCTURE — Port of Luanda congestion, Soyo LNG reliability, power grid
 
-1. POLITICAL RISK - Government stability, policy changes, elections, corruption
-2. ECONOMIC RISK - Currency (Kwanza) stability, inflation, fiscal policy, debt
-3. OPERATIONAL RISK - Infrastructure, logistics, labor, technical challenges
-4. REGULATORY RISK - Local content requirements, tax changes, contract terms
-5. SECURITY RISK - Cabinda separatism, maritime security, regional conflicts
-6. MARKET RISK - Oil price volatility, demand fluctuations, competition
-7. ENVIRONMENTAL RISK - Climate policies, ESG pressure, regulations
-8. INFRASTRUCTURE RISK - Port capacity, pipeline condition, power supply
+Also: 3-5 active alerts with citations, 3-5 country risk scores (China, India, EU, USA), 3-5 upcoming regulatory events.
 
-Also provide:
-- 3-5 current risk alerts (specific events/concerns)
-- Country risk scores for key trade partners (China, India, EU, USA)
-- 3-5 upcoming regulatory events to watch
-
-Consider recent developments like OPEC+ decisions, local elections, and global energy transition.`
+Be honest: where data is sparse, mark confidence accordingly.`
           }
         ],
         tools: [
@@ -70,7 +74,7 @@ Consider recent developments like OPEC+ decisions, local elections, and global e
             type: "function",
             function: {
               name: "return_risk_assessment",
-              description: "Return comprehensive risk assessment data",
+              description: "Return comprehensive risk assessment with mandatory citations and confidence levels",
               parameters: {
                 type: "object",
                 properties: {
@@ -80,11 +84,24 @@ Consider recent developments like OPEC+ decisions, local elections, and global e
                       type: "object",
                       properties: {
                         category: { type: "string" },
-                        score: { type: "number" },
+                        score: { type: "number", minimum: 0, maximum: 100 },
                         trend: { type: "string", enum: ["improving", "stable", "worsening"] },
-                        description: { type: "string" }
+                        description: { type: "string" },
+                        methodology: { type: "string", description: "Brief note on what factors drove this score" },
+                        confidence_level: { type: "string", enum: ["estimated", "unverified"], description: "AI analysis is at most 'estimated'" },
+                        citations: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              source: { type: "string" },
+                              url: { type: "string" }
+                            },
+                            required: ["source"]
+                          }
+                        }
                       },
-                      required: ["category", "score", "trend"]
+                      required: ["category", "score", "trend", "methodology", "confidence_level", "citations"]
                     }
                   },
                   risk_alerts: {
@@ -96,9 +113,15 @@ Consider recent developments like OPEC+ decisions, local elections, and global e
                         alert_type: { type: "string" },
                         description: { type: "string" },
                         impact: { type: "string", enum: ["low", "medium", "high", "critical"] },
-                        region: { type: "string" }
+                        region: { type: "string" },
+                        confidence_level: { type: "string", enum: ["estimated", "unverified"] },
+                        source_url: { type: "string", description: "Citation URL or publication homepage" },
+                        citations: {
+                          type: "array",
+                          items: { type: "object", properties: { source: { type: "string" }, url: { type: "string" } } }
+                        }
                       },
-                      required: ["title", "alert_type", "description", "impact"]
+                      required: ["title", "alert_type", "description", "impact", "confidence_level", "citations"]
                     }
                   },
                   country_risks: {
@@ -107,8 +130,9 @@ Consider recent developments like OPEC+ decisions, local elections, and global e
                       type: "object",
                       properties: {
                         country: { type: "string" },
-                        score: { type: "number" },
-                        trend: { type: "string" }
+                        score: { type: "number", minimum: 0, maximum: 100 },
+                        trend: { type: "string" },
+                        confidence_level: { type: "string", enum: ["estimated", "unverified"] }
                       },
                       required: ["country", "score"]
                     }
@@ -127,11 +151,12 @@ Consider recent developments like OPEC+ decisions, local elections, and global e
                       required: ["title", "description"]
                     }
                   },
-                  overall_risk_score: { type: "number" },
+                  overall_risk_score: { type: "number", minimum: 0, maximum: 100 },
                   assessment_date: { type: "string" },
-                  source: { type: "string" }
+                  source: { type: "string" },
+                  disclaimer: { type: "string", description: "Plain-language note about data limitations" }
                 },
-                required: ["risk_scores", "risk_alerts", "overall_risk_score", "source"]
+                required: ["risk_scores", "risk_alerts", "overall_risk_score", "source", "disclaimer"]
               }
             }
           }
