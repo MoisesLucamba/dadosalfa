@@ -230,6 +230,10 @@ Be honest: where data is sparse, mark confidence accordingly.`
               trend: risk.trend,
               description: risk.description || null,
               source: riskData.source,
+              methodology: risk.methodology || null,
+              confidence_level: risk.confidence_level || "estimated",
+              is_ai_estimated: true,
+              citations: risk.citations || [],
               updated_at: new Date().toISOString()
             })
             .eq("id", existing.id);
@@ -242,6 +246,10 @@ Be honest: where data is sparse, mark confidence accordingly.`
               trend: risk.trend,
               description: risk.description || null,
               source: riskData.source,
+              methodology: risk.methodology || null,
+              confidence_level: risk.confidence_level || "estimated",
+              is_ai_estimated: true,
+              citations: risk.citations || [],
               data_date: today
             });
         }
@@ -264,6 +272,10 @@ Be honest: where data is sparse, mark confidence accordingly.`
               description: alert.description,
               impact: alert.impact,
               region: alert.region || "Angola",
+              confidence_level: alert.confidence_level || "estimated",
+              is_ai_estimated: true,
+              citations: alert.citations || [],
+              source_url: alert.source_url || null,
               is_active: true
             });
         }
