@@ -50,6 +50,8 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPES
