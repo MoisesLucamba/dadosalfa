@@ -1417,31 +1417,52 @@ const Search = () => {
 
   const send = useCallback(async (text?: string) => {
     const term = (text ?? input).trim();
-    if (!term || loading) return;
+    if (!term || loading || !user?.id) return;
 
     let sessionId = currentSessionId;
+    let isFirstMessage = false;
     if (!sessionId) {
-      const id = Date.now().toString();
-      const s: ChatSession = { id, title: term.substring(0, 50).toUpperCase(), messages: [], date: new Date().toLocaleDateString("pt-BR") };
-      setSessions([s]); setCurrentSId(id); sessionId = id;
+      const id = crypto.randomUUID();
+      const title = term.substring(0, 50).toUpperCase();
+      const { error } = await supabase.from("chat_conversations").insert({
+        id, user_id: user.id, title,
+      });
+      if (error) { toast.error("Erro ao criar conversa"); return; }
+      const s: ChatSession = { id, title, messages: [], date: new Date().toLocaleDateString("pt-BR") };
+      setSessions(prev => [s, ...prev]); setCurrentSId(id); sessionId = id;
+      isFirstMessage = true;
+    } else {
+      const cur = sessions.find(s => s.id === sessionId);
+      isFirstMessage = !cur || cur.messages.length === 0;
     }
 
     setLoading(true); setInput("");
     const userCtx = parseContextFromText(term);
     setCtx(prev => ({ ...prev, ...userCtx }));
 
+    const userMsgId = crypto.randomUUID();
     const userMsg: Message = {
-      id: Date.now().toString(), role: "user", content: term,
+      id: userMsgId, role: "user", content: term,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     const autoCharts = generateChartsForQuery(term);
     if (autoCharts.length) setCtx(prev => ({ ...prev, lastChartType: autoCharts[0].type }));
-    const aId = (Date.now() + 1).toString();
+    const aId = crypto.randomUUID();
     setStreamingId(aId);
 
+    const newTitle = isFirstMessage ? term.substring(0, 50).toUpperCase() : undefined;
     setSessions(prev => prev.map(s => s.id === sessionId
-      ? { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? term.substring(0, 50).toUpperCase() : s.title }
+      ? { ...s, messages: [...s.messages, userMsg], title: newTitle ?? s.title }
       : s));
+
+    // Persist user message + title update
+    await supabase.from("chat_messages").insert({
+      id: userMsgId, conversation_id: sessionId!, user_id: user.id,
+      role: "user", content: term,
+    } as any);
+    if (newTitle) {
+      await supabase.from("chat_conversations").update({ title: newTitle }).eq("id", sessionId!);
+    }
 
     try {
       const curMsgs = sessions.find(s => s.id === sessionId)?.messages || [];
@@ -1467,10 +1488,18 @@ const Search = () => {
             return { ...s, messages: msgs };
           }));
         },
-        onDone: () => {
+        onDone: async () => {
           setLoading(false); setStreamingId(null);
           const rCtx = parseContextFromText(acc);
           setCtx(prev => ({ ...prev, ...rCtx }));
+          // Persist assistant message
+          await supabase.from("chat_messages").insert({
+            id: aId, conversation_id: sessionId!, user_id: user.id,
+            role: "assistant", content: acc,
+            sources: ["Base de Dados Corporativa", "AlphaData Market Feed"] as any,
+            charts: (autoCharts.length ? autoCharts : []) as any,
+          } as any);
+          await supabase.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", sessionId!);
         },
       });
     } catch (error) {
@@ -1479,7 +1508,7 @@ const Search = () => {
       toast.error("ERRO CRÍTICO — CONSULTA FALHADA");
       setLoading(false); setStreamingId(null);
     }
-  }, [input, loading, currentSessionId, sessions, conversationContext]);
+  }, [input, loading, currentSessionId, sessions, conversationContext, user?.id]);
 
   const handleEditMessage = useCallback((msgId: string, newText: string) => {
     if (!currentSessionId) return;
