@@ -866,18 +866,26 @@ const Risk = () => {
                                       <span className="text-[8px] px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
                                         {cfg.label}
                                       </span>
-                                      {(alert.is_ai_estimated || alert.confidence_level) && (
-                                        <ConfidenceBadge level={alert.confidence_level} isAI={alert.is_ai_estimated} />
-                                      )}
+                                      <ConfidenceBadge level={alert.confidence_level} isAI={alert.is_ai_estimated} onClick={() => openAlertDetail(alert)} />
                                     </div>
                                     {isSelected && (
                                       <CitationsList citations={alert.citations} sourceUrl={alert.source_url} />
                                     )}
-                                    {!isSelected && ((alert.citations && alert.citations.length > 0) || alert.source_url) && (
-                                      <div className="text-[8px] mt-1.5 italic" style={{ color: "hsl(var(--muted-foreground))" }}>
-                                        Clica para ver {(alert.citations?.length || 0) + (alert.source_url ? 1 : 0)} fonte(s) →
-                                      </div>
-                                    )}
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); openAlertDetail(alert); }}
+                                        className="text-[8px] font-bold tracking-[0.2em] px-2 py-0.5 rounded hover:brightness-125 transition"
+                                        style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+                                      >
+                                        DETALHE & FONTES →
+                                      </button>
+                                      {!isSelected && ((alert.citations && alert.citations.length > 0) || alert.source_url) && (
+                                        <span className="text-[8px] italic" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                          {(alert.citations?.length || 0) + (alert.source_url ? 1 : 0)} fonte(s)
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </motion.div>
