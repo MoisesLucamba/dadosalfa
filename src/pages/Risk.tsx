@@ -997,6 +997,8 @@ const Risk = () => {
         <MobileBottomNav />
       </div>
 
+      <RiskDetailModal payload={detail} onOpenChange={(o) => !o && setDetail(null)} />
+
       {/* ── Simulator Modal ── */}
       <AnimatePresence>
         {showSimulator && (
