@@ -90,7 +90,7 @@ interface CountryRisk {
 }
 
 // ─── Confidence badge ─────────────────────────────────────────────────────────
-const ConfidenceBadge = ({ level, isAI }: { level?: string; isAI?: boolean }) => {
+const ConfidenceBadge = ({ level, isAI, onClick }: { level?: string; isAI?: boolean; onClick?: (e: React.MouseEvent) => void }) => {
   const lvl = (level || "estimated").toLowerCase();
   const cfg = lvl === "verified" || lvl === "official"
     ? { color: "#4ade80", bg: "rgba(74,222,128,0.1)", border: "rgba(74,222,128,0.25)", label: lvl === "official" ? "OFICIAL" : "VERIFICADO", Icon: CheckCircle2 }
@@ -98,15 +98,18 @@ const ConfidenceBadge = ({ level, isAI }: { level?: string; isAI?: boolean }) =>
     ? { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.25)", label: "ALTA CONFIANÇA", Icon: Shield }
     : { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", label: isAI ? "IA-ESTIMADO" : "ESTIMADO", Icon: Sparkles };
   const Icon = cfg.Icon;
+  const Tag: any = onClick ? "button" : "span";
   return (
-    <span
-      className="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded tracking-wider"
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(e); } : undefined}
+      className={`inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded tracking-wider ${onClick ? "cursor-pointer hover:brightness-125 transition" : ""}`}
       style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-      title={isAI ? "Estimativa baseada em modelos de IA — verificar fontes" : "Nível de confiança"}
+      title={onClick ? "Clica para ver metodologia, parâmetros e fontes completas" : (isAI ? "Estimativa baseada em modelos de IA — verificar fontes" : "Nível de confiança")}
     >
       <Icon className="w-2.5 h-2.5" />
       {cfg.label}
-    </span>
+    </Tag>
   );
 };
 
