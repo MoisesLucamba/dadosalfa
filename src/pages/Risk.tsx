@@ -770,10 +770,16 @@ const Risk = () => {
                               </div>
                               <div className="flex items-center justify-between mt-1.5 gap-1">
                                 <div className="text-[8px] font-bold tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
-                                {(r.is_ai_estimated || r.confidence_level) && (
-                                  <ConfidenceBadge level={r.confidence_level} isAI={r.is_ai_estimated} />
-                                )}
+                                <ConfidenceBadge level={r.confidence_level} isAI={r.is_ai_estimated} onClick={() => openScoreDetail(r)} />
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => openScoreDetail(r)}
+                                className="mt-2 w-full text-[8px] font-bold tracking-[0.2em] py-1 rounded hover:brightness-125 transition"
+                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "hsl(var(--muted-foreground))" }}
+                              >
+                                VER METODOLOGIA & FONTES →
+                              </button>
                               {r.citations && r.citations.length > 0 && (
                                 <CitationsList citations={r.citations} />
                               )}
