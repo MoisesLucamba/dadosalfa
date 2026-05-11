@@ -664,13 +664,26 @@ const Risk = () => {
                                     <p className={`text-[10px] leading-relaxed ${isSelected ? "" : "line-clamp-1"}`} style={{ color: "hsl(var(--muted-foreground))" }}>
                                       {alert.description}
                                     </p>
-                                    {alert.region && (
-                                      <div className="flex items-center gap-1 mt-1.5">
-                                        <MapPin className="w-2.5 h-2.5" style={{ color: cfg.color }} />
-                                        <span className="text-[9px] font-bold tracking-wider" style={{ color: cfg.color }}>{alert.region.toUpperCase()}</span>
-                                        <span className="text-[8px] ml-1 px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
-                                          {cfg.label}
-                                        </span>
+                                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                      {alert.region && (
+                                        <>
+                                          <MapPin className="w-2.5 h-2.5" style={{ color: cfg.color }} />
+                                          <span className="text-[9px] font-bold tracking-wider" style={{ color: cfg.color }}>{alert.region.toUpperCase()}</span>
+                                        </>
+                                      )}
+                                      <span className="text-[8px] px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
+                                        {cfg.label}
+                                      </span>
+                                      {(alert.is_ai_estimated || alert.confidence_level) && (
+                                        <ConfidenceBadge level={alert.confidence_level} isAI={alert.is_ai_estimated} />
+                                      )}
+                                    </div>
+                                    {isSelected && (
+                                      <CitationsList citations={alert.citations} sourceUrl={alert.source_url} />
+                                    )}
+                                    {!isSelected && ((alert.citations && alert.citations.length > 0) || alert.source_url) && (
+                                      <div className="text-[8px] mt-1.5 italic" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                        Clica para ver {(alert.citations?.length || 0) + (alert.source_url ? 1 : 0)} fonte(s) →
                                       </div>
                                     )}
                                   </div>
