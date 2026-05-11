@@ -43,6 +43,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RiskHistoryChart } from "@/components/dashboard/RiskHistoryChart";
 import { RegulatoryImpactSimulator } from "@/components/dashboard/RegulatoryImpactSimulator";
 import { EnergyTransitionRisk } from "@/components/dashboard/EnergyTransitionRisk";
