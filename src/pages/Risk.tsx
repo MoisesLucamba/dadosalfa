@@ -179,7 +179,145 @@ const CitationsList = ({ citations, sourceUrl }: { citations?: Citation[]; sourc
   );
 };
 
-// ─── Pulse ────────────────────────────────────────────────────────────────────
+// ─── Detail Modal ─────────────────────────────────────────────────────────────
+export interface RiskDetailPayload {
+  kind: "score" | "alert";
+  title: string;
+  subtitle?: string;
+  level?: string;
+  isAI?: boolean;
+  score?: number;
+  trend?: string;
+  description?: string;
+  region?: string;
+  alertType?: string;
+  createdAt?: string;
+  methodology?: string;
+  parameters?: Array<{ label: string; value: string | number }>;
+  citations?: Citation[];
+  sourceUrl?: string;
+}
+
+const RiskDetailModal = ({ payload, onOpenChange }: { payload: RiskDetailPayload | null; onOpenChange: (o: boolean) => void }) => {
+  const open = !!payload;
+  const accent = payload?.score !== undefined ? scoreColor(payload.score) : "#a78bfa";
+  const cites = payload?.citations || [];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" style={{ background: "hsl(var(--card))", border: `1px solid ${accent}33`, fontFamily: "'IBM Plex Mono', monospace" }}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[8px] font-bold tracking-[0.25em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              {payload?.kind === "alert" ? "ALERTA // DETALHE" : "SCORE // METODOLOGIA"}
+            </span>
+            {payload && (payload.isAI || payload.level) && (
+              <ConfidenceBadge level={payload.level} isAI={payload.isAI} />
+            )}
+          </div>
+          <DialogTitle className="text-base font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>
+            {payload?.title}
+          </DialogTitle>
+          {payload?.subtitle && (
+            <DialogDescription className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              {payload.subtitle}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        {payload?.score !== undefined && (
+          <div className="flex items-baseline gap-3 py-2">
+            <span className="text-[42px] font-bold tabular-nums leading-none" style={{ color: accent, letterSpacing: "-0.04em" }}>{payload.score}</span>
+            <span className="text-[10px] opacity-60">/100</span>
+            <span className="text-[10px] font-bold tracking-widest" style={{ color: accent }}>{scoreLabel(payload.score)}</span>
+            {payload.trend && (
+              <span className="text-[9px] tracking-wider opacity-70 ml-auto">TENDÊNCIA: {payload.trend.toUpperCase()}</span>
+            )}
+          </div>
+        )}
+
+        {payload?.description && (
+          <div className="mt-2">
+            <div className="text-[8px] font-bold tracking-[0.2em] mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>RESUMO</div>
+            <p className="text-[11px] leading-relaxed" style={{ color: "hsl(var(--foreground))" }}>{payload.description}</p>
+          </div>
+        )}
+
+        {payload?.parameters && payload.parameters.length > 0 && (
+          <div className="mt-3">
+            <div className="text-[8px] font-bold tracking-[0.2em] mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>PARÂMETROS UTILIZADOS</div>
+            <div className="grid grid-cols-2 gap-2">
+              {payload.parameters.map((p, i) => (
+                <div key={i} className="p-2 rounded" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="text-[8px] tracking-wider opacity-60">{p.label}</div>
+                  <div className="text-[11px] font-bold tabular-nums" style={{ color: "hsl(var(--foreground))" }}>{p.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {payload?.methodology ? (
+          <div className="mt-3">
+            <div className="text-[8px] font-bold tracking-[0.2em] mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>METODOLOGIA</div>
+            <p className="text-[10px] leading-relaxed whitespace-pre-wrap" style={{ color: "hsl(var(--foreground))", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.15)", padding: "10px", borderRadius: "4px" }}>
+              {payload.methodology}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 text-[9px] italic opacity-60">
+            Sem metodologia documentada — score derivado de heurísticas IA. Verificar fontes abaixo.
+          </div>
+        )}
+
+        <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-1.5 mb-2">
+            <BookOpen className="w-3 h-3" style={{ color: "hsl(var(--muted-foreground))" }} />
+            <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+              FONTES COMPLETAS ({cites.length}{payload?.sourceUrl ? "+1" : ""})
+            </span>
+          </div>
+          {cites.length === 0 && !payload?.sourceUrl && (
+            <p className="text-[9px] italic opacity-60">Nenhuma citação registada para este item.</p>
+          )}
+          <ul className="space-y-1.5">
+            {cites.map((c, i) => (
+              <li key={i} className="p-2 rounded" style={{ background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.12)" }}>
+                <div className="flex items-start gap-2">
+                  <ExternalLink className="w-3 h-3 mt-0.5 shrink-0" style={{ color: "#60a5fa" }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold" style={{ color: "hsl(var(--foreground))" }}>
+                      {c.title || c.source || c.url || `Fonte ${i + 1}`}
+                    </div>
+                    {c.source && c.title && (
+                      <div className="text-[9px] opacity-70">{c.source}</div>
+                    )}
+                    {c.date && <div className="text-[8px] opacity-60">{c.date}</div>}
+                    {c.url && (
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-[9px] hover:underline break-all" style={{ color: "#60a5fa" }}>
+                        {c.url}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+            {payload?.sourceUrl && !cites.some(c => c.url === payload.sourceUrl) && (
+              <li className="p-2 rounded" style={{ background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.12)" }}>
+                <div className="flex items-start gap-2">
+                  <ExternalLink className="w-3 h-3 mt-0.5 shrink-0" style={{ color: "#60a5fa" }} />
+                  <a href={payload.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] hover:underline break-all" style={{ color: "#60a5fa" }}>
+                    {payload.sourceUrl}
+                  </a>
+                </div>
+              </li>
+            )}
+          </ul>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
   <span className="relative inline-flex h-2 w-2">
     <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ background: color }} />
