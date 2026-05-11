@@ -582,7 +582,15 @@ const Risk = () => {
                                   style={{ background: c }}
                                 />
                               </div>
-                              <div className="text-[8px] font-bold mt-1 tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
+                              <div className="flex items-center justify-between mt-1.5 gap-1">
+                                <div className="text-[8px] font-bold tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
+                                {(r.is_ai_estimated || r.confidence_level) && (
+                                  <ConfidenceBadge level={r.confidence_level} isAI={r.is_ai_estimated} />
+                                )}
+                              </div>
+                              {r.citations && r.citations.length > 0 && (
+                                <CitationsList citations={r.citations} />
+                              )}
                             </div>
                           );
                         })}
