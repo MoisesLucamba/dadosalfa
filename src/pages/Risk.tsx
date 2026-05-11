@@ -254,8 +254,17 @@ const Risk = () => {
         supabase.from("country_risk").select("*").order("data_date", { ascending: false }),
       ]);
       if (riskResult.data?.length) {
-        const latest = riskResult.data.reduce((acc: Record<string, RiskScore>, item) => {
-          if (!acc[item.category]) acc[item.category] = { category: getCategoryName(item.category), score: item.score, trend: item.trend as any, description: item.description };
+        const latest = riskResult.data.reduce((acc: Record<string, RiskScore>, item: any) => {
+          if (!acc[item.category]) acc[item.category] = {
+            category: getCategoryName(item.category),
+            score: item.score,
+            trend: item.trend as any,
+            description: item.description,
+            is_ai_estimated: item.is_ai_estimated,
+            confidence_level: item.confidence_level,
+            citations: item.citations,
+            methodology: item.methodology,
+          };
           return acc;
         }, {});
         setRiskScores(Object.values(latest));
