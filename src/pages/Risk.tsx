@@ -28,6 +28,10 @@ import {
   ChevronRight,
   Radio,
   Lock,
+  Sparkles,
+  ExternalLink,
+  BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 import {
   RadarChart,
@@ -47,11 +51,22 @@ import { DataSourcesPanel } from "@/components/dashboard/DataSourcesPanel";
 import { generateRiskPDF } from "@/utils/generateRiskPDF";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+interface Citation {
+  title?: string;
+  source?: string;
+  url?: string;
+  date?: string;
+}
+
 interface RiskScore {
   category: string;
   score: number;
   trend: "up" | "down" | "stable";
   description: string;
+  is_ai_estimated?: boolean;
+  confidence_level?: string;
+  citations?: Citation[];
+  methodology?: string;
 }
 
 interface RiskAlert {
@@ -62,6 +77,10 @@ interface RiskAlert {
   impact: "high" | "medium" | "low";
   region: string;
   created_at: string;
+  is_ai_estimated?: boolean;
+  confidence_level?: string;
+  citations?: Citation[];
+  source_url?: string;
 }
 
 interface CountryRisk {
@@ -69,6 +88,92 @@ interface CountryRisk {
   score: number;
   trend: string;
 }
+
+// ─── Confidence badge ─────────────────────────────────────────────────────────
+const ConfidenceBadge = ({ level, isAI }: { level?: string; isAI?: boolean }) => {
+  const lvl = (level || "estimated").toLowerCase();
+  const cfg = lvl === "verified" || lvl === "official"
+    ? { color: "#4ade80", bg: "rgba(74,222,128,0.1)", border: "rgba(74,222,128,0.25)", label: lvl === "official" ? "OFICIAL" : "VERIFICADO", Icon: CheckCircle2 }
+    : lvl === "high"
+    ? { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.25)", label: "ALTA CONFIANÇA", Icon: Shield }
+    : { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", label: isAI ? "IA-ESTIMADO" : "ESTIMADO", Icon: Sparkles };
+  const Icon = cfg.Icon;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded tracking-wider"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+      title={isAI ? "Estimativa baseada em modelos de IA — verificar fontes" : "Nível de confiança"}
+    >
+      <Icon className="w-2.5 h-2.5" />
+      {cfg.label}
+    </span>
+  );
+};
+
+// ─── Citations list ───────────────────────────────────────────────────────────
+const CitationsList = ({ citations, sourceUrl }: { citations?: Citation[]; sourceUrl?: string }) => {
+  const items = Array.isArray(citations) ? citations : [];
+  if (!items.length && !sourceUrl) return null;
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="flex items-center gap-1.5 mb-2">
+        <BookOpen className="w-2.5 h-2.5" style={{ color: "hsl(var(--muted-foreground))" }} />
+        <span className="text-[8px] font-bold tracking-[0.2em]" style={{ color: "hsl(var(--muted-foreground))" }}>
+          FONTES & CITAÇÕES ({items.length || 1})
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {items.map((c, idx) => {
+          const href = c.url;
+          const label = c.title || c.source || c.url || `Fonte ${idx + 1}`;
+          return (
+            <li key={idx}>
+              {href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-start gap-1.5 text-[9px] hover:underline group"
+                  style={{ color: "#60a5fa" }}
+                >
+                  <ExternalLink className="w-2.5 h-2.5 mt-0.5 shrink-0" />
+                  <span className="flex-1">
+                    {label}
+                    {c.source && c.title && (
+                      <span className="ml-1 opacity-60">— {c.source}</span>
+                    )}
+                    {c.date && <span className="ml-1 opacity-50">({c.date})</span>}
+                  </span>
+                </a>
+              ) : (
+                <div className="flex items-start gap-1.5 text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  <Info className="w-2.5 h-2.5 mt-0.5 shrink-0" />
+                  <span>{label}{c.source ? ` — ${c.source}` : ""}</span>
+                </div>
+              )}
+            </li>
+          );
+        })}
+        {sourceUrl && !items.some((c) => c.url === sourceUrl) && (
+          <li>
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-start gap-1.5 text-[9px] hover:underline"
+              style={{ color: "#60a5fa" }}
+            >
+              <ExternalLink className="w-2.5 h-2.5 mt-0.5 shrink-0" />
+              <span>Fonte primária</span>
+            </a>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+};
 
 // ─── Pulse ────────────────────────────────────────────────────────────────────
 const Pulse = ({ color = "#ef4444" }: { color?: string }) => (
@@ -149,8 +254,17 @@ const Risk = () => {
         supabase.from("country_risk").select("*").order("data_date", { ascending: false }),
       ]);
       if (riskResult.data?.length) {
-        const latest = riskResult.data.reduce((acc: Record<string, RiskScore>, item) => {
-          if (!acc[item.category]) acc[item.category] = { category: getCategoryName(item.category), score: item.score, trend: item.trend as any, description: item.description };
+        const latest = riskResult.data.reduce((acc: Record<string, RiskScore>, item: any) => {
+          if (!acc[item.category]) acc[item.category] = {
+            category: getCategoryName(item.category),
+            score: item.score,
+            trend: item.trend as any,
+            description: item.description,
+            is_ai_estimated: item.is_ai_estimated,
+            confidence_level: item.confidence_level,
+            citations: item.citations,
+            methodology: item.methodology,
+          };
           return acc;
         }, {});
         setRiskScores(Object.values(latest));
@@ -468,7 +582,15 @@ const Risk = () => {
                                   style={{ background: c }}
                                 />
                               </div>
-                              <div className="text-[8px] font-bold mt-1 tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
+                              <div className="flex items-center justify-between mt-1.5 gap-1">
+                                <div className="text-[8px] font-bold tracking-widest" style={{ color: c }}>{scoreLabel(r.score)}</div>
+                                {(r.is_ai_estimated || r.confidence_level) && (
+                                  <ConfidenceBadge level={r.confidence_level} isAI={r.is_ai_estimated} />
+                                )}
+                              </div>
+                              {r.citations && r.citations.length > 0 && (
+                                <CitationsList citations={r.citations} />
+                              )}
                             </div>
                           );
                         })}
@@ -542,13 +664,26 @@ const Risk = () => {
                                     <p className={`text-[10px] leading-relaxed ${isSelected ? "" : "line-clamp-1"}`} style={{ color: "hsl(var(--muted-foreground))" }}>
                                       {alert.description}
                                     </p>
-                                    {alert.region && (
-                                      <div className="flex items-center gap-1 mt-1.5">
-                                        <MapPin className="w-2.5 h-2.5" style={{ color: cfg.color }} />
-                                        <span className="text-[9px] font-bold tracking-wider" style={{ color: cfg.color }}>{alert.region.toUpperCase()}</span>
-                                        <span className="text-[8px] ml-1 px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
-                                          {cfg.label}
-                                        </span>
+                                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                      {alert.region && (
+                                        <>
+                                          <MapPin className="w-2.5 h-2.5" style={{ color: cfg.color }} />
+                                          <span className="text-[9px] font-bold tracking-wider" style={{ color: cfg.color }}>{alert.region.toUpperCase()}</span>
+                                        </>
+                                      )}
+                                      <span className="text-[8px] px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
+                                        {cfg.label}
+                                      </span>
+                                      {(alert.is_ai_estimated || alert.confidence_level) && (
+                                        <ConfidenceBadge level={alert.confidence_level} isAI={alert.is_ai_estimated} />
+                                      )}
+                                    </div>
+                                    {isSelected && (
+                                      <CitationsList citations={alert.citations} sourceUrl={alert.source_url} />
+                                    )}
+                                    {!isSelected && ((alert.citations && alert.citations.length > 0) || alert.source_url) && (
+                                      <div className="text-[8px] mt-1.5 italic" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                        Clica para ver {(alert.citations?.length || 0) + (alert.source_url ? 1 : 0)} fonte(s) →
                                       </div>
                                     )}
                                   </div>
