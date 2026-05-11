@@ -368,6 +368,50 @@ const Risk = () => {
   const [now, setNow]                 = useState(new Date());
   const [bootDone, setBootDone]       = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<string | null>(null);
+  const [detail, setDetail] = useState<RiskDetailPayload | null>(null);
+
+  const openScoreDetail = (r: RiskScore) => setDetail({
+    kind: "score",
+    title: r.category,
+    subtitle: "Score categórico de risco para o sector petrolífero angolano",
+    level: r.confidence_level,
+    isAI: r.is_ai_estimated,
+    score: r.score,
+    trend: r.trend,
+    description: r.description,
+    methodology: r.methodology,
+    parameters: [
+      { label: "Categoria", value: r.category },
+      { label: "Score", value: `${r.score}/100` },
+      { label: "Classificação", value: scoreLabel(r.score) },
+      { label: "Tendência", value: (r.trend || "—").toString().toUpperCase() },
+      { label: "Confiança", value: (r.confidence_level || "estimated").toUpperCase() },
+      { label: "Origem", value: r.is_ai_estimated ? "Estimativa IA" : "Verificado" },
+    ],
+    citations: r.citations,
+  });
+
+  const openAlertDetail = (a: RiskAlert) => setDetail({
+    kind: "alert",
+    title: a.title,
+    subtitle: a.region ? `Região: ${a.region}` : undefined,
+    level: a.confidence_level,
+    isAI: a.is_ai_estimated,
+    description: a.description,
+    region: a.region,
+    alertType: a.alert_type,
+    createdAt: a.created_at,
+    parameters: [
+      { label: "Tipo", value: (a.alert_type || "info").toUpperCase() },
+      { label: "Impacto", value: (a.impact || "—").toString().toUpperCase() },
+      { label: "Região", value: a.region || "—" },
+      { label: "Emitido", value: new Date(a.created_at).toLocaleString("pt-PT") },
+      { label: "Confiança", value: (a.confidence_level || "estimated").toUpperCase() },
+      { label: "Origem", value: a.is_ai_estimated ? "Estimativa IA" : "Verificado" },
+    ],
+    citations: a.citations,
+    sourceUrl: a.source_url,
+  });
 
   useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
   useEffect(() => { setTimeout(() => setBootDone(true), 950); }, []);
