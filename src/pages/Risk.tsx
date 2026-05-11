@@ -28,6 +28,10 @@ import {
   ChevronRight,
   Radio,
   Lock,
+  Sparkles,
+  ExternalLink,
+  BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 import {
   RadarChart,
