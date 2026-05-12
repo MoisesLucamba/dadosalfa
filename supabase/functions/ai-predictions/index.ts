@@ -428,3 +428,70 @@ function generateStatisticalFallback(ctx: any) {
     model_performance: { mape: 3.1, accuracy_30d: 89.2, r2_score: 0.85, last_updated: currentDate }
   };
 }
+
+// ── Series validation helpers ────────────────────────────────────────────
+type SeriesIssue = {
+  series: string;
+  duplicates: string[];
+  gaps: { from: string; to: string; missing_days: number }[];
+  stale_days: number | null;
+  count: number;
+};
+
+function validateSeries(input: { brent: string[]; production: string[]; exports: string[] }): {
+  ok: boolean;
+  issues: SeriesIssue[];
+  summary: Record<string, { ok: boolean; count: number; stale_days: number | null; gaps: number; duplicates: number }>;
+} {
+  const issues: SeriesIssue[] = [];
+  const summary: Record<string, any> = {};
+
+  // Tolerated max gap (days) and max staleness (days) per series
+  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number }> = {
+    brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14 },
+    production: { maxGap: 35, maxStale: 45, minPoints: 6  }, // EIA monthly cadence
+    exports:    { maxGap: 10, maxStale: 14, minPoints: 5  },
+  };
+
+  for (const [name, dates] of Object.entries(input)) {
+    const tol = tolerances[name];
+    const uniq = new Set<string>();
+    const dups: string[] = [];
+    for (const d of dates) {
+      if (uniq.has(d)) dups.push(d);
+      else uniq.add(d);
+    }
+    const sorted = [...uniq].sort(); // ascending
+    const gaps: { from: string; to: string; missing_days: number }[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1]).getTime();
+      const curr = new Date(sorted[i]).getTime();
+      const diffDays = Math.round((curr - prev) / 86400000);
+      if (diffDays > tol.maxGap) {
+        gaps.push({ from: sorted[i - 1], to: sorted[i], missing_days: diffDays - 1 });
+      }
+    }
+    const latest = sorted.length ? sorted[sorted.length - 1] : null;
+    const staleDays = latest ? Math.floor((Date.now() - new Date(latest).getTime()) / 86400000) : null;
+
+    const seriesOk =
+      sorted.length >= tol.minPoints &&
+      dups.length === 0 &&
+      gaps.length === 0 &&
+      (staleDays !== null && staleDays <= tol.maxStale);
+
+    summary[name] = {
+      ok: seriesOk,
+      count: sorted.length,
+      stale_days: staleDays,
+      gaps: gaps.length,
+      duplicates: dups.length,
+    };
+
+    if (!seriesOk) {
+      issues.push({ series: name, duplicates: dups, gaps, stale_days: staleDays, count: sorted.length });
+    }
+  }
+
+  return { ok: issues.length === 0, issues, summary };
+}
