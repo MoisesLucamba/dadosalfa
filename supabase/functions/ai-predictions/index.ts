@@ -67,6 +67,26 @@ serve(async (req) => {
 
     const currentDate = new Date().toISOString().split('T')[0];
 
+    // ── Data integrity validation: no gaps, no duplicates, freshness ──────
+    const validation = validateSeries({
+      brent: brentSeries.map((p: any) => p.data_date),
+      production: production.map((p: any) => p.data_date),
+      exports: exports.map((e: any) => e.data_date),
+    });
+
+    if (!validation.ok) {
+      console.warn('⚠️ Data validation failed:', JSON.stringify(validation.issues));
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Falha de validação de dados: histórico incompleto ou inconsistente.',
+        validation,
+        recommendation: 'Execute sync-all-data para preencher buracos antes de gerar previsões.',
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let predictions: any = null;
     let usedAI = false;
 
