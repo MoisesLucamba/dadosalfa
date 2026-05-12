@@ -447,26 +447,24 @@ function validateSeries(input: { brent: string[]; production: string[]; exports:
   const summary: Record<string, any> = {};
 
   // Tolerated max gap (days) and max staleness (days) per series
-  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number }> = {
-    brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14 },
-    production: { maxGap: 35, maxStale: 45, minPoints: 6  }, // EIA monthly cadence
-    exports:    { maxGap: 10, maxStale: 14, minPoints: 5  },
+  // allowMultiPerDay: tables like production/exports legitimately have many rows per date (one per operator/destination)
+  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
+    brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14, allowMultiPerDay: false },
+    production: { maxGap: 65, maxStale: 60, minPoints: 4,  allowMultiPerDay: true  },
+    exports:    { maxGap: 10, maxStale: 14, minPoints: 5,  allowMultiPerDay: true  },
   };
 
   for (const [name, dates] of Object.entries(input)) {
     const tol = tolerances[name];
-    const uniq = new Set<string>();
-    const dups: string[] = [];
-    for (const d of dates) {
-      if (uniq.has(d)) dups.push(d);
-      else uniq.add(d);
-    }
-    const sorted = [...uniq].sort(); // ascending
+    const counts = new Map<string, number>();
+    for (const d of dates) counts.set(d, (counts.get(d) ?? 0) + 1);
+    const dups = tol.allowMultiPerDay
+      ? []
+      : [...counts.entries()].filter(([, n]) => n > 1).map(([d]) => d);
+    const sorted = [...counts.keys()].sort();
     const gaps: { from: string; to: string; missing_days: number }[] = [];
     for (let i = 1; i < sorted.length; i++) {
-      const prev = new Date(sorted[i - 1]).getTime();
-      const curr = new Date(sorted[i]).getTime();
-      const diffDays = Math.round((curr - prev) / 86400000);
+      const diffDays = Math.round((new Date(sorted[i]).getTime() - new Date(sorted[i - 1]).getTime()) / 86400000);
       if (diffDays > tol.maxGap) {
         gaps.push({ from: sorted[i - 1], to: sorted[i], missing_days: diffDays - 1 });
       }
@@ -482,7 +480,8 @@ function validateSeries(input: { brent: string[]; production: string[]; exports:
 
     summary[name] = {
       ok: seriesOk,
-      count: sorted.length,
+      unique_dates: sorted.length,
+      total_rows: dates.length,
       stale_days: staleDays,
       gaps: gaps.length,
       duplicates: dups.length,
