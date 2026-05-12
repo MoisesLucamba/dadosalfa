@@ -319,7 +319,7 @@ Devolve JSON com este shape exato:
       last_updated: mp.last_updated || currentDate,
     };
 
-    return new Response(JSON.stringify({ success: true, predictions }), {
+    return new Response(JSON.stringify({ success: true, predictions, validation: validation.summary }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
