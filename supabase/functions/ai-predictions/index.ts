@@ -19,8 +19,8 @@ serve(async (req) => {
 
     // Fetch context from database — prices, production, exports, risks, alerts, regulatory
     const [priceResult, productionResult, exportResult, riskResult, alertsResult, regulatoryResult] = await Promise.all([
-      supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(60),
-      supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(60),
+      supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(180),
+      supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(400),
       supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(60),
       supabase.from('risk_data').select('*').order('data_date', { ascending: false }).limit(20),
       supabase.from('risk_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(15),
