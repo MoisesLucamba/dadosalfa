@@ -67,6 +67,26 @@ serve(async (req) => {
 
     const currentDate = new Date().toISOString().split('T')[0];
 
+    // ── Data integrity validation: no gaps, no duplicates, freshness ──────
+    const validation = validateSeries({
+      brent: brentSeries.map((p: any) => p.data_date),
+      production: production.map((p: any) => p.data_date),
+      exports: exports.map((e: any) => e.data_date),
+    });
+
+    if (!validation.ok) {
+      console.warn('⚠️ Data validation failed:', JSON.stringify(validation.issues));
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Falha de validação de dados: histórico incompleto ou inconsistente.',
+        validation,
+        recommendation: 'Execute sync-all-data para preencher buracos antes de gerar previsões.',
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let predictions: any = null;
     let usedAI = false;
 
@@ -299,7 +319,7 @@ Devolve JSON com este shape exato:
       last_updated: mp.last_updated || currentDate,
     };
 
-    return new Response(JSON.stringify({ success: true, predictions }), {
+    return new Response(JSON.stringify({ success: true, predictions, validation: validation.summary }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
@@ -407,4 +427,70 @@ function generateStatisticalFallback(ctx: any) {
     ],
     model_performance: { mape: 3.1, accuracy_30d: 89.2, r2_score: 0.85, last_updated: currentDate }
   };
+}
+
+// ── Series validation helpers ────────────────────────────────────────────
+type SeriesIssue = {
+  series: string;
+  duplicates: string[];
+  gaps: { from: string; to: string; missing_days: number }[];
+  stale_days: number | null;
+  count: number;
+};
+
+function validateSeries(input: { brent: string[]; production: string[]; exports: string[] }): {
+  ok: boolean;
+  issues: SeriesIssue[];
+  summary: Record<string, { ok: boolean; count: number; stale_days: number | null; gaps: number; duplicates: number }>;
+} {
+  const issues: SeriesIssue[] = [];
+  const summary: Record<string, any> = {};
+
+  // Tolerated max gap (days) and max staleness (days) per series
+  // allowMultiPerDay: tables like production/exports legitimately have many rows per date (one per operator/destination)
+  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
+    brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14, allowMultiPerDay: false },
+    production: { maxGap: 65, maxStale: 60, minPoints: 4,  allowMultiPerDay: true  },
+    exports:    { maxGap: 10, maxStale: 14, minPoints: 5,  allowMultiPerDay: true  },
+  };
+
+  for (const [name, dates] of Object.entries(input)) {
+    const tol = tolerances[name];
+    const counts = new Map<string, number>();
+    for (const d of dates) counts.set(d, (counts.get(d) ?? 0) + 1);
+    const dups = tol.allowMultiPerDay
+      ? []
+      : [...counts.entries()].filter(([, n]) => n > 1).map(([d]) => d);
+    const sorted = [...counts.keys()].sort();
+    const gaps: { from: string; to: string; missing_days: number }[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const diffDays = Math.round((new Date(sorted[i]).getTime() - new Date(sorted[i - 1]).getTime()) / 86400000);
+      if (diffDays > tol.maxGap) {
+        gaps.push({ from: sorted[i - 1], to: sorted[i], missing_days: diffDays - 1 });
+      }
+    }
+    const latest = sorted.length ? sorted[sorted.length - 1] : null;
+    const staleDays = latest ? Math.floor((Date.now() - new Date(latest).getTime()) / 86400000) : null;
+
+    const seriesOk =
+      sorted.length >= tol.minPoints &&
+      dups.length === 0 &&
+      gaps.length === 0 &&
+      (staleDays !== null && staleDays <= tol.maxStale);
+
+    summary[name] = {
+      ok: seriesOk,
+      unique_dates: sorted.length,
+      total_rows: dates.length,
+      stale_days: staleDays,
+      gaps: gaps.length,
+      duplicates: dups.length,
+    };
+
+    if (!seriesOk) {
+      issues.push({ series: name, duplicates: dups, gaps, stale_days: staleDays, count: sorted.length });
+    }
+  }
+
+  return { ok: issues.length === 0, issues, summary };
 }
