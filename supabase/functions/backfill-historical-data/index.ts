@@ -17,52 +17,49 @@ serve(async (req) => {
   );
 
   const results: Record<string, any> = {};
+  const EIA_API_KEY = Deno.env.get("EIA_API_KEY");
 
-  // ── 1. BRENT 3y from Stooq (free, no key) ──
-  try {
-    // Stooq CSV daily series for Brent crude
-    const url = "https://stooq.com/q/d/l/?s=cb.f&i=d";
-    const csv = await fetch(url).then(r => r.text());
-    const lines = csv.trim().split("\n").slice(1); // skip header
-    const cutoff = new Date();
-    cutoff.setFullYear(cutoff.getFullYear() - 3);
+  // ── 1. BRENT 3y daily from EIA (PET.RBRTE.D — official spot price) ──
+  if (EIA_API_KEY) {
+    try {
+      const start = new Date();
+      start.setFullYear(start.getFullYear() - 3);
+      const startStr = start.toISOString().slice(0, 10);
+      const url = `https://api.eia.gov/v2/petroleum/pri/spt/data/?api_key=${EIA_API_KEY}&frequency=daily&data[0]=value&facets[series][]=RBRTE&start=${startStr}&offset=0&length=5000&sort[0][column]=period&sort[0][direction]=asc`;
+      const json = await fetch(url).then(r => r.json());
+      const series = json?.response?.data ?? [];
 
-    const rows = lines
-      .map(l => l.split(","))
-      .filter(c => c.length >= 5 && c[0] >= cutoff.toISOString().slice(0, 10))
-      .map(c => ({
-        crude_type: "Brent",
-        data_date: c[0],
-        price: Number(c[4]),
-        change_percent: 0,
-        volume: 0,
-        source: "Stooq (historical backfill)",
-        source_url: url,
-        is_official: false,
-      }))
-      .filter(r => isFinite(r.price) && r.price > 0);
+      const rows = series
+        .map((d: any) => ({
+          crude_type: "Brent",
+          data_date: d.period,
+          price: Number(d.value),
+          change_percent: 0,
+          volume: 0,
+          source: "EIA RBRTE (historical backfill)",
+          source_url: "https://www.eia.gov/dnav/pet/hist/RBRTED.htm",
+          is_official: true,
+        }))
+        .filter((r: any) => isFinite(r.price) && r.price > 0);
 
-    // Upsert in batches of 500
-    let inserted = 0;
-    for (let i = 0; i < rows.length; i += 500) {
-      const batch = rows.slice(i, i + 500);
-      const { error } = await supabase
-        .from("price_data")
-        .upsert(batch, { onConflict: "crude_type,data_date", ignoreDuplicates: true });
-      if (error) {
-        console.error("Brent upsert error:", error.message);
-        results.brent_error = error.message;
-        break;
+      let inserted = 0;
+      for (let i = 0; i < rows.length; i += 500) {
+        const batch = rows.slice(i, i + 500);
+        const { error } = await supabase
+          .from("price_data")
+          .upsert(batch, { onConflict: "crude_type,data_date", ignoreDuplicates: false });
+        if (error) { results.brent_error = error.message; break; }
+        inserted += batch.length;
       }
-      inserted += batch.length;
+      results.brent = { rows: rows.length, inserted, oldest: rows[0]?.data_date, newest: rows.at(-1)?.data_date };
+    } catch (e) {
+      results.brent_error = String(e);
     }
-    results.brent = { rows: rows.length, inserted, oldest: rows[0]?.data_date, newest: rows.at(-1)?.data_date };
-  } catch (e) {
-    results.brent_error = String(e);
+  } else {
+    results.brent_error = "EIA_API_KEY not configured";
   }
 
   // ── 2. ANGOLA CRUDE PRODUCTION from EIA (monthly, 3y) ──
-  const EIA_API_KEY = Deno.env.get("EIA_API_KEY");
   if (EIA_API_KEY) {
     try {
       const start = new Date();
