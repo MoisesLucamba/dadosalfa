@@ -145,6 +145,83 @@ export type Database = {
         }
         Relationships: []
       }
+      data_quality_issues: {
+        Row: {
+          check_name: string
+          created_at: string
+          description: string
+          details: Json
+          id: string
+          resolved: boolean
+          run_id: string | null
+          series: string
+          severity: string
+          suggested_fix: string | null
+        }
+        Insert: {
+          check_name: string
+          created_at?: string
+          description: string
+          details?: Json
+          id?: string
+          resolved?: boolean
+          run_id?: string | null
+          series: string
+          severity: string
+          suggested_fix?: string | null
+        }
+        Update: {
+          check_name?: string
+          created_at?: string
+          description?: string
+          details?: Json
+          id?: string
+          resolved?: boolean
+          run_id?: string | null
+          series?: string
+          severity?: string
+          suggested_fix?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_quality_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "data_reconciliation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_reconciliation_runs: {
+        Row: {
+          created_at: string
+          id: string
+          run_at: string
+          status: string
+          summary: Json
+          total_checks: number
+          total_issues: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          run_at?: string
+          status: string
+          summary?: Json
+          total_checks?: number
+          total_issues?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          run_at?: string
+          status?: string
+          summary?: Json
+          total_checks?: number
+          total_issues?: number
+        }
+        Relationships: []
+      }
       data_updates: {
         Row: {
           created_at: string
