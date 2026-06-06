@@ -566,6 +566,39 @@ export type Database = {
         }
         Relationships: []
       }
+      production_data_cleanup_audit: {
+        Row: {
+          created_at: string
+          dry_run: boolean
+          id: string
+          kept_row_id: string | null
+          reason: string
+          removed_row: Json
+          run_id: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          dry_run?: boolean
+          id?: string
+          kept_row_id?: string | null
+          reason?: string
+          removed_row: Json
+          run_id: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          dry_run?: boolean
+          id?: string
+          kept_row_id?: string | null
+          reason?: string
+          removed_row?: Json
+          run_id?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           accepted_nda: boolean
@@ -1462,6 +1495,10 @@ export type Database = {
       can_manage_workspace: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      cleanup_production_duplicates: {
+        Args: { _dry_run?: boolean }
+        Returns: Json
       }
       create_workspace: {
         Args: { _description?: string; _name: string }

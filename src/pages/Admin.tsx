@@ -36,6 +36,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
+import { DataQualityPanel } from "@/components/admin/DataQualityPanel";
 import { AdminManagementPanel } from "@/components/admin/AdminManagementPanel";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -330,8 +331,10 @@ const Admin = () => {
     { id: "notifications", label: "NOTIFICAÇÕES",  sig: "NTF" },
     { id: "requests",      label: "SOLICITAÇÕES",  sig: "REQ" },
     { id: "logs",          label: "LOGS",          sig: "LOG" },
+    { id: "quality",       label: "QUALIDADE",     sig: "QLT" },
     ...(isSuperAdmin ? [{ id: "admins", label: "ADMINS", sig: "ADM" }] : []),
   ];
+
 
   const stats = [
     { label: "UTILIZADORES ACTIVOS",  value: users?.length || 0,                                      icon: Users,        delta: "+4%", color: "#60a5fa", tag: "USR" },
@@ -1215,7 +1218,15 @@ const Admin = () => {
                     </motion.div>
                   )}
 
+                  {/* QUALIDADE */}
+                  {activeTab === "quality" && (
+                    <motion.div key="quality" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <DataQualityPanel />
+                    </motion.div>
+                  )}
+
                 </AnimatePresence>
+
               </motion.div>
             </div>
           </main>
