@@ -32,3 +32,13 @@ verify_jwt = false
 
 [functions.fetch-market-feeds]
 verify_jwt = false
+
+[functions.reconcile-data]
+verify_jwt = false
+
+[functions.fetch-anpg-osp]
+verify_jwt = false
+
+[functions.backfill-historical-data]
+verify_jwt = false
+
