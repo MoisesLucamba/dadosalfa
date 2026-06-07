@@ -485,7 +485,10 @@ type SeriesIssue = {
   count: number;
 };
 
-function validateSeries(input: { brent: string[]; production: string[]; exports: string[] }): {
+function validateSeries(
+  input: { brent: string[]; production: string[]; exports: string[] },
+  overrides?: Partial<Record<'brent' | 'production' | 'exports', Partial<{ maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }>>>,
+): {
   ok: boolean;
   issues: SeriesIssue[];
   summary: Record<string, { ok: boolean; count: number; stale_days: number | null; gaps: number; duplicates: number }>;
@@ -493,12 +496,15 @@ function validateSeries(input: { brent: string[]; production: string[]; exports:
   const issues: SeriesIssue[] = [];
   const summary: Record<string, any> = {};
 
-  // Tolerated max gap (days) and max staleness (days) per series
-  // allowMultiPerDay: tables like production/exports legitimately have many rows per date (one per operator/destination)
-  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
+  const defaults: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
     brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14, allowMultiPerDay: false },
     production: { maxGap: 65, maxStale: 60, minPoints: 4,  allowMultiPerDay: true  },
     exports:    { maxGap: 10, maxStale: 14, minPoints: 5,  allowMultiPerDay: true  },
+  };
+  const tolerances: typeof defaults = {
+    brent:      { ...defaults.brent,      ...(overrides?.brent ?? {}) },
+    production: { ...defaults.production, ...(overrides?.production ?? {}) },
+    exports:    { ...defaults.exports,    ...(overrides?.exports ?? {}) },
   };
 
   for (const [name, dates] of Object.entries(input)) {
