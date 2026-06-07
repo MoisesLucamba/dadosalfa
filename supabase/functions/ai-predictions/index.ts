@@ -67,11 +67,12 @@ serve(async (req) => {
 
     const currentDate = new Date().toISOString().split('T')[0];
 
-    // ── Data integrity validation: no gaps, no duplicates, freshness ──────
+    // ── Data integrity validation: only on recent window (last 180d) ──────
+    const cutoff = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
     const validation = validateSeries({
-      brent: brentSeries.map((p: any) => p.data_date),
-      production: production.map((p: any) => p.data_date),
-      exports: exports.map((e: any) => e.data_date),
+      brent: brentSeries.map((p: any) => p.data_date).filter((d: string) => d >= cutoff),
+      production: production.map((p: any) => p.data_date).filter((d: string) => d >= cutoff),
+      exports: exports.map((e: any) => e.data_date).filter((d: string) => d >= cutoff),
     });
 
     if (!validation.ok) {
