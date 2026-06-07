@@ -366,7 +366,13 @@ Devolve JSON com este shape exato:
       last_updated: mp.last_updated || currentDate,
     };
 
-    return new Response(JSON.stringify({ success: true, predictions, validation: validation.summary }), {
+    return new Response(JSON.stringify({
+      success: true,
+      predictions,
+      validation: validation.summary,
+      validation_window: { from: validationFrom, to: validationTo, days: windowDays },
+      auto_sync: autoSyncInfo,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
