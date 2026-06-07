@@ -17,24 +17,77 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch context from database — prices, production, exports, risks, alerts, regulatory
-    const [priceResult, productionResult, exportResult, riskResult, alertsResult, regulatoryResult] = await Promise.all([
-      supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(180),
-      supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(400),
-      supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(60),
-      supabase.from('risk_data').select('*').order('data_date', { ascending: false }).limit(20),
-      supabase.from('risk_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(15),
-      supabase.from('regulatory_events').select('*').order('event_date', { ascending: true }).limit(10),
-    ]);
+    // ── Configurable validation window via request body ─────────────────────
+    const body = await req.json().catch(() => ({} as any));
+    const todayISO = new Date().toISOString().split('T')[0];
+    const windowDays = Math.max(7, Math.min(3650, Number(body?.validation_window_days) || 180));
+    const validationTo: string = typeof body?.validation_to === 'string' ? body.validation_to : todayISO;
+    const validationFrom: string = typeof body?.validation_from === 'string'
+      ? body.validation_from
+      : new Date(new Date(validationTo).getTime() - windowDays * 86400000).toISOString().split('T')[0];
+    const autoSync: boolean = body?.auto_sync !== false; // default true
+    const isRetry: boolean = body?._auto_sync_retry === true;
+    const toleranceOverrides = (body?.tolerances && typeof body.tolerances === 'object') ? body.tolerances : undefined;
 
-    const prices = priceResult.data || [];
-    const production = productionResult.data || [];
-    const exports = exportResult.data || [];
-    const risks = riskResult.data || [];
-    const alerts = alertsResult.data || [];
-    const regulatory = regulatoryResult.data || [];
+    const fetchContext = async () => {
+      const [priceResult, productionResult, exportResult, riskResult, alertsResult, regulatoryResult] = await Promise.all([
+        supabase.from('price_data').select('*').order('data_date', { ascending: false }).limit(180),
+        supabase.from('production_data').select('*').order('data_date', { ascending: false }).limit(400),
+        supabase.from('export_data').select('*').order('data_date', { ascending: false }).limit(60),
+        supabase.from('risk_data').select('*').order('data_date', { ascending: false }).limit(20),
+        supabase.from('risk_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(15),
+        supabase.from('regulatory_events').select('*').order('event_date', { ascending: true }).limit(10),
+      ]);
+      return {
+        prices: priceResult.data || [],
+        production: productionResult.data || [],
+        exports: exportResult.data || [],
+        risks: riskResult.data || [],
+        alerts: alertsResult.data || [],
+        regulatory: regulatoryResult.data || [],
+      };
+    };
 
-    // Latest aggregates
+    const runValidation = (pricesArr: any[], productionArr: any[], exportsArr: any[]) => {
+      const inWindow = (d: string) => d >= validationFrom && d <= validationTo;
+      return validateSeries({
+        brent: pricesArr.filter((p: any) => p.crude_type === 'Brent').map((p: any) => p.data_date).filter(inWindow),
+        production: productionArr.map((p: any) => p.data_date).filter(inWindow),
+        exports: exportsArr.map((e: any) => e.data_date).filter(inWindow),
+      }, toleranceOverrides);
+    };
+
+    let ctx = await fetchContext();
+    let validation = runValidation(ctx.prices, ctx.production, ctx.exports);
+    let autoSyncInfo: any = null;
+
+    // ── On validation failure: trigger sync-all-data once, then re-validate ──
+    if (!validation.ok && autoSync && !isRetry) {
+      console.warn('⚠️ Validation failed — triggering auto sync-all-data');
+      try {
+        const syncResp = await fetch(`${supabaseUrl}/functions/v1/sync-all-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ trigger: 'ai-predictions-auto' }),
+        });
+        autoSyncInfo = { triggered: true, status: syncResp.status, ok: syncResp.ok };
+        if (syncResp.ok) {
+          ctx = await fetchContext();
+          validation = runValidation(ctx.prices, ctx.production, ctx.exports);
+          autoSyncInfo.revalidated = true;
+        }
+      } catch (e) {
+        autoSyncInfo = { triggered: true, ok: false, error: String(e) };
+      }
+    }
+
+    const prices = ctx.prices;
+    const production = ctx.production;
+    const exports = ctx.exports;
+    const risks = ctx.risks;
+    const alerts = ctx.alerts;
+    const regulatory = ctx.regulatory;
+
     const brentSeries = prices.filter((p: any) => p.crude_type === 'Brent').slice(0, 30);
     const latestBrent = brentSeries[0]?.price || 80;
     const brent7dAvg = brentSeries.slice(0, 7).reduce((s: number, p: any) => s + Number(p.price), 0) / Math.max(brentSeries.slice(0, 7).length, 1);
@@ -43,17 +96,14 @@ serve(async (req) => {
       ? ((latestBrent - Number(brentSeries[brentSeries.length - 1].price)) / Number(brentSeries[brentSeries.length - 1].price)) * 100
       : 0;
 
-    // Production: aggregate latest day across operators
     const latestProdDate = production[0]?.data_date;
     const latestDayProd = production.filter((p: any) => p.data_date === latestProdDate);
     const totalDailyProduction = latestDayProd.reduce((s: number, p: any) => s + Number(p.daily_production || 0), 0);
     const avgDecline = latestDayProd.reduce((s: number, p: any) => s + Number(p.decline_rate || 0), 0) / Math.max(latestDayProd.length, 1);
 
-    // Exports: last 30d total volume
     const totalExportVolume = exports.reduce((s: number, e: any) => s + Number(e.volume || 0), 0);
     const exportDestinations = [...new Set(exports.map((e: any) => e.destination))].slice(0, 5);
 
-    // Risk context
     const riskByCategory = risks.reduce((acc: Record<string, any>, r: any) => {
       if (!acc[r.category]) acc[r.category] = r;
       return acc;
@@ -65,23 +115,19 @@ serve(async (req) => {
     const criticalAlerts = alerts.filter((a: any) => a.alert_type === 'critical');
     const upcomingRegulatory = regulatory.filter((r: any) => r.status !== 'completed').slice(0, 5);
 
-    const currentDate = new Date().toISOString().split('T')[0];
-
-    // ── Data integrity validation: only on recent window (last 180d) ──────
-    const cutoff = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
-    const validation = validateSeries({
-      brent: brentSeries.map((p: any) => p.data_date).filter((d: string) => d >= cutoff),
-      production: production.map((p: any) => p.data_date).filter((d: string) => d >= cutoff),
-      exports: exports.map((e: any) => e.data_date).filter((d: string) => d >= cutoff),
-    });
+    const currentDate = todayISO;
 
     if (!validation.ok) {
-      console.warn('⚠️ Data validation failed:', JSON.stringify(validation.issues));
+      console.warn('⚠️ Data validation failed (final):', JSON.stringify(validation.issues));
       return new Response(JSON.stringify({
         success: false,
         error: 'Falha de validação de dados: histórico incompleto ou inconsistente.',
         validation,
-        recommendation: 'Execute sync-all-data para preencher buracos antes de gerar previsões.',
+        validation_window: { from: validationFrom, to: validationTo, days: windowDays },
+        auto_sync: autoSyncInfo,
+        recommendation: autoSyncInfo?.triggered
+          ? 'Auto-sync executado mas dados continuam incompletos. Verifique fontes externas.'
+          : 'Execute sync-all-data para preencher buracos antes de gerar previsões.',
       }), {
         status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -320,7 +366,13 @@ Devolve JSON com este shape exato:
       last_updated: mp.last_updated || currentDate,
     };
 
-    return new Response(JSON.stringify({ success: true, predictions, validation: validation.summary }), {
+    return new Response(JSON.stringify({
+      success: true,
+      predictions,
+      validation: validation.summary,
+      validation_window: { from: validationFrom, to: validationTo, days: windowDays },
+      auto_sync: autoSyncInfo,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
@@ -439,7 +491,10 @@ type SeriesIssue = {
   count: number;
 };
 
-function validateSeries(input: { brent: string[]; production: string[]; exports: string[] }): {
+function validateSeries(
+  input: { brent: string[]; production: string[]; exports: string[] },
+  overrides?: Partial<Record<'brent' | 'production' | 'exports', Partial<{ maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }>>>,
+): {
   ok: boolean;
   issues: SeriesIssue[];
   summary: Record<string, { ok: boolean; count: number; stale_days: number | null; gaps: number; duplicates: number }>;
@@ -447,12 +502,15 @@ function validateSeries(input: { brent: string[]; production: string[]; exports:
   const issues: SeriesIssue[] = [];
   const summary: Record<string, any> = {};
 
-  // Tolerated max gap (days) and max staleness (days) per series
-  // allowMultiPerDay: tables like production/exports legitimately have many rows per date (one per operator/destination)
-  const tolerances: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
+  const defaults: Record<string, { maxGap: number; maxStale: number; minPoints: number; allowMultiPerDay: boolean }> = {
     brent:      { maxGap: 5,  maxStale: 7,  minPoints: 14, allowMultiPerDay: false },
     production: { maxGap: 65, maxStale: 60, minPoints: 4,  allowMultiPerDay: true  },
     exports:    { maxGap: 10, maxStale: 14, minPoints: 5,  allowMultiPerDay: true  },
+  };
+  const tolerances: typeof defaults = {
+    brent:      { ...defaults.brent,      ...(overrides?.brent ?? {}) },
+    production: { ...defaults.production, ...(overrides?.production ?? {}) },
+    exports:    { ...defaults.exports,    ...(overrides?.exports ?? {}) },
   };
 
   for (const [name, dates] of Object.entries(input)) {
