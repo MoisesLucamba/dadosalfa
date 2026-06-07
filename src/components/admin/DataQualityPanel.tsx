@@ -79,7 +79,21 @@ export function DataQualityPanel() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Auto-refresh a cada 60s para refletir cron diário e execuções manuais
+    const interval = setInterval(() => { load(); }, 60_000);
+    // Realtime: atualiza imediatamente quando reconcile-data insere nova run
+    const channel = supabase
+      .channel("data_quality_runs")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "data_reconciliation_runs" }, () => load())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "data_quality_issues" }, () => load())
+      .subscribe();
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const runReconciliation = async () => {
     setRunning(true);
