@@ -491,7 +491,7 @@ const Risk = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Helmet><title>AlphaData — Risco & Geopolítica</title></Helmet>
+      <Helmet><title>Elastra — Risco & Geopolítica</title></Helmet>
 
       <Sidebar activeItem="/risk" />
 

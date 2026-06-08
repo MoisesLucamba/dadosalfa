@@ -268,7 +268,7 @@ const Prices = () => {
   return (
     <>
       <Helmet>
-        <title>Preços & Mercado | AlphaData</title>
+        <title>Preços & Mercado | Elastra</title>
       </Helmet>
 
       <div className="flex h-screen bg-background text-foreground overflow-hidden">

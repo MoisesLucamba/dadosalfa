@@ -21,7 +21,7 @@ interface ExportDropdownProps {
 
 export function ExportDropdown({
   data,
-  filename = 'AlphaData_Export',
+  filename = 'Elastra_Export',
   showPng = false,
   captureRef,
   className = '',

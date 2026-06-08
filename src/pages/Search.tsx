@@ -1483,7 +1483,7 @@ const Search = () => {
             if (last?.role === "assistant" && last.id === aId) {
               msgs[msgs.length - 1] = { ...last, content: acc };
             } else {
-              msgs.push({ id: aId, role: "assistant", content: acc, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), sources: ["Base de Dados Corporativa", "AlphaData Market Feed"], charts: autoCharts.length ? autoCharts : undefined });
+              msgs.push({ id: aId, role: "assistant", content: acc, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), sources: ["Base de Dados Corporativa", "Elastra Market Feed"], charts: autoCharts.length ? autoCharts : undefined });
             }
             return { ...s, messages: msgs };
           }));
@@ -1496,7 +1496,7 @@ const Search = () => {
           await supabase.from("chat_messages").insert({
             id: aId, conversation_id: sessionId!, user_id: user.id,
             role: "assistant", content: acc,
-            sources: ["Base de Dados Corporativa", "AlphaData Market Feed"] as any,
+            sources: ["Base de Dados Corporativa", "Elastra Market Feed"] as any,
             charts: (autoCharts.length ? autoCharts : []) as any,
           } as any);
           await supabase.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", sessionId!);

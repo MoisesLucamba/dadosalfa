@@ -114,7 +114,7 @@ const Exports = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Helmet><title>AlphaData — Exportações</title></Helmet>
+      <Helmet><title>Elastra — Exportações</title></Helmet>
 
       <Sidebar activeItem="/exports" />
 

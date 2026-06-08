@@ -146,7 +146,7 @@ const Production = () => {
   return (
     <>
       <Helmet>
-        <title>Produção Petrolífera | AlphaData</title>
+        <title>Produção Petrolífera | Elastra</title>
         <meta name="description" content="Dados de produção petrolífera de Angola por bloco, operadora e campo." />
       </Helmet>
 

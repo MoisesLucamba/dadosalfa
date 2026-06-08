@@ -182,7 +182,7 @@ const Predictions = () => {
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Helmet><title>AlphaData — Previsões IA</title></Helmet>
+      <Helmet><title>Elastra — Previsões IA</title></Helmet>
 
 
       <div className="flex h-screen overflow-hidden">

@@ -105,7 +105,7 @@ export default function ServiceProviders() {
   return (
     <div className="min-h-screen bg-background flex">
       <Helmet>
-        <title>Fornecedores | AlphaData</title>
+        <title>Fornecedores | Elastra</title>
         <meta name="description" content="Diretório de empresas prestadoras de serviços ao setor petrolífero em Angola." />
       </Helmet>
       <Sidebar activeItem="/service-providers" />

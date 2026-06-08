@@ -18,7 +18,7 @@ import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 
 /* ═══════════════════════════════════════════════════
-   DESIGN TOKENS — AlphaData Intelligence Terminal
+   DESIGN TOKENS — Elastra Intelligence Terminal
    ═══════════════════════════════════════════════════ */
 const T = {
   bg:        "#030609",

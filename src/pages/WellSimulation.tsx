@@ -1044,7 +1044,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text("AlphaData Analytics  |  www.alphadata.ao", 20, H - 7);
+  doc.text("Elastra Analytics  |  www.alphadata.ao", 20, H - 7);
   doc.text(`${t.page} 1`, W - 35, H - 7);
 
   // ═══════════════════ PAGE 2: 3D VISUALIZATION ═══════════════════
@@ -1055,7 +1055,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  ${t.vis3d}`, 20, 12);
+  doc.text(`Elastra  |  ${well.name}  |  ${t.vis3d}`, 20, 12);
   doc.text(`${t.page} 2`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
@@ -1103,7 +1103,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
+  doc.text(`Elastra Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 3: TECHNICAL DATA ═══════════════════
   doc.addPage();
@@ -1113,7 +1113,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  ${t.technicalSheet}`, 20, 12);
+  doc.text(`Elastra  |  ${well.name}  |  ${t.technicalSheet}`, 20, 12);
   doc.text(`${t.page} 3`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
@@ -1156,7 +1156,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
+  doc.text(`Elastra Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 4: PRODUCTION DATA ═══════════════════
   doc.addPage();
@@ -1166,7 +1166,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  ${t.productionData.split('—')[0].trim()}`, 20, 12);
+  doc.text(`Elastra  |  ${well.name}  |  ${t.productionData.split('—')[0].trim()}`, 20, 12);
   doc.text(`${t.page} 4`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
@@ -1210,7 +1210,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.line(20, H - 12, W - 20, H - 12);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`AlphaData Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
+  doc.text(`Elastra Well Simulation  |  ${t.confidentialNotice.split('—')[0].trim()}  |  ${new Date().toLocaleDateString(locale)}`, 20, H - 7);
 
   // ═══════════════════ PAGE 5: RISK MATRIX ═══════════════════
   doc.addPage();
@@ -1220,7 +1220,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.rect(0, 0, W, 18, "F");
   doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.text(`AlphaData  |  ${well.name}  |  ${t.riskMatrix}`, 20, 12);
+  doc.text(`Elastra  |  ${well.name}  |  ${t.riskMatrix}`, 20, 12);
   doc.text(`${t.page} 5`, W - 35, 12);
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(16);
@@ -1274,7 +1274,7 @@ async function generateSimulationPDF(well: typeof DEFAULT_WELLS[0], canvasEl: HT
   doc.setLineWidth(0.5);
   doc.line(20, H - 5, W - 20, H - 5);
 
-  doc.save(`AlphaData_WellSim_${well.name.replace(/\s+/g, "_")}.pdf`);
+  doc.save(`Elastra_WellSim_${well.name.replace(/\s+/g, "_")}.pdf`);
   toast.success(t.pdfSuccess);
 }
 
@@ -1416,7 +1416,7 @@ export default function WellSimulation() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-[9px] text-[#3a6a8a] tracking-[3px] uppercase font-mono">AlphaData · Well Engineering Platform</p>
+                    <p className="text-[9px] text-[#3a6a8a] tracking-[3px] uppercase font-mono">Elastra · Well Engineering Platform</p>
                     <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
                       className="w-1.5 h-1.5 rounded-full bg-[#00e5a0]" />
                     <span className="text-[9px] text-[#00e5a0] font-mono">LIVE</span>

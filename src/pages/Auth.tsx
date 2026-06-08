@@ -202,7 +202,7 @@ export default function Auth() {
           setLoading(false);
           return;
         }
-        toast.success("Acesso autorizado", { description: "Bem-vindo ao AlphaData Intelligence." });
+        toast.success("Acesso autorizado", { description: "Bem-vindo ao Elastra Intelligence." });
       }
     } catch (err: any) {
       toast.error("Falha na autenticação", { description: err.message });

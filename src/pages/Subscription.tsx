@@ -532,7 +532,7 @@ const PaymentTab = () => {
 
   const ALPHA_BANK = [
     ["BANCO",      "Standard Bank Angola"],
-    ["TITULAR",    "AlphaData Technologies Lda"],
+    ["TITULAR",    "Elastra Technologies Lda"],
     ["IBAN",       "AO06 0090 0000 1234 5678 9X1"],
     ["SWIFT",      "STBAAOLUAXXX"],
     ["REFERÊNCIA", `SUB-${Date.now().toString().slice(-6)}`],
@@ -804,7 +804,7 @@ const PaymentTab = () => {
                     onBlur={e => (e.target as HTMLInputElement).style.borderColor="rgba(255,255,255,0.08)"}
                   />
                 </div>
-                {/* AlphaData bank details */}
+                {/* Elastra bank details */}
                 <div className="rounded p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"/>
