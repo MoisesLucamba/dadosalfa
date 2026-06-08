@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import elastraLogo from "@/assets/alphadata-logo.png";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 interface NavItem {
@@ -173,8 +174,8 @@ export function Sidebar({
         {/* ── Logotype ─────────────────────────────── */}
         <div className="px-3 pt-4 pb-3 flex-shrink-0">
           <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
-            <div className="relative flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
-              <Activity className="w-4 h-4 text-primary" />
+            <div className="relative flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white p-1">
+              <img src={elastraLogo} alt="Elastra South Atlantic" className="w-full h-full object-contain" />
             </div>
 
             <AnimatePresence>
@@ -187,10 +188,9 @@ export function Sidebar({
                   className="flex flex-col"
                 >
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-sm font-bold tracking-wider text-foreground">ALPHA</span>
-                    <span className="text-sm font-bold tracking-wider text-primary">DATA</span>
+                    <span className="text-sm font-bold tracking-wider text-foreground">ELASTRA</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground mt-0.5">Petroleum Intelligence</span>
+                  <span className="text-[10px] text-primary mt-0.5 tracking-widest uppercase">South Atlantic</span>
                 </motion.div>
               )}
             </AnimatePresence>
