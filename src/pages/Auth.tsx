@@ -14,21 +14,21 @@ import alphadataLogo from "@/assets/alphadata-logo.png";
 import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
 import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
 
-/* ─── Design tokens ─────────────────────────────────── */
+/* ─── Design tokens — CLEAN LIGHT (independent from global theme) ───── */
 const T = {
-  bg:       "#04080f",
-  bg2:      "#070d1a",
-  panel:    "#060c18",
-  border:   "rgba(20,45,80,0.7)",
-  borderR:  "rgba(200,16,46,0.4)",
+  bg:       "#ffffff",
+  bg2:      "#f5f7fa",
+  panel:    "#ffffff",
+  border:   "rgba(15,40,80,0.12)",
+  borderR:  "rgba(200,16,46,0.35)",
   red:      "#C8102E",
-  redGlow:  "rgba(200,16,46,0.25)",
+  redGlow:  "rgba(200,16,46,0.15)",
   blue:     "#002855",
   blueMid:  "#1e3a5f",
-  textDim:  "#2d4d6e",
-  textMid:  "#4d7aa0",
-  textBrt:  "#c8dff0",
-  white:    "#e8f0f8",
+  textDim:  "#6b7a8c",
+  textMid:  "#3d556f",
+  textBrt:  "#0c2340",
+  white:    "#0c2340",
   mono:     "'IBM Plex Mono', monospace",
   sans:     "'Outfit', sans-serif",
 };
@@ -171,6 +171,18 @@ export default function Auth() {
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // Force light theme on Auth page (independent from global dark theme)
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    root.classList.remove("dark");
+    root.classList.add("light");
+    return () => {
+      root.classList.remove("light");
+      if (hadDark) root.classList.add("dark");
+    };
   }, []);
 
   const timeStr = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
