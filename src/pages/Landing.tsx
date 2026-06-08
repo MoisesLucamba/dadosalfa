@@ -295,7 +295,7 @@ export default function InstitutionalLanding() {
 
           {[
             { title: "Soluções", links: [{l:"Inteligência de Mercado",p:"solucoes"},{l:"Análise Regulatória",p:"regulacao"},{l:"Logística de Crudes",p:"dados"},{l:"Consultoria Técnica",p:"solucoes"}] },
-            { title: "Empresa",  links: [{l:"Sobre a AlphaData",p:"sobre"},{l:"Carreiras",p:"carreiras"},{l:"Contacto",p:"contacto"}] },
+            { title: "Empresa",  links: [{l:"Sobre a Elastra",p:"sobre"},{l:"Carreiras",p:"carreiras"},{l:"Contacto",p:"contacto"}] },
             { title: "Legal",    links: [{l:"Termos e Condições",p:"termos"},{l:"Política de Privacidade",p:"privacidade"},{l:"Conformidade Anti-Corrupção",p:"compliance"}] },
           ].map(col => (
             <div key={col.title}>
@@ -321,7 +321,7 @@ export default function InstitutionalLanding() {
 
         <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <span style={{ fontFamily: T.mono, fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
-            © 2026 AlphaData Intelligence · Todos os direitos reservados
+            © 2026 Elastra Intelligence · Todos os direitos reservados
           </span>
           <span style={{ fontFamily: T.mono, fontSize: 8, color: "rgba(255,255,255,0.15)", letterSpacing: "0.1em" }}>
             LUANDA · ANGOLA
@@ -393,7 +393,7 @@ export default function InstitutionalLanding() {
 
               <div className="flex flex-wrap gap-3">
                 <PrimaryBtn>Agendar Demonstração <ArrowRight style={{ width: 13, height: 13 }} /></PrimaryBtn>
-                <OutlineBtn onClick={() => setCurrentPage("sobre")}>Conhecer a AlphaData</OutlineBtn>
+                <OutlineBtn onClick={() => setCurrentPage("sobre")}>Conhecer a Elastra</OutlineBtn>
               </div>
 
               {/* Technology strip — apenas credenciais técnicas */}
@@ -426,7 +426,7 @@ export default function InstitutionalLanding() {
                     <span style={{ fontFamily: T.mono, fontSize: 9, color: T.gray400 }}>app.alphadata.ao/dashboard</span>
                   </div>
                 </div>
-                <img src={heroDashboard} alt="AlphaData Dashboard" className="w-full h-auto block" />
+                <img src={heroDashboard} alt="Elastra Dashboard" className="w-full h-auto block" />
               </div>
 
               {/* Floating badge */}
@@ -816,12 +816,12 @@ export default function InstitutionalLanding() {
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
         <div className="grid lg:grid-cols-2 gap-20 items-center mb-20">
           <div>
-            <SectionLabel>Sobre a AlphaData</SectionLabel>
+            <SectionLabel>Sobre a Elastra</SectionLabel>
             <h1 style={{ fontFamily: T.display, fontSize: "clamp(30px,3.8vw,50px)", fontWeight: 800, color: T.black, letterSpacing: "-0.025em", lineHeight: 1.1, marginBottom: 20 }}>
               Uma empresa angolana a construir o futuro da inteligência energética.
             </h1>
             <p style={{ fontFamily: T.sans, fontSize: 15, color: T.gray600, lineHeight: 1.75, marginBottom: 16 }}>
-              Fundada em Luanda em 2026, a AlphaData nasceu da convicção de que o sector energético africano precisa de ferramentas de análise à altura da sua complexidade e importância estratégica.
+              Fundada em Luanda em 2026, a Elastra nasceu da convicção de que o sector energético africano precisa de ferramentas de análise à altura da sua complexidade e importância estratégica.
             </p>
             <p style={{ fontFamily: T.sans, fontSize: 14, color: T.gray400, lineHeight: 1.75, marginBottom: 32 }}>
               A nossa equipa combina experiência em engenharia de petróleo, ciência de dados e regulação para construir uma plataforma de referência para o mercado angolano e africano.
@@ -931,10 +931,10 @@ export default function InstitutionalLanding() {
       case "dados":      return <DadosPage />;
       case "sobre":      return <SobrePage />;
       case "contacto":   return <ContactoPage />;
-      case "carreiras":  return <SimpleContentPage title="Carreiras" content={["A AlphaData é uma empresa recém-fundada em Luanda e está a recrutar os primeiros membros da sua equipa.","Procuramos perfis com experiência ou forte interesse em dados, sector energético e tecnologia.","Envie a sua candidatura para careers@alphadata.ao"]} />;
-      case "termos":     return <SimpleContentPage title="Termos e Condições" content={["Estes termos regulam o acesso e utilização da plataforma AlphaData Intelligence.","O acesso é restrito a utilizadores autorizados ao abrigo de contrato de licença corporativa.","É proibida a redistribuição de dados sem autorização prévia e por escrito."]} />;
-      case "privacidade":return <SimpleContentPage title="Política de Privacidade" content={["A AlphaData está comprometida com a protecção dos dados corporativos e pessoais dos seus utilizadores.","Utilizamos encriptação de ponta a ponta e não partilhamos dados de clientes com terceiros sem consentimento explícito.","Esta política está em conformidade com a legislação angolana de protecção de dados."]} />;
-      case "compliance": return <SimpleContentPage title="Conformidade Anti-Corrupção" content={["A AlphaData opera segundo rigorosos padrões éticos e de conformidade.","Mantemos políticas contra suborno e corrupção alinhadas com as melhores práticas internacionais.","Todos os colaboradores e parceiros estão sujeitos a processos de due diligence."]} />;
+      case "carreiras":  return <SimpleContentPage title="Carreiras" content={["A Elastra é uma empresa recém-fundada em Luanda e está a recrutar os primeiros membros da sua equipa.","Procuramos perfis com experiência ou forte interesse em dados, sector energético e tecnologia.","Envie a sua candidatura para careers@alphadata.ao"]} />;
+      case "termos":     return <SimpleContentPage title="Termos e Condições" content={["Estes termos regulam o acesso e utilização da plataforma Elastra Intelligence.","O acesso é restrito a utilizadores autorizados ao abrigo de contrato de licença corporativa.","É proibida a redistribuição de dados sem autorização prévia e por escrito."]} />;
+      case "privacidade":return <SimpleContentPage title="Política de Privacidade" content={["A Elastra está comprometida com a protecção dos dados corporativos e pessoais dos seus utilizadores.","Utilizamos encriptação de ponta a ponta e não partilhamos dados de clientes com terceiros sem consentimento explícito.","Esta política está em conformidade com a legislação angolana de protecção de dados."]} />;
+      case "compliance": return <SimpleContentPage title="Conformidade Anti-Corrupção" content={["A Elastra opera segundo rigorosos padrões éticos e de conformidade.","Mantemos políticas contra suborno e corrupção alinhadas com as melhores práticas internacionais.","Todos os colaboradores e parceiros estão sujeitos a processos de due diligence."]} />;
       default: return <HomePage />;
     }
   };

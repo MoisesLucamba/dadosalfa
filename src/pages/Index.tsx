@@ -257,7 +257,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Helmet><title>AlphaData | Intelligence Hub</title></Helmet>
+      <Helmet><title>Elastra | Intelligence Hub</title></Helmet>
 
       <Sidebar activeItem="/" />
 

@@ -109,7 +109,7 @@ export const DataSourcesPanel = () => {
                 onClick={() => {
                   const blob = new Blob(
                     [
-                      "Fontes de Dados — AlphaData Angola\n\n" +
+                      "Fontes de Dados — Elastra Angola\n\n" +
                         ANGOLA_DATA_SOURCES.map(
                           (ds) =>
                             `${ds.name}\nFonte: ${ds.source}\nCobertura: ${ds.startYear}–${ds.endYear}\nÚltima atualização: ${ds.lastUpdated}\n`

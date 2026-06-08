@@ -304,7 +304,7 @@ const Reports = () => {
         supabase.from("report_downloads").insert({ report_id: report.id, user_id: user?.id }),
         supabase.from("reports").update({ download_count: (report.download_count || 0) + 1 }).eq("id", report.id),
       ]);
-      const fb = { pt: { title: "Relatório AlphaData", period: "Actual", summary: "Relatório AlphaData." }, en: { title: "AlphaData Report", period: "Current", summary: "AlphaData report." }, fr: { title: "Rapport AlphaData", period: "Actuel", summary: "Rapport AlphaData." } }[language] ?? { title: "AlphaData Report", period: "Current", summary: "" };
+      const fb = { pt: { title: "Relatório Elastra", period: "Actual", summary: "Relatório Elastra." }, en: { title: "Elastra Report", period: "Current", summary: "Elastra report." }, fr: { title: "Rapport Elastra", period: "Actuel", summary: "Rapport Elastra." } }[language] ?? { title: "Elastra Report", period: "Current", summary: "" };
       const reportData: ReportData = {
         title: translateReportTitle(report.title || fb.title, report.type || "production", language),
         type: report.type || "production",
