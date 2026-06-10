@@ -259,7 +259,7 @@ export default function Auth() {
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
         .auth-root, .auth-root * { font-family: ${T.sans}; }
-        .auth-root input::placeholder { color: ${T.textDim}; opacity: 1; }
+        .auth-root input::placeholder, .auth-root textarea::placeholder { color: ${T.textDim} !important; opacity: 1 !important; }
         .auth-root input:-webkit-autofill {
           -webkit-box-shadow: 0 0 0 100px #ffffff inset !important;
           -webkit-text-fill-color: ${T.ink} !important;
@@ -272,6 +272,46 @@ export default function Auth() {
         }
         .form-scroll::-webkit-scrollbar { width: 3px; }
         .form-scroll::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 99px; }
+
+        /* ── Force LIGHT theme on shadcn-based signup forms inside Auth ── */
+        .auth-root input, .auth-root textarea,
+        .auth-root [role="combobox"], .auth-root button[role="combobox"] {
+          background-color: #ffffff !important;
+          color: ${T.ink} !important;
+          border: 1px solid ${T.border} !important;
+        }
+        .auth-root input:focus, .auth-root textarea:focus,
+        .auth-root [role="combobox"]:focus {
+          border-color: rgba(200,16,46,0.55) !important;
+          box-shadow: 0 0 0 3px rgba(200,16,46,0.08) !important;
+          outline: none !important;
+        }
+        .auth-root label { color: ${T.textMid} !important; }
+        .auth-root h1, .auth-root h2, .auth-root h3, .auth-root h4 { color: ${T.ink} !important; }
+        .auth-root p { color: ${T.textMid}; }
+        .auth-root .text-muted-foreground { color: ${T.textDim} !important; }
+        .auth-root .text-foreground { color: ${T.ink} !important; }
+        .auth-root .text-destructive { color: ${T.red} !important; }
+        .auth-root .text-primary { color: ${T.red} !important; }
+        .auth-root .bg-muted { background-color: ${T.bg2} !important; color: ${T.textMid} !important; }
+        .auth-root .border-border\\/30, .auth-root .border-border\\/50 { border-color: ${T.border} !important; }
+        /* Submit button gradient → red */
+        .auth-root button[type="submit"].bg-gradient-to-r {
+          background: linear-gradient(135deg, ${T.red} 0%, #a00d24 100%) !important;
+          color: #ffffff !important;
+          border: none !important;
+        }
+        /* Account type selector cards */
+        .auth-root [class*="border-primary"] { border-color: ${T.red} !important; }
+        .auth-root [class*="bg-primary/5"] { background-color: rgba(200,16,46,0.05) !important; }
+        .auth-root [class*="bg-primary"]:not(button[type="submit"]) { background-color: ${T.red} !important; color: #fff !important; }
+        /* Checkbox */
+        .auth-root [role="checkbox"][data-state="checked"] {
+          background-color: ${T.red} !important;
+          border-color: ${T.red} !important;
+          color: #fff !important;
+        }
+        .auth-root [role="checkbox"] { border-color: ${T.textDim} !important; background: #fff !important; }
       `}</style>
 
       <div className="auth-root min-h-screen flex flex-col lg:flex-row overflow-hidden" style={{ background: T.bg }}>
