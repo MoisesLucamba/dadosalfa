@@ -4,47 +4,44 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye, EyeOff, Mail, Lock, ArrowLeft,
   Globe, ShieldCheck, User, ExternalLink,
-  Building2, Activity, ChevronRight,
+  Building2, ChevronRight,
   Terminal, Fingerprint, AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import alphadataLogo from "@/assets/alphadata-logo.png";
+import elastraLogo from "@/assets/alphadata-logo.png";
 import { PersonalSignupForm } from "@/components/auth/PersonalSignupForm";
 import { OrganizationSignupForm } from "@/components/auth/OrganizationSignupForm";
 
-/* ─── Design tokens — CLEAN LIGHT (independent from global theme) ───── */
+/* ─── Pure LIGHT tokens — independent from global theme ───── */
 const T = {
   bg:       "#ffffff",
-  bg2:      "#f5f7fa",
+  bg2:      "#f6f8fb",
   panel:    "#ffffff",
-  border:   "rgba(15,40,80,0.12)",
+  border:   "rgba(12,35,64,0.10)",
   borderR:  "rgba(200,16,46,0.35)",
   red:      "#C8102E",
-  redGlow:  "rgba(200,16,46,0.15)",
-  blue:     "#002855",
+  blue:     "#0c2340",
   blueMid:  "#1e3a5f",
-  textDim:  "#6b7a8c",
+  textDim:  "#7a8896",
   textMid:  "#3d556f",
   textBrt:  "#0c2340",
-  white:    "#0c2340",
+  ink:      "#0c2340",
   mono:     "'IBM Plex Mono', monospace",
   sans:     "'Outfit', sans-serif",
 };
 
-/* ─── Validation ─────────────────────────────────────── */
 const loginSchema = z.object({
   email: z.string().trim().email({ message: "Email institucional inválido" }),
   password: z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }),
 });
 
-/* ─── Reusable primitives ────────────────────────────── */
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
   <label style={{
     fontFamily: T.mono, fontSize: 9, fontWeight: 700,
     letterSpacing: "0.2em", textTransform: "uppercase",
-    color: T.textDim, marginBottom: 8, display: "block",
+    color: T.textMid, marginBottom: 8, display: "block",
   }}>
     {children}
   </label>
@@ -61,22 +58,20 @@ const TextInput = ({ icon: Icon, rightSlot, ...props }: any) => (
       className="w-full outline-none transition-all duration-200"
       style={{
         fontFamily: T.sans, fontSize: 13, fontWeight: 500,
-        background: "rgba(8,14,26,0.8)",
+        background: "#ffffff",
         border: `1px solid ${T.border}`,
-        borderRadius: 6,
-        padding: `11px ${rightSlot ? 44 : 14}px 11px ${Icon ? 40 : 14}px`,
-        color: T.white,
+        borderRadius: 8,
+        padding: `12px ${rightSlot ? 44 : 14}px 12px ${Icon ? 40 : 14}px`,
+        color: T.ink,
         caretColor: T.red,
       }}
       onFocus={e => {
-        e.currentTarget.style.borderColor = "rgba(200,16,46,0.5)";
+        e.currentTarget.style.borderColor = "rgba(200,16,46,0.55)";
         e.currentTarget.style.boxShadow = `0 0 0 3px rgba(200,16,46,0.08)`;
-        e.currentTarget.style.background = "rgba(10,18,32,0.9)";
       }}
       onBlur={e => {
         e.currentTarget.style.borderColor = T.border;
         e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.background = "rgba(8,14,26,0.8)";
       }}
     />
     {rightSlot && (
@@ -95,14 +90,12 @@ const PrimaryBtn = ({ children, loading, ...props }: any) => (
       padding: "14px 24px",
       background: `linear-gradient(135deg, ${T.red} 0%, #a00d24 100%)`,
       border: `1px solid rgba(200,16,46,0.6)`,
-      borderRadius: 6,
-      color: "white",
-      boxShadow: `0 4px 24px rgba(200,16,46,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`,
+      borderRadius: 8,
+      color: "#ffffff",
+      boxShadow: `0 6px 20px rgba(200,16,46,0.22)`,
       cursor: props.disabled ? "not-allowed" : "pointer",
     }}
   >
-    <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-      style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%)" }} />
     <span className="relative flex items-center justify-center gap-2">
       {loading
         ? <><span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>PROCESSANDO...</span></>
@@ -115,19 +108,19 @@ const PrimaryBtn = ({ children, loading, ...props }: any) => (
 const GhostBtn = ({ children, ...props }: any) => (
   <button
     {...props}
-    className="w-full transition-all duration-200 group"
+    className="w-full transition-all duration-200"
     style={{
       fontFamily: T.mono, fontSize: 9, fontWeight: 700,
       letterSpacing: "0.2em", textTransform: "uppercase",
-      padding: "12px 24px", borderRadius: 6,
-      background: "rgba(8,14,26,0.5)",
+      padding: "12px 24px", borderRadius: 8,
+      background: "#ffffff",
       border: `1px solid ${T.border}`,
       color: T.textMid,
       cursor: "pointer",
     }}
     onMouseEnter={e => {
-      (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,58,95,0.9)";
-      (e.currentTarget as HTMLElement).style.color = T.textBrt;
+      (e.currentTarget as HTMLElement).style.borderColor = T.blueMid;
+      (e.currentTarget as HTMLElement).style.color = T.ink;
     }}
     onMouseLeave={e => {
       (e.currentTarget as HTMLElement).style.borderColor = T.border;
@@ -138,10 +131,9 @@ const GhostBtn = ({ children, ...props }: any) => (
   </button>
 );
 
-/* ─── Animated counter ───────────────────────────────── */
 const LiveStat = ({ value, label }: { value: string; label: string }) => (
   <div className="flex flex-col gap-1">
-    <span style={{ fontFamily: T.mono, fontSize: 18, fontWeight: 700, color: T.white, letterSpacing: "-0.02em" }}>
+    <span style={{ fontFamily: T.mono, fontSize: 20, fontWeight: 700, color: T.ink, letterSpacing: "-0.02em" }}>
       {value}
     </span>
     <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 500, color: T.textDim, letterSpacing: "0.16em", textTransform: "uppercase" }}>
@@ -150,9 +142,6 @@ const LiveStat = ({ value, label }: { value: string; label: string }) => (
   </div>
 );
 
-/* ═══════════════════════════════════════════════════════
-   MAIN
-   ═══════════════════════════════════════════════════════ */
 export default function Auth() {
   const navigate = useNavigate();
   const [authView, setAuthView] = useState<"login" | "signup" | "forgot-password">("login");
@@ -165,23 +154,26 @@ export default function Auth() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
-  // Live clock
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Force light theme on Auth page (independent from global dark theme)
+  // Force pure LIGHT theme on Auth (independent from global dark theme)
   useEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
     const hadDark = root.classList.contains("dark");
     root.classList.remove("dark");
     root.classList.add("light");
+    const prevBodyBg = body.style.background;
+    body.style.background = "#ffffff";
     return () => {
       root.classList.remove("light");
       if (hadDark) root.classList.add("dark");
+      body.style.background = prevBodyBg;
     };
   }, []);
 
@@ -266,108 +258,60 @@ export default function Auth() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
-        .auth-root { font-family: '${T.sans}'; }
-
+        .auth-root, .auth-root * { font-family: ${T.sans}; }
         .auth-root input::placeholder { color: ${T.textDim}; opacity: 1; }
         .auth-root input:-webkit-autofill {
-          -webkit-box-shadow: 0 0 0 100px #070d1a inset !important;
-          -webkit-text-fill-color: ${T.white} !important;
+          -webkit-box-shadow: 0 0 0 100px #ffffff inset !important;
+          -webkit-text-fill-color: ${T.ink} !important;
         }
-
-        @keyframes scanline {
-          0%   { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
-        .scanline {
-          position: absolute; left: 0; right: 0; height: 120px; pointer-events: none;
-          background: linear-gradient(transparent 0%, rgba(200,16,46,0.015) 50%, transparent 100%);
-          animation: scanline 8s linear infinite;
-          z-index: 1;
-        }
-
-        @keyframes cursor-blink {
-          0%, 100% { opacity: 1; } 50% { opacity: 0; }
-        }
-        .blink { animation: cursor-blink 1s step-start infinite; }
-
-        @keyframes pulse-red {
-          0%, 100% { box-shadow: 0 0 4px 1px rgba(200,16,46,0.5); }
-          50%       { box-shadow: 0 0 12px 4px rgba(200,16,46,0.25); }
-        }
-        .pulse-r { animation: pulse-red 2.5s ease-in-out infinite; }
-
-        .grid-bg {
+        .auth-root .grid-bg {
           background-image:
-            repeating-linear-gradient(0deg, rgba(20,45,80,0.18) 0px, transparent 1px, transparent 40px, rgba(20,45,80,0.18) 41px),
-            repeating-linear-gradient(90deg, rgba(20,45,80,0.18) 0px, transparent 1px, transparent 40px, rgba(20,45,80,0.18) 41px);
+            repeating-linear-gradient(0deg, rgba(12,35,64,0.05) 0px, transparent 1px, transparent 40px, rgba(12,35,64,0.05) 41px),
+            repeating-linear-gradient(90deg, rgba(12,35,64,0.05) 0px, transparent 1px, transparent 40px, rgba(12,35,64,0.05) 41px);
           background-size: 41px 41px;
         }
-
         .form-scroll::-webkit-scrollbar { width: 3px; }
         .form-scroll::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 99px; }
       `}</style>
 
       <div className="auth-root min-h-screen flex flex-col lg:flex-row overflow-hidden" style={{ background: T.bg }}>
 
-        {/* ══════════════════════════════════════════════════
-            LEFT — Intelligence Panel
-            ══════════════════════════════════════════════════ */}
+        {/* LEFT — Light intelligence panel */}
         <aside className="lg:w-[42%] relative flex flex-col overflow-hidden flex-shrink-0"
-          style={{ background: `linear-gradient(160deg, #050d1e 0%, #04080f 60%, #08040a 100%)`, borderRight: `1px solid ${T.border}` }}>
+          style={{ background: `linear-gradient(160deg, #ffffff 0%, ${T.bg2} 100%)`, borderRight: `1px solid ${T.border}` }}>
 
-          {/* Grid texture */}
-          <div className="absolute inset-0 grid-bg opacity-100 pointer-events-none" />
+          <div className="absolute inset-0 grid-bg pointer-events-none" />
 
-          {/* Scanline */}
-          <div className="scanline" />
-
-          {/* Corner glow */}
-          <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none" style={{
-            background: "radial-gradient(circle at top right, rgba(0,40,85,0.35) 0%, transparent 70%)"
-          }} />
-          <div className="absolute bottom-0 left-0 w-48 h-48 pointer-events-none" style={{
-            background: "radial-gradient(circle at bottom left, rgba(200,16,46,0.08) 0%, transparent 70%)"
-          }} />
-
-          {/* Top accent */}
           <div className="absolute top-0 left-0 right-0 h-px" style={{
             background: `linear-gradient(90deg, transparent 0%, ${T.red} 40%, ${T.blueMid} 70%, transparent 100%)`
           }} />
 
           <div className="relative z-10 flex flex-col h-full p-10 lg:p-14">
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-14">
               <Link to="/" className="flex items-center gap-3">
-                <div className="relative w-9 h-9 rounded-lg flex items-center justify-center pulse-r"
-                  style={{ background: "linear-gradient(135deg, #0d1b30 0%, #1a0508 100%)", border: `1px solid ${T.borderR}` }}>
-                  <Activity style={{ width: 15, height: 15, color: T.red }} />
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full pulse-r" style={{ background: T.red }} />
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center"
+                  style={{ background: "#ffffff", border: `1px solid ${T.border}` }}>
+                  <img src={elastraLogo} alt="Elastra" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <div className="flex items-baseline gap-1">
-                    <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", color: T.white }}>ALPHA</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", color: T.red }}>DATA</span>
-                    <span className="blink" style={{ fontFamily: T.mono, fontSize: 12, color: T.red }}>_</span>
+                    <span style={{ fontFamily: T.sans, fontSize: 14, fontWeight: 800, letterSpacing: "0.04em", color: T.ink }}>ELASTRA</span>
                   </div>
                   <div style={{ fontFamily: T.mono, fontSize: 7, letterSpacing: "0.25em", color: T.textDim, textTransform: "uppercase" }}>
-                    intelligence platform
+                    South Atlantic
                   </div>
                 </div>
               </Link>
 
-              <Link to="/landing" className="flex items-center gap-1.5 transition-colors"
+              <Link to="/landing" className="flex items-center gap-1.5"
                 style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 600, letterSpacing: "0.16em", color: T.textDim, textTransform: "uppercase" }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.textMid}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
               >
                 Página Inicial <ExternalLink style={{ width: 10, height: 10 }} />
               </Link>
             </div>
 
-            {/* Hero text */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="space-y-6 mb-14">
-              {/* Red rule */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="space-y-6 mb-14">
               <div className="flex items-center gap-3">
                 <div className="h-px w-8" style={{ background: T.red }} />
                 <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.red, letterSpacing: "0.25em", textTransform: "uppercase" }}>
@@ -375,7 +319,7 @@ export default function Auth() {
                 </span>
               </div>
 
-              <h1 style={{ fontFamily: T.sans, fontSize: "clamp(28px, 3.5vw, 44px)", fontWeight: 900, lineHeight: 1.05, color: T.white, letterSpacing: "-0.02em" }}>
+              <h1 style={{ fontFamily: T.sans, fontSize: "clamp(28px, 3.5vw, 44px)", fontWeight: 900, lineHeight: 1.05, color: T.ink, letterSpacing: "-0.02em" }}>
                 Inteligência<br />
                 <span style={{ color: T.red }}>Auditável</span>{" "}
                 <span style={{ color: T.textDim }}>para o</span><br />
@@ -387,7 +331,6 @@ export default function Auth() {
               </p>
             </motion.div>
 
-            {/* Feature pills */}
             <div className="space-y-3 mb-14">
               {[
                 { icon: Globe, label: "Cobertura Continental", desc: "25+ jurisdições africanas em tempo real" },
@@ -398,14 +341,14 @@ export default function Auth() {
                   initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
                   className="flex items-center gap-4 rounded-lg px-4 py-3"
-                  style={{ background: "rgba(8,14,26,0.6)", border: `1px solid ${T.border}` }}
+                  style={{ background: "#ffffff", border: `1px solid ${T.border}` }}
                 >
                   <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(200,16,46,0.1)", border: `1px solid ${T.borderR}` }}>
+                    style={{ background: "rgba(200,16,46,0.08)", border: `1px solid ${T.borderR}` }}>
                     <item.icon style={{ width: 13, height: 13, color: T.red }} />
                   </div>
                   <div>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: T.textBrt, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: T.ink, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                       {item.label}
                     </div>
                     <div style={{ fontFamily: T.sans, fontSize: 10.5, color: T.textDim, marginTop: 2 }}>
@@ -416,21 +359,18 @@ export default function Auth() {
               ))}
             </div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-6 pt-8 mt-auto"
-              style={{ borderTop: `1px solid ${T.border}` }}>
+            <div className="grid grid-cols-3 gap-6 pt-8 mt-auto" style={{ borderTop: `1px solid ${T.border}` }}>
               <LiveStat value="25+" label="Países" />
               <LiveStat value="480+" label="Operadoras" />
               <LiveStat value="99.9%" label="Uptime" />
             </div>
 
-            {/* Live clock */}
             <div className="mt-6 flex items-center justify-between">
               <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.14em" }}>
-                © 2026 ALPHADATA · CONFIDENCIAL
+                © 2026 ELASTRA · CONFIDENCIAL
               </span>
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" style={{ boxShadow: "0 0 6px rgba(34,197,94,0.8)" }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#16a34a", boxShadow: "0 0 6px rgba(22,163,74,0.6)" }} />
                 <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.1em" }}>
                   {timeStr} · {dateStr}
                 </span>
@@ -439,20 +379,12 @@ export default function Auth() {
           </div>
         </aside>
 
-        {/* ══════════════════════════════════════════════════
-            RIGHT — Auth Form
-            ══════════════════════════════════════════════════ */}
+        {/* RIGHT — Auth form (pure light) */}
         <main className="flex-1 flex items-center justify-center p-6 lg:p-16 relative overflow-y-auto form-scroll"
           style={{ background: T.bg2 }}>
 
-          {/* Subtle vignette */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,8,15,0.6) 100%)"
-          }} />
-
           <div className="relative z-10 w-full max-w-[420px]">
 
-            {/* Corner decorations */}
             <div className="absolute -top-3 -left-3 w-6 h-6 pointer-events-none" style={{
               borderTop: `2px solid ${T.red}`, borderLeft: `2px solid ${T.red}`
             }} />
@@ -462,27 +394,25 @@ export default function Auth() {
 
             <AnimatePresence mode="wait">
 
-              {/* ── LOGIN ─────────────────────────────────── */}
               {authView === "login" && (
                 <motion.div key="login"
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.25 }}
                   className="space-y-8 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: T.panel, border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(12,35,64,0.08)" }}
                 >
-                  {/* Auth header */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
                       <Fingerprint style={{ width: 14, height: 14, color: T.red }} />
-                      <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 8, fontWeight: 700, color: T.textMid, letterSpacing: "0.2em", textTransform: "uppercase" }}>
                         Autenticação Segura · TLS 1.3
                       </span>
                     </div>
-                    <h2 style={{ fontFamily: T.sans, fontSize: 26, fontWeight: 900, color: T.white, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 26, fontWeight: 900, color: T.ink, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
                       Portal do Cliente
                     </h2>
                     <div className="flex items-start gap-3 p-3 rounded-lg"
-                      style={{ background: "rgba(200,16,46,0.05)", border: `1px solid rgba(200,16,46,0.15)` }}>
+                      style={{ background: "rgba(200,16,46,0.04)", border: `1px solid rgba(200,16,46,0.18)` }}>
                       <AlertCircle style={{ width: 13, height: 13, color: T.red, flexShrink: 0, marginTop: 1 }} />
                       <p style={{ fontFamily: T.sans, fontSize: 11, color: T.textMid, lineHeight: 1.55 }}>
                         Acesso restrito a utilizadores autorizados. Todas as sessões são registadas e auditadas.
@@ -490,7 +420,6 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  {/* Form */}
                   <form onSubmit={handleLogin} className="space-y-5">
                     <div>
                       <FieldLabel>E-mail Institucional</FieldLabel>
@@ -501,8 +430,6 @@ export default function Auth() {
                         <FieldLabel>Senha de Acesso</FieldLabel>
                         <button type="button" onClick={() => switchView("forgot-password")}
                           style={{ fontFamily: T.mono, fontSize: 8, color: T.red, letterSpacing: "0.14em", textTransform: "uppercase", background: "none", border: "none", cursor: "pointer" }}
-                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.white}
-                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.red}
                         >
                           Esqueceu?
                         </button>
@@ -528,13 +455,12 @@ export default function Auth() {
                     </div>
                   </form>
 
-                  {/* Divider */}
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.border}, transparent)` }} />
                     </div>
                     <div className="relative flex justify-center">
-                      <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", background: T.bg2, padding: "0 12px", textTransform: "uppercase" }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", background: T.panel, padding: "0 12px", textTransform: "uppercase" }}>
                         Sem Acesso?
                       </span>
                     </div>
@@ -546,23 +472,20 @@ export default function Auth() {
                 </motion.div>
               )}
 
-              {/* ── SIGNUP ────────────────────────────────── */}
               {authView === "signup" && (
                 <motion.div key="signup"
                   initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
                   transition={{ duration: 0.25 }}
                   className="space-y-7 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: T.panel, border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(12,35,64,0.08)" }}
                 >
                   <div className="space-y-3">
-                    <button onClick={() => switchView("login")} className="flex items-center gap-1.5 transition-colors"
+                    <button onClick={() => switchView("login")} className="flex items-center gap-1.5"
                       style={{ fontFamily: T.mono, fontSize: 8, color: T.red, letterSpacing: "0.16em", textTransform: "uppercase", background: "none", border: "none", cursor: "pointer" }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.white}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.red}
                     >
                       <ArrowLeft style={{ width: 11, height: 11 }} /> Voltar ao Login
                     </button>
-                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.white, letterSpacing: "-0.02em" }}>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.ink, letterSpacing: "-0.02em" }}>
                       Solicitar Acesso
                     </h2>
                     <p style={{ fontFamily: T.sans, fontSize: 12, color: T.textMid, lineHeight: 1.6 }}>
@@ -570,7 +493,6 @@ export default function Auth() {
                     </p>
                   </div>
 
-                  {/* Type selector */}
                   <div className="grid grid-cols-2 gap-3">
                     {([
                       { key: "personal", icon: User, label: "Individual", desc: "Consultores e analistas" },
@@ -579,14 +501,14 @@ export default function Auth() {
                       <button key={opt.key} onClick={() => setAccountType(opt.key)}
                         className="p-4 rounded-xl text-left transition-all duration-200 flex flex-col gap-3"
                         style={{
-                          background: accountType === opt.key ? "rgba(200,16,46,0.08)" : "rgba(8,14,26,0.6)",
+                          background: accountType === opt.key ? "rgba(200,16,46,0.05)" : "#ffffff",
                           border: `1px solid ${accountType === opt.key ? T.borderR : T.border}`,
                           cursor: "pointer",
                         }}
                       >
                         <opt.icon style={{ width: 14, height: 14, color: accountType === opt.key ? T.red : T.textDim }} />
                         <div>
-                          <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: accountType === opt.key ? T.white : T.textMid, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                          <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 700, color: accountType === opt.key ? T.ink : T.textMid, letterSpacing: "0.14em", textTransform: "uppercase" }}>
                             {opt.label}
                           </div>
                           <div style={{ fontFamily: T.sans, fontSize: 10, color: T.textDim, marginTop: 3 }}>
@@ -606,19 +528,18 @@ export default function Auth() {
                 </motion.div>
               )}
 
-              {/* ── FORGOT PASSWORD ───────────────────────── */}
               {authView === "forgot-password" && (
                 <motion.div key="forgot"
                   initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.22 }}
                   className="space-y-8 p-8 rounded-2xl"
-                  style={{ background: "rgba(6,12,24,0.8)", border: `1px solid ${T.border}`, backdropFilter: "blur(10px)" }}
+                  style={{ background: T.panel, border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(12,35,64,0.08)" }}
                 >
                   <div className="space-y-3">
-                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.textMid, letterSpacing: "0.2em", textTransform: "uppercase" }}>
                       Recuperação de Credencial
                     </div>
-                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.white, letterSpacing: "-0.02em" }}>
+                    <h2 style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 900, color: T.ink, letterSpacing: "-0.02em" }}>
                       Redefinir Senha
                     </h2>
                     <p style={{ fontFamily: T.sans, fontSize: 12, color: T.textMid, lineHeight: 1.6 }}>
@@ -655,13 +576,10 @@ export default function Auth() {
               )}
             </AnimatePresence>
 
-            {/* Footer links */}
             <div className="mt-6 flex items-center justify-center gap-8">
               {["Suporte", "Documentação", "Privacidade"].map(l => (
-                <a key={l} href="#" className="flex items-center gap-1 transition-colors"
+                <a key={l} href="#" className="flex items-center gap-1"
                   style={{ fontFamily: T.mono, fontSize: 8, color: T.textDim, letterSpacing: "0.14em", textTransform: "uppercase" }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.textMid}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
                 >
                   {l} <ExternalLink style={{ width: 9, height: 9 }} />
                 </a>
