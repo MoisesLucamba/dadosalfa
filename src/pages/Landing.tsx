@@ -217,12 +217,12 @@ export default function InstitutionalLanding() {
       <div className="max-w-7xl mx-auto px-6 lg:px-10 h-[68px] flex items-center justify-between">
         <div className="flex items-center gap-8">
           <button onClick={() => setCurrentPage("home")} className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: T.navy, flexShrink: 0 }}>
-              <Activity style={{ width: 13, height: 13, color: T.red }} />
+            <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center" style={{ background: "#ffffff", border: `1px solid ${T.gray200}`, flexShrink: 0 }}>
+              <img src={alphadataLogo} alt="Elastra" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-baseline gap-1">
-              <span style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 700, color: T.black, letterSpacing: "0.1em" }}>ALPHA</span>
-              <span style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 700, color: T.red, letterSpacing: "0.1em" }}>DATA</span>
+            <div className="flex flex-col leading-none">
+              <span style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 800, color: T.black, letterSpacing: "0.04em" }}>ELASTRA</span>
+              <span style={{ fontFamily: T.mono, fontSize: 7.5, fontWeight: 600, color: T.red, letterSpacing: "0.22em", textTransform: "uppercase", marginTop: 2 }}>South Atlantic</span>
             </div>
           </button>
 
@@ -269,16 +269,16 @@ export default function InstitutionalLanding() {
         <div className="grid md:grid-cols-5 gap-12 mb-16">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2.5 mb-6">
-              <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: T.red }}>
-                <Activity style={{ width: 13, height: 13, color: T.white }} />
+              <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center" style={{ background: "#ffffff" }}>
+                <img src={alphadataLogo} alt="Elastra" className="w-full h-full object-contain" />
               </div>
-              <div className="flex items-baseline gap-1">
-                <span style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 700, color: T.white, letterSpacing: "0.1em" }}>ALPHA</span>
-                <span style={{ fontFamily: T.mono, fontSize: 11.5, fontWeight: 700, color: T.red, letterSpacing: "0.1em" }}>DATA</span>
+              <div className="flex flex-col leading-none">
+                <span style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 800, color: T.white, letterSpacing: "0.04em" }}>ELASTRA</span>
+                <span style={{ fontFamily: T.mono, fontSize: 7.5, fontWeight: 600, color: T.red, letterSpacing: "0.22em", textTransform: "uppercase", marginTop: 2 }}>South Atlantic</span>
               </div>
             </div>
             <p style={{ fontFamily: T.sans, fontSize: 12.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 280 }}>
-              Plataforma angolana de Market Intelligence para o sector energético. Fundada em Luanda em 2026.
+              Elastra South Atlantic — Plataforma angolana de Market Intelligence para o sector energético. Fundada em Luanda em 2026.
             </p>
             <div className="flex items-center gap-4 mt-8">
               {[{icon: Linkedin, l:"LinkedIn"},{icon: Twitter, l:"Twitter"},{icon: ExternalLink, l:"Bloomberg"}].map(s => (
